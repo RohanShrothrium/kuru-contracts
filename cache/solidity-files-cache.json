@@ -1,0 +1,5527 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/AbstractPosition.sol": {
+      "lastModificationDate": 1680523868534,
+      "contentHash": "40a53caa6f1c353490195e833379b401",
+      "sourceName": "contracts/AbstractPosition.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./LendingContract.sol",
+        "./interfaces/IRouter.sol",
+        "./interfaces/IPositionRouter.sol",
+        "./interfaces/IOrderBook.sol",
+        "./interfaces/IVault.sol",
+        "./libraries/SafeMath.sol"
+      ],
+      "versionPragmas": [
+        ">=0.6.12"
+      ],
+      "artifacts": [
+        "AbstractPosition"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/interfaces/IPositionRouter.sol": {
+      "lastModificationDate": 1679638050076,
+      "contentHash": "ab5862fd73b315e154da128286f2e36a",
+      "sourceName": "contracts/interfaces/IPositionRouter.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.6.12"
+      ],
+      "artifacts": [
+        "IPositionRouter"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/interfaces/IRouter.sol": {
+      "lastModificationDate": 1679545580478,
+      "contentHash": "09db52915dd207f00b6703dbc418f6d1",
+      "sourceName": "contracts/interfaces/IRouter.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.6.12"
+      ],
+      "artifacts": [
+        "IRouter"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/interfaces/IOrderBook.sol": {
+      "lastModificationDate": 1680008064105,
+      "contentHash": "079cf5929decc9280e5e800686e19855",
+      "sourceName": "contracts/interfaces/IOrderBook.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.6.12"
+      ],
+      "artifacts": [
+        "IOrderBook"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/LendingContract.sol": {
+      "lastModificationDate": 1680538137928,
+      "contentHash": "89ef615f3eb1330005175b518ea73f7c",
+      "sourceName": "contracts/LendingContract.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IVault.sol",
+        "./AbstractPosition.sol",
+        "./FactoryContract.sol",
+        "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        "./libraries/SafeMath.sol"
+      ],
+      "versionPragmas": [
+        ">=0.6.12"
+      ],
+      "artifacts": [
+        "LendingContract"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/interfaces/IVault.sol": {
+      "lastModificationDate": 1679545580478,
+      "contentHash": "51e693017fb360643722d9e51ecb9755",
+      "sourceName": "contracts/interfaces/IVault.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IVaultUtils.sol"
+      ],
+      "versionPragmas": [
+        ">=0.6.12"
+      ],
+      "artifacts": [
+        "IVault"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/FactoryContract.sol": {
+      "lastModificationDate": 1680350389004,
+      "contentHash": "a900f68afb19973e84734cf5e2f66bba",
+      "sourceName": "contracts/FactoryContract.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./AbstractPosition.sol"
+      ],
+      "versionPragmas": [
+        ">=0.6.12"
+      ],
+      "artifacts": [
+        "FactoryContract"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol": {
+      "lastModificationDate": 1679546677325,
+      "contentHash": "834a0dde221759af42b030253315b086",
+      "sourceName": "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IERC20.sol",
+        "./extensions/IERC20Metadata.sol",
+        "../../utils/Context.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "ERC20"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/interfaces/IVaultUtils.sol": {
+      "lastModificationDate": 1679545580479,
+      "contentHash": "55ea2ed9076ee3ae5d8e4fdaa80adfa2",
+      "sourceName": "contracts/interfaces/IVaultUtils.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.6.12"
+      ],
+      "artifacts": [
+        "IVaultUtils"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/node_modules/@openzeppelin/contracts/utils/Context.sol": {
+      "lastModificationDate": 1679546677320,
+      "contentHash": "5f2c5c4b6af2dd4551027144797bc8be",
+      "sourceName": "@openzeppelin/contracts/utils/Context.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "Context"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+      "lastModificationDate": 1679546677338,
+      "contentHash": "ad7c2d0af148c8f9f097d65deeb4da6b",
+      "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IERC20"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol": {
+      "lastModificationDate": 1679546677338,
+      "contentHash": "909ab67fc5c25033fe6cd364f8c056f9",
+      "sourceName": "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../IERC20.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IERC20Metadata"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/access/Governable.sol": {
+      "lastModificationDate": 1679642483217,
+      "contentHash": "05dd8a71481cfeae4ec317005e74cda2",
+      "sourceName": "contracts/gmx/access/Governable.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Governable"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/Bridge.sol": {
+      "lastModificationDate": 1679642483263,
+      "contentHash": "278c89f8507fd56d29cb932891225d2e",
+      "sourceName": "contracts/gmx/tokens/Bridge.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/token/IERC20.sol",
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Bridge"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/token/IERC20.sol": {
+      "lastModificationDate": 1679642483248,
+      "contentHash": "108806e05552e6e6b8da283af9c455b2",
+      "sourceName": "contracts/gmx/libraries/token/IERC20.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IERC20"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/math/SafeMath.sol": {
+      "lastModificationDate": 1679642483243,
+      "contentHash": "5a01b10c876b53fa1ef793328741b8af",
+      "sourceName": "contracts/gmx/libraries/math/SafeMath.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "SafeMath"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/token/SafeERC20.sol": {
+      "lastModificationDate": 1679642483248,
+      "contentHash": "3972576c8f1324bf28e1cb62397f9899",
+      "sourceName": "contracts/gmx/libraries/token/SafeERC20.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IERC20.sol",
+        "../math/SafeMath.sol",
+        "../utils/Address.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "SafeERC20"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/utils/ReentrancyGuard.sol": {
+      "lastModificationDate": 1679642483249,
+      "contentHash": "d3b541f0c45b789b20107137c6ad526f",
+      "sourceName": "contracts/gmx/libraries/utils/ReentrancyGuard.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "ReentrancyGuard"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/utils/Address.sol": {
+      "lastModificationDate": 1679642483249,
+      "contentHash": "b32ef078a758efa4d45eb9c0b3e102d5",
+      "sourceName": "contracts/gmx/libraries/utils/Address.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.6.2"
+      ],
+      "artifacts": [
+        "Address"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/YieldTracker.sol": {
+      "lastModificationDate": 1679642483266,
+      "contentHash": "3a95fcf37cf18e9f658e9571d6eb8eba",
+      "sourceName": "contracts/gmx/tokens/YieldTracker.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "./interfaces/IDistributor.sol",
+        "./interfaces/IYieldTracker.sol",
+        "./interfaces/IYieldToken.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "YieldTracker"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/interfaces/IDistributor.sol": {
+      "lastModificationDate": 1679642483267,
+      "contentHash": "57ed93765a80528d0bd9c818bbcdfd07",
+      "sourceName": "contracts/gmx/tokens/interfaces/IDistributor.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IDistributor"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/interfaces/IYieldToken.sol": {
+      "lastModificationDate": 1679642483268,
+      "contentHash": "45bddf5e1d39e63fe161e7352616088c",
+      "sourceName": "contracts/gmx/tokens/interfaces/IYieldToken.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IYieldToken"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/interfaces/IYieldTracker.sol": {
+      "lastModificationDate": 1679642483269,
+      "contentHash": "6d94dcdf3613e43b5b164b8bf841e18d",
+      "sourceName": "contracts/gmx/tokens/interfaces/IYieldTracker.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IYieldTracker"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/YieldToken.sol": {
+      "lastModificationDate": 1679642483266,
+      "contentHash": "c8866f99f1f3889099a69fedf76c86b1",
+      "sourceName": "contracts/gmx/tokens/YieldToken.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "./interfaces/IYieldTracker.sol",
+        "./interfaces/IYieldToken.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "YieldToken"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/Timelock.sol": {
+      "lastModificationDate": 1679642483256,
+      "contentHash": "dc0bb05a2f3495178d9587e4c0caa1c2",
+      "sourceName": "contracts/gmx/peripherals/Timelock.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/ITimelockTarget.sol",
+        "./interfaces/ITimelock.sol",
+        "./interfaces/IHandlerTarget.sol",
+        "../access/interfaces/IAdmin.sol",
+        "../core/interfaces/IVault.sol",
+        "../core/interfaces/IVaultUtils.sol",
+        "../core/interfaces/IGlpManager.sol",
+        "../referrals/interfaces/IReferralStorage.sol",
+        "../tokens/interfaces/IYieldToken.sol",
+        "../tokens/interfaces/IBaseToken.sol",
+        "../tokens/interfaces/IMintable.sol",
+        "../tokens/interfaces/IUSDG.sol",
+        "../staking/interfaces/IVester.sol",
+        "../staking/interfaces/IRewardRouterV2.sol",
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Timelock"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/access/interfaces/IAdmin.sol": {
+      "lastModificationDate": 1679642483219,
+      "contentHash": "b4adba1e45596a3e04d0b599df5be38a",
+      "sourceName": "contracts/gmx/access/interfaces/IAdmin.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IAdmin"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/interfaces/IVault.sol": {
+      "lastModificationDate": 1679642483233,
+      "contentHash": "3ec6cf0754d9416a0dae79ebf57aadc1",
+      "sourceName": "contracts/gmx/core/interfaces/IVault.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IVaultUtils.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IVault"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/interfaces/IVaultUtils.sol": {
+      "lastModificationDate": 1679642483234,
+      "contentHash": "7a1a5e7286fb35d142fdf13cccbdaaeb",
+      "sourceName": "contracts/gmx/core/interfaces/IVaultUtils.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IVaultUtils"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/interfaces/IGlpManager.sol": {
+      "lastModificationDate": 1679642483232,
+      "contentHash": "c5aa610a3e96d84af035b74a7d0551e3",
+      "sourceName": "contracts/gmx/core/interfaces/IGlpManager.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IVault.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IGlpManager"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/referrals/interfaces/IReferralStorage.sol": {
+      "lastModificationDate": 1679642483258,
+      "contentHash": "22325096f728801848c7d6964b570c4f",
+      "sourceName": "contracts/gmx/referrals/interfaces/IReferralStorage.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IReferralStorage"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/interfaces/IBaseToken.sol": {
+      "lastModificationDate": 1679642483266,
+      "contentHash": "c274786fe254cdc2e85727193b132241",
+      "sourceName": "contracts/gmx/tokens/interfaces/IBaseToken.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IBaseToken"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/interfaces/IMintable.sol": {
+      "lastModificationDate": 1679642483267,
+      "contentHash": "4ff49bccf043be8d5d76ca6c8927658a",
+      "sourceName": "contracts/gmx/tokens/interfaces/IMintable.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IMintable"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/interfaces/IUSDG.sol": {
+      "lastModificationDate": 1679642483267,
+      "contentHash": "0eea0bfc73624cce4a243baf6ce89b7c",
+      "sourceName": "contracts/gmx/tokens/interfaces/IUSDG.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IUSDG"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/interfaces/IVester.sol": {
+      "lastModificationDate": 1679642483263,
+      "contentHash": "ab92731f7a5236e735280c47236388b3",
+      "sourceName": "contracts/gmx/staking/interfaces/IVester.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IVester"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/interfaces/IRewardRouterV2.sol": {
+      "lastModificationDate": 1679642483262,
+      "contentHash": "e1ef63138d94af757dbdc2e9ae6483cf",
+      "sourceName": "contracts/gmx/staking/interfaces/IRewardRouterV2.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IRewardRouterV2"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/interfaces/ITimelockTarget.sol": {
+      "lastModificationDate": 1679642483257,
+      "contentHash": "c50ac74accd4fb118aa2a833b4d24fd4",
+      "sourceName": "contracts/gmx/peripherals/interfaces/ITimelockTarget.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "ITimelockTarget"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/interfaces/ITimelock.sol": {
+      "lastModificationDate": 1679642483257,
+      "contentHash": "92247a863ca13c1ad831c17fd8fb1a40",
+      "sourceName": "contracts/gmx/peripherals/interfaces/ITimelock.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "ITimelock"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/interfaces/IHandlerTarget.sol": {
+      "lastModificationDate": 1679642483256,
+      "contentHash": "240660fb858f54b525bd06ec9dfc39f1",
+      "sourceName": "contracts/gmx/peripherals/interfaces/IHandlerTarget.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IHandlerTarget"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/PriceFeedTimelock.sol": {
+      "lastModificationDate": 1679642483255,
+      "contentHash": "a30b4ffc4ae9f9b9df15a17017810633",
+      "sourceName": "contracts/gmx/peripherals/PriceFeedTimelock.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/ITimelockTarget.sol",
+        "./interfaces/IHandlerTarget.sol",
+        "../access/interfaces/IAdmin.sol",
+        "../core/interfaces/IVaultPriceFeed.sol",
+        "../oracle/interfaces/IFastPriceFeed.sol",
+        "../referrals/interfaces/IReferralStorage.sol",
+        "../tokens/interfaces/IYieldToken.sol",
+        "../tokens/interfaces/IBaseToken.sol",
+        "../tokens/interfaces/IMintable.sol",
+        "../tokens/interfaces/IUSDG.sol",
+        "../staking/interfaces/IVester.sol",
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "PriceFeedTimelock"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/interfaces/IVaultPriceFeed.sol": {
+      "lastModificationDate": 1679642483233,
+      "contentHash": "74ca35bf9cc20ba3f3983b37f24c0f99",
+      "sourceName": "contracts/gmx/core/interfaces/IVaultPriceFeed.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IVaultPriceFeed"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/oracle/interfaces/IFastPriceFeed.sol": {
+      "lastModificationDate": 1679642483251,
+      "contentHash": "2e2e05a8581d244ad528afdbde43e628",
+      "sourceName": "contracts/gmx/oracle/interfaces/IFastPriceFeed.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IFastPriceFeed"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/GmxTimelock.sol": {
+      "lastModificationDate": 1679642483254,
+      "contentHash": "2b579ab88bbafd5c336c6ba680774171",
+      "sourceName": "contracts/gmx/peripherals/GmxTimelock.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/ITimelockTarget.sol",
+        "./interfaces/IGmxTimelock.sol",
+        "./interfaces/IHandlerTarget.sol",
+        "../access/interfaces/IAdmin.sol",
+        "../core/interfaces/IVault.sol",
+        "../core/interfaces/IVaultUtils.sol",
+        "../core/interfaces/IVaultPriceFeed.sol",
+        "../core/interfaces/IRouter.sol",
+        "../tokens/interfaces/IYieldToken.sol",
+        "../tokens/interfaces/IBaseToken.sol",
+        "../tokens/interfaces/IMintable.sol",
+        "../tokens/interfaces/IUSDG.sol",
+        "../staking/interfaces/IVester.sol",
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "GmxTimelock"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/interfaces/IRouter.sol": {
+      "lastModificationDate": 1679642483233,
+      "contentHash": "0d3d0c76ede94b3beb23476a032b923e",
+      "sourceName": "contracts/gmx/core/interfaces/IRouter.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IRouter"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/interfaces/IGmxTimelock.sol": {
+      "lastModificationDate": 1679642483256,
+      "contentHash": "120e73bcdb7b68f83ca1136c549824b7",
+      "sourceName": "contracts/gmx/peripherals/interfaces/IGmxTimelock.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IGmxTimelock"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/YieldFarm.sol": {
+      "lastModificationDate": 1679642483266,
+      "contentHash": "6f7a28eaeab54a58c5a71754d1fc673a",
+      "sourceName": "contracts/gmx/tokens/YieldFarm.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "./YieldToken.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "YieldFarm"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/TimeDistributor.sol": {
+      "lastModificationDate": 1679642483264,
+      "contentHash": "ac9ed56ac7874d8c1edf9e01532f8f38",
+      "sourceName": "contracts/gmx/tokens/TimeDistributor.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "./interfaces/IDistributor.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "TimeDistributor"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/WETH.sol": {
+      "lastModificationDate": 1679642483265,
+      "contentHash": "bba802f528b75a886c62d92df3cbd202",
+      "sourceName": "contracts/gmx/tokens/WETH.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/token/IERC20.sol",
+        "../libraries/math/SafeMath.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "WETH"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/Token.sol": {
+      "lastModificationDate": 1679642483265,
+      "contentHash": "56b3430fb721e5f180b6f90c372b9b6e",
+      "sourceName": "contracts/gmx/tokens/Token.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/token/IERC20.sol",
+        "../libraries/math/SafeMath.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Token"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/amm/PancakeRouter.sol": {
+      "lastModificationDate": 1679642483220,
+      "contentHash": "aa6b505b2c0de49b3c4a2bd6fc71625c",
+      "sourceName": "contracts/gmx/amm/PancakeRouter.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../tokens/Token.sol",
+        "../libraries/token/IERC20.sol",
+        "./interfaces/IPancakeRouter.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "PancakeRouter"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/amm/interfaces/IPancakeRouter.sol": {
+      "lastModificationDate": 1679642483224,
+      "contentHash": "cea35d613443189048f49ae6453d9e32",
+      "sourceName": "contracts/gmx/amm/interfaces/IPancakeRouter.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IPancakeRouter"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gambit-token/Treasury.sol": {
+      "lastModificationDate": 1679642483236,
+      "contentHash": "efac7300dbdc0d8410213e519679640b",
+      "sourceName": "contracts/gmx/gambit-token/Treasury.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "../amm/interfaces/IPancakeRouter.sol",
+        "./interfaces/IGMT.sol",
+        "../peripherals/interfaces/ITimelockTarget.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Treasury"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gambit-token/interfaces/IGMT.sol": {
+      "lastModificationDate": 1679642483236,
+      "contentHash": "10f2f01b8a7349c1026722341ba37c6c",
+      "sourceName": "contracts/gmx/gambit-token/interfaces/IGMT.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IGMT"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gambit-token/GMT.sol": {
+      "lastModificationDate": 1679642483236,
+      "contentHash": "80a44520e981f5735d2feeb2f89dff56",
+      "sourceName": "contracts/gmx/gambit-token/GMT.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "./interfaces/IGMT.sol",
+        "../peripherals/interfaces/ITimelockTarget.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "GMT"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/FaucetToken.sol": {
+      "lastModificationDate": 1679642483264,
+      "contentHash": "e8b7d1a18a7483e35bcbfd8d87381f1a",
+      "sourceName": "contracts/gmx/tokens/FaucetToken.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/token/IERC20.sol",
+        "../libraries/math/SafeMath.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "FaucetToken"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/BaseToken.sol": {
+      "lastModificationDate": 1679642483263,
+      "contentHash": "897e7143b505b9ef05626b12fce1176f",
+      "sourceName": "contracts/gmx/tokens/BaseToken.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "./interfaces/IYieldTracker.sol",
+        "./interfaces/IBaseToken.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "BaseToken"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/MintableBaseToken.sol": {
+      "lastModificationDate": 1679642483264,
+      "contentHash": "f33f5c0eb36d405aff1393fa79a194ee",
+      "sourceName": "contracts/gmx/tokens/MintableBaseToken.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./BaseToken.sol",
+        "./interfaces/IMintable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "MintableBaseToken"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/SnapshotToken.sol": {
+      "lastModificationDate": 1679642483264,
+      "contentHash": "d4f7b4c4dae05b7363c3260ed4cb61b6",
+      "sourceName": "contracts/gmx/tokens/SnapshotToken.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./MintableBaseToken.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "SnapshotToken"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/Vester.sol": {
+      "lastModificationDate": 1679642483262,
+      "contentHash": "ebd94e60a059ef3e0038262e59c57ed0",
+      "sourceName": "contracts/gmx/staking/Vester.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "./interfaces/IRewardTracker.sol",
+        "./interfaces/IVester.sol",
+        "../tokens/interfaces/IMintable.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Vester"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/interfaces/IRewardTracker.sol": {
+      "lastModificationDate": 1679642483263,
+      "contentHash": "318fbbed6a4bb5e6d813bf785fb5e898",
+      "sourceName": "contracts/gmx/staking/interfaces/IRewardTracker.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IRewardTracker"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/StakedGlpMigrator.sol": {
+      "lastModificationDate": 1679642483261,
+      "contentHash": "388f70218a1f32f6b1e98d73fa0e5077",
+      "sourceName": "contracts/gmx/staking/StakedGlpMigrator.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../core/interfaces/IGlpManager.sol",
+        "./interfaces/IRewardTracker.sol",
+        "./interfaces/IRewardTracker.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "StakedGlpMigrator"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/StakedGlp.sol": {
+      "lastModificationDate": 1679642483261,
+      "contentHash": "60448afdfaaaa05754bc13cf2454f724",
+      "sourceName": "contracts/gmx/staking/StakedGlp.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../core/interfaces/IGlpManager.sol",
+        "./interfaces/IRewardTracker.sol",
+        "./interfaces/IRewardTracker.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "StakedGlp"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/RewardRouterV2.sol": {
+      "lastModificationDate": 1679642483260,
+      "contentHash": "5d18d16f6f7273a586989e1dc6f50416",
+      "sourceName": "contracts/gmx/staking/RewardRouterV2.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "../libraries/utils/Address.sol",
+        "./interfaces/IRewardTracker.sol",
+        "./interfaces/IRewardRouterV2.sol",
+        "./interfaces/IVester.sol",
+        "../tokens/interfaces/IMintable.sol",
+        "../tokens/interfaces/IWETH.sol",
+        "../core/interfaces/IGlpManager.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "RewardRouterV2"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/interfaces/IWETH.sol": {
+      "lastModificationDate": 1679642483267,
+      "contentHash": "549a2b85c8a7cbc9af9274774af6e628",
+      "sourceName": "contracts/gmx/tokens/interfaces/IWETH.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IWETH"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/RewardReader.sol": {
+      "lastModificationDate": 1679642483255,
+      "contentHash": "cfdbb2ad5e0aca87a9c97a6f56d3e64d",
+      "sourceName": "contracts/gmx/peripherals/RewardReader.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/token/IERC20.sol",
+        "../libraries/math/SafeMath.sol",
+        "../staking/interfaces/IVester.sol",
+        "../staking/interfaces/IRewardTracker.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "RewardReader"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/Reader.sol": {
+      "lastModificationDate": 1679642483255,
+      "contentHash": "ee2f898a1399d2cdcb0a715560ce8bbb",
+      "sourceName": "contracts/gmx/peripherals/Reader.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/token/IERC20.sol",
+        "../libraries/math/SafeMath.sol",
+        "../core/interfaces/IVault.sol",
+        "../core/interfaces/IVaultPriceFeed.sol",
+        "../tokens/interfaces/IYieldTracker.sol",
+        "../tokens/interfaces/IYieldToken.sol",
+        "../amm/interfaces/IPancakeFactory.sol",
+        "../staking/interfaces/IVester.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Reader"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/amm/interfaces/IPancakeFactory.sol": {
+      "lastModificationDate": 1679642483223,
+      "contentHash": "d0e78d6a0a744bd1372ce4c3011f81d9",
+      "sourceName": "contracts/gmx/amm/interfaces/IPancakeFactory.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IPancakeFactory"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/amm/PancakeFactory.sol": {
+      "lastModificationDate": 1679642483220,
+      "contentHash": "0355be8814ee596ba6a9d43853ba7783",
+      "sourceName": "contracts/gmx/amm/PancakeFactory.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IPancakeFactory.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "PancakeFactory"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/VaultReader.sol": {
+      "lastModificationDate": 1679642483256,
+      "contentHash": "68a80e19a75a2396728e4b102ce5761d",
+      "sourceName": "contracts/gmx/peripherals/VaultReader.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../core/interfaces/IVault.sol",
+        "../core/interfaces/IVaultPriceFeed.sol",
+        "../core/interfaces/IBasePositionManager.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "VaultReader"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/interfaces/IBasePositionManager.sol": {
+      "lastModificationDate": 1679642483232,
+      "contentHash": "dcf60252d3d1e6ef2975a786a0d1fca2",
+      "sourceName": "contracts/gmx/core/interfaces/IBasePositionManager.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IBasePositionManager"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/BasePositionManager.sol": {
+      "lastModificationDate": 1679642483225,
+      "contentHash": "cc92ac046d9d7c149af48f547d2aa707",
+      "sourceName": "contracts/gmx/core/BasePositionManager.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../tokens/interfaces/IWETH.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/Address.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "./interfaces/IRouter.sol",
+        "./interfaces/IVault.sol",
+        "./interfaces/IShortsTracker.sol",
+        "./interfaces/IOrderBook.sol",
+        "./interfaces/IBasePositionManager.sol",
+        "../access/Governable.sol",
+        "../peripherals/interfaces/ITimelock.sol",
+        "../referrals/interfaces/IReferralStorage.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "BasePositionManager"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/interfaces/IShortsTracker.sol": {
+      "lastModificationDate": 1679642483233,
+      "contentHash": "815bbe84eb3aba2828ae44cbc9d3dce0",
+      "sourceName": "contracts/gmx/core/interfaces/IShortsTracker.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IShortsTracker"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/interfaces/IOrderBook.sol": {
+      "lastModificationDate": 1679642483232,
+      "contentHash": "b42daf5044eea9b76e3bcd1f3dc02f36",
+      "sourceName": "contracts/gmx/core/interfaces/IOrderBook.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IOrderBook"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/PositionRouter.sol": {
+      "lastModificationDate": 1679642483227,
+      "contentHash": "bb45beb06c681d5476baf713016f1c12",
+      "sourceName": "contracts/gmx/core/PositionRouter.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IRouter.sol",
+        "./interfaces/IVault.sol",
+        "./interfaces/IPositionRouter.sol",
+        "./interfaces/IPositionRouterCallbackReceiver.sol",
+        "../libraries/utils/Address.sol",
+        "../peripherals/interfaces/ITimelock.sol",
+        "./BasePositionManager.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "PositionRouter"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/interfaces/IPositionRouter.sol": {
+      "lastModificationDate": 1679642483232,
+      "contentHash": "2c6f48eba16165c2377a0c51b77be986",
+      "sourceName": "contracts/gmx/core/interfaces/IPositionRouter.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IPositionRouter"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/interfaces/IPositionRouterCallbackReceiver.sol": {
+      "lastModificationDate": 1679642483233,
+      "contentHash": "c13772398c5b81dedd3f3ebe26f0f84b",
+      "sourceName": "contracts/gmx/core/interfaces/IPositionRouterCallbackReceiver.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "IPositionRouterCallbackReceiver"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/test/PositionRouterCallbackReceiverTest.sol": {
+      "lastModificationDate": 1679642483234,
+      "contentHash": "992b87d7dabb7414020adc46d7609a47",
+      "sourceName": "contracts/gmx/core/test/PositionRouterCallbackReceiverTest.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../interfaces/IPositionRouterCallbackReceiver.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "PositionRouterCallbackReceiverTest"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/oracle/FastPriceFeed.sol": {
+      "lastModificationDate": 1679642483250,
+      "contentHash": "7165a07df030054c68463461a1b78241",
+      "sourceName": "contracts/gmx/oracle/FastPriceFeed.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "./interfaces/ISecondaryPriceFeed.sol",
+        "./interfaces/IFastPriceFeed.sol",
+        "./interfaces/IFastPriceEvents.sol",
+        "../core/interfaces/IVaultPriceFeed.sol",
+        "../core/interfaces/IPositionRouter.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "FastPriceFeed"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/oracle/interfaces/ISecondaryPriceFeed.sol": {
+      "lastModificationDate": 1679642483252,
+      "contentHash": "b82393f6d5245352d40d363c07828338",
+      "sourceName": "contracts/gmx/oracle/interfaces/ISecondaryPriceFeed.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "ISecondaryPriceFeed"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/oracle/interfaces/IFastPriceEvents.sol": {
+      "lastModificationDate": 1679642483251,
+      "contentHash": "8d96ee4bdc8083c7b9febb12b3628a9c",
+      "sourceName": "contracts/gmx/oracle/interfaces/IFastPriceEvents.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IFastPriceEvents"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/oracle/FastPriceEvents.sol": {
+      "lastModificationDate": 1679642483250,
+      "contentHash": "3911acae55f3792981d90987c6f6b9fd",
+      "sourceName": "contracts/gmx/oracle/FastPriceEvents.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "./interfaces/IFastPriceEvents.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "FastPriceEvents"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/VaultPriceFeed.sol": {
+      "lastModificationDate": 1679642483230,
+      "contentHash": "8a3898b8a6c93cd7fbdc6f8d2002e7ba",
+      "sourceName": "contracts/gmx/core/VaultPriceFeed.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "./interfaces/IVaultPriceFeed.sol",
+        "../oracle/interfaces/IPriceFeed.sol",
+        "../oracle/interfaces/ISecondaryPriceFeed.sol",
+        "../oracle/interfaces/IChainlinkFlags.sol",
+        "../amm/interfaces/IPancakePair.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "VaultPriceFeed"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/oracle/interfaces/IPriceFeed.sol": {
+      "lastModificationDate": 1679642483251,
+      "contentHash": "e0f5deea4da6742a03e9b3be2cebe27c",
+      "sourceName": "contracts/gmx/oracle/interfaces/IPriceFeed.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IPriceFeed"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/oracle/interfaces/IChainlinkFlags.sol": {
+      "lastModificationDate": 1679642483251,
+      "contentHash": "439e59c14a810e7ebcc457850e212c2d",
+      "sourceName": "contracts/gmx/oracle/interfaces/IChainlinkFlags.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IChainlinkFlags"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/amm/PancakePair.sol": {
+      "lastModificationDate": 1679642483220,
+      "contentHash": "d73a523b3331998b7b36ca1f3958c1fc",
+      "sourceName": "contracts/gmx/amm/PancakePair.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IPancakePair.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "PancakePair"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/oracle/PriceFeed.sol": {
+      "lastModificationDate": 1679642483250,
+      "contentHash": "25755e5c96581a797e8147ed2e84a38a",
+      "sourceName": "contracts/gmx/oracle/PriceFeed.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IPriceFeed.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "PriceFeed"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/BalanceUpdater.sol": {
+      "lastModificationDate": 1679642483253,
+      "contentHash": "8ce44e4d7e769a30bf213b8c685fbfac",
+      "sourceName": "contracts/gmx/peripherals/BalanceUpdater.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/token/IERC20.sol",
+        "../libraries/math/SafeMath.sol",
+        "../core/interfaces/IVault.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "BalanceUpdater"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gmx/MigrationHandler.sol": {
+      "lastModificationDate": 1679642483240,
+      "contentHash": "f81e10410eed9aa8d1106b8c28cc37fe",
+      "sourceName": "contracts/gmx/gmx/MigrationHandler.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "./interfaces/IAmmRouter.sol",
+        "./interfaces/IGmxMigrator.sol",
+        "../core/interfaces/IVault.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "MigrationHandler"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gmx/interfaces/IAmmRouter.sol": {
+      "lastModificationDate": 1679642483240,
+      "contentHash": "c8160655c0c984513c505db6b01c36f7",
+      "sourceName": "contracts/gmx/gmx/interfaces/IAmmRouter.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IAmmRouter"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gmx/interfaces/IGmxMigrator.sol": {
+      "lastModificationDate": 1679642483241,
+      "contentHash": "ea132284e05d7cb0b912ca656898c8ca",
+      "sourceName": "contracts/gmx/gmx/interfaces/IGmxMigrator.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IGmxMigrator"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gmx/GmxMigrator.sol": {
+      "lastModificationDate": 1679642483240,
+      "contentHash": "b9b04a69933dad89c106495f6527475b",
+      "sourceName": "contracts/gmx/gmx/GmxMigrator.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "./interfaces/IGmxIou.sol",
+        "./interfaces/IAmmRouter.sol",
+        "./interfaces/IGmxMigrator.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "GmxMigrator"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gmx/interfaces/IGmxIou.sol": {
+      "lastModificationDate": 1679642483241,
+      "contentHash": "98bb8ce7a6f5ca995bdc8718ce728f44",
+      "sourceName": "contracts/gmx/gmx/interfaces/IGmxIou.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IGmxIou"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gmx/GmxIou.sol": {
+      "lastModificationDate": 1679642483239,
+      "contentHash": "25aa2cb0e7d020ba88ea8833bb9efff8",
+      "sourceName": "contracts/gmx/gmx/GmxIou.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/token/IERC20.sol",
+        "../libraries/math/SafeMath.sol",
+        "./interfaces/IGmxIou.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "GmxIou"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/VaultUtils.sol": {
+      "lastModificationDate": 1679642483231,
+      "contentHash": "087f0bb07b254ca1b9bd838bbf9ed979",
+      "sourceName": "contracts/gmx/core/VaultUtils.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "./interfaces/IVault.sol",
+        "./interfaces/IVaultUtils.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "VaultUtils"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/Vault.sol": {
+      "lastModificationDate": 1679642483228,
+      "contentHash": "02aff9b11d93d15d5cd6bd27228473ab",
+      "sourceName": "contracts/gmx/core/Vault.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "../tokens/interfaces/IUSDG.sol",
+        "./interfaces/IVault.sol",
+        "./interfaces/IVaultUtils.sol",
+        "./interfaces/IVaultPriceFeed.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Vault"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/test/VaultTest.sol": {
+      "lastModificationDate": 1679642483235,
+      "contentHash": "5e9807a99ebdf8a5b83d35012c7d438c",
+      "sourceName": "contracts/gmx/core/test/VaultTest.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../Vault.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "VaultTest"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/USDG.sol": {
+      "lastModificationDate": 1679642483265,
+      "contentHash": "4bb9ec83b03a3852b101b4b7c50315d9",
+      "sourceName": "contracts/gmx/tokens/USDG.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IUSDG.sol",
+        "./YieldToken.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "USDG"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/GlpManager.sol": {
+      "lastModificationDate": 1679642483225,
+      "contentHash": "269e4932a46edc79ad318130631dc541",
+      "sourceName": "contracts/gmx/core/GlpManager.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "./interfaces/IVault.sol",
+        "./interfaces/IGlpManager.sol",
+        "./interfaces/IShortsTracker.sol",
+        "../tokens/interfaces/IUSDG.sol",
+        "../tokens/interfaces/IMintable.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "GlpManager"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/ShortsTrackerTimelock.sol": {
+      "lastModificationDate": 1679642483255,
+      "contentHash": "49cb575b9f175f84cad3c2e60f52ab0e",
+      "sourceName": "contracts/gmx/peripherals/ShortsTrackerTimelock.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../access/Governable.sol",
+        "../core/interfaces/IShortsTracker.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "ShortsTrackerTimelock"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/ShortsTracker.sol": {
+      "lastModificationDate": 1679642483227,
+      "contentHash": "a2d0c13b3c0324596506b28b3b8b7974",
+      "sourceName": "contracts/gmx/core/ShortsTracker.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../access/Governable.sol",
+        "./interfaces/IShortsTracker.sol",
+        "./interfaces/IVault.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "ShortsTracker"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/test/ShortsTrackerTest.sol": {
+      "lastModificationDate": 1679642483235,
+      "contentHash": "08fcbb50a6abf6dd420d1523ebd69c62",
+      "sourceName": "contracts/gmx/core/test/ShortsTrackerTest.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../ShortsTracker.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "ShortsTrackerTest"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/VaultErrorController.sol": {
+      "lastModificationDate": 1679642483229,
+      "contentHash": "b4e5099a43d6cccdd3dc5b471e177025",
+      "sourceName": "contracts/gmx/core/VaultErrorController.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IVault.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "VaultErrorController"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/Router.sol": {
+      "lastModificationDate": 1679642483227,
+      "contentHash": "15ab31a618bcbb770eea88eae177bffe",
+      "sourceName": "contracts/gmx/core/Router.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/Address.sol",
+        "../tokens/interfaces/IWETH.sol",
+        "./interfaces/IVault.sol",
+        "./interfaces/IRouter.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Router"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/PositionManager.sol": {
+      "lastModificationDate": 1679642483226,
+      "contentHash": "20d0558dfbedbbce273c631f89f4171e",
+      "sourceName": "contracts/gmx/core/PositionManager.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IRouter.sol",
+        "./interfaces/IVault.sol",
+        "./interfaces/IOrderBook.sol",
+        "../peripherals/interfaces/ITimelock.sol",
+        "./BasePositionManager.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "PositionManager"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/OrderBookReader.sol": {
+      "lastModificationDate": 1679642483254,
+      "contentHash": "98ff1be4b6bae93577ee7d3e39334d89",
+      "sourceName": "contracts/gmx/peripherals/OrderBookReader.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../core/interfaces/IOrderBook.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "OrderBookReader"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/OrderBook.sol": {
+      "lastModificationDate": 1679642483226,
+      "contentHash": "790bdfc83301a95f25f9cd5c6ae33c12",
+      "sourceName": "contracts/gmx/core/OrderBook.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../tokens/interfaces/IWETH.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/Address.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "./interfaces/IRouter.sol",
+        "./interfaces/IVault.sol",
+        "./interfaces/IOrderBook.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "OrderBook"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/RewardRouter.sol": {
+      "lastModificationDate": 1679642483259,
+      "contentHash": "5908fc9e9760b11bb1747097fa130299",
+      "sourceName": "contracts/gmx/staking/RewardRouter.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "../libraries/utils/Address.sol",
+        "./interfaces/IRewardTracker.sol",
+        "../tokens/interfaces/IMintable.sol",
+        "../tokens/interfaces/IWETH.sol",
+        "../core/interfaces/IGlpManager.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "RewardRouter"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/token/ERC721/ERC721.sol": {
+      "lastModificationDate": 1679642483246,
+      "contentHash": "1562b757da01482efe203333386c2958",
+      "sourceName": "contracts/gmx/libraries/token/ERC721/ERC721.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../../GSN/Context.sol",
+        "./IERC721.sol",
+        "./IERC721Metadata.sol",
+        "./IERC721Enumerable.sol",
+        "./IERC721Receiver.sol",
+        "../../introspection/ERC165.sol",
+        "../../math/SafeMath.sol",
+        "../../utils/Address.sol",
+        "../../utils/EnumerableSet.sol",
+        "../../utils/EnumerableMap.sol",
+        "../../utils/Strings.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "ERC721"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/GSN/Context.sol": {
+      "lastModificationDate": 1679642483241,
+      "contentHash": "d606d7157f27eef50dd4c297d3733e6d",
+      "sourceName": "contracts/gmx/libraries/GSN/Context.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Context"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/introspection/ERC165.sol": {
+      "lastModificationDate": 1679642483243,
+      "contentHash": "cd8a4a4c1e298943d96dd5ed09ad27f3",
+      "sourceName": "contracts/gmx/libraries/introspection/ERC165.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IERC165.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "ERC165"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/utils/EnumerableSet.sol": {
+      "lastModificationDate": 1679642483249,
+      "contentHash": "335c4591d8f63429138e843e91156f03",
+      "sourceName": "contracts/gmx/libraries/utils/EnumerableSet.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "EnumerableSet"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/utils/EnumerableMap.sol": {
+      "lastModificationDate": 1679642483249,
+      "contentHash": "587bbaf85d8405a72ea86e19e796d18d",
+      "sourceName": "contracts/gmx/libraries/utils/EnumerableMap.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "EnumerableMap"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/utils/Strings.sol": {
+      "lastModificationDate": 1679642483250,
+      "contentHash": "35959f8ce36e9188c1d9b4348e125e48",
+      "sourceName": "contracts/gmx/libraries/utils/Strings.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "Strings"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/token/ERC721/IERC721.sol": {
+      "lastModificationDate": 1679642483246,
+      "contentHash": "471702709d00ad3e1827825c4f7ea434",
+      "sourceName": "contracts/gmx/libraries/token/ERC721/IERC721.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../../introspection/IERC165.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.2"
+      ],
+      "artifacts": [
+        "IERC721"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/token/ERC721/IERC721Metadata.sol": {
+      "lastModificationDate": 1679642483247,
+      "contentHash": "c747635b7aafc7aaef8ff5783ed25e6b",
+      "sourceName": "contracts/gmx/libraries/token/ERC721/IERC721Metadata.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IERC721.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.2"
+      ],
+      "artifacts": [
+        "IERC721Metadata"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/token/ERC721/IERC721Enumerable.sol": {
+      "lastModificationDate": 1679642483247,
+      "contentHash": "e282e7d4aa6b40bfc9ee622b0f006ed5",
+      "sourceName": "contracts/gmx/libraries/token/ERC721/IERC721Enumerable.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IERC721.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.2"
+      ],
+      "artifacts": [
+        "IERC721Enumerable"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/token/ERC721/IERC721Receiver.sol": {
+      "lastModificationDate": 1679642483247,
+      "contentHash": "09100c54c54a5b8ad854b2069b36fb43",
+      "sourceName": "contracts/gmx/libraries/token/ERC721/IERC721Receiver.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "IERC721Receiver"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/introspection/IERC165.sol": {
+      "lastModificationDate": 1679642483243,
+      "contentHash": "39dfa4b6cbda90995ba59378dd6d9969",
+      "sourceName": "contracts/gmx/libraries/introspection/IERC165.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "IERC165"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/access/TokenManager.sol": {
+      "lastModificationDate": 1679642483218,
+      "contentHash": "f7aeccc06ac72a4d9bc65e6cd8fc71d7",
+      "sourceName": "contracts/gmx/access/TokenManager.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/ERC721/IERC721.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "../peripherals/interfaces/ITimelock.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "TokenManager"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gmx/GmxFloor.sol": {
+      "lastModificationDate": 1679642483239,
+      "contentHash": "1f83f9363fce1b38d5758d5236aeb287",
+      "sourceName": "contracts/gmx/gmx/GmxFloor.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "../tokens/interfaces/IMintable.sol",
+        "../access/TokenManager.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "GmxFloor"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/referrals/ReferralStorage.sol": {
+      "lastModificationDate": 1679642483258,
+      "contentHash": "848e0eba48cdc812684e420beb258846",
+      "sourceName": "contracts/gmx/referrals/ReferralStorage.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../access/Governable.sol",
+        "../peripherals/interfaces/ITimelock.sol",
+        "./interfaces/IReferralStorage.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "ReferralStorage"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/referrals/ReferralReader.sol": {
+      "lastModificationDate": 1679642483257,
+      "contentHash": "e53b60210febf5ebd2d04b1dcd42cd0d",
+      "sourceName": "contracts/gmx/referrals/ReferralReader.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IReferralStorage.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "ReferralReader"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/token/ERC20.sol": {
+      "lastModificationDate": 1679642483246,
+      "contentHash": "715f3d6c4dba06fef37de28d004011f4",
+      "sourceName": "contracts/gmx/libraries/token/ERC20.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../GSN/Context.sol",
+        "./IERC20.sol",
+        "../math/SafeMath.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "ERC20"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/access/Ownable.sol": {
+      "lastModificationDate": 1679642483242,
+      "contentHash": "c25534a81df6d27d94818467f32f0a7d",
+      "sourceName": "contracts/gmx/libraries/access/Ownable.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../GSN/Context.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Ownable"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/EsGmxBatchSender.sol": {
+      "lastModificationDate": 1679642483253,
+      "contentHash": "637f6553e4eb7d2b2b8bdcc6ec1cdaa3",
+      "sourceName": "contracts/gmx/peripherals/EsGmxBatchSender.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/token/IERC20.sol",
+        "../libraries/math/SafeMath.sol",
+        "../staking/interfaces/IVester.sol",
+        "../staking/interfaces/IRewardTracker.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "EsGmxBatchSender"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/GlpBalance.sol": {
+      "lastModificationDate": 1679642483259,
+      "contentHash": "f598b087a829f0c010115165b51506ad",
+      "sourceName": "contracts/gmx/staking/GlpBalance.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../core/interfaces/IGlpManager.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "GlpBalance"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/StakeManager.sol": {
+      "lastModificationDate": 1679642483261,
+      "contentHash": "132cfd74866186ce31755302c639a49d",
+      "sourceName": "contracts/gmx/staking/StakeManager.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IRewardTracker.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "StakeManager"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/RewardTracker.sol": {
+      "lastModificationDate": 1679642483261,
+      "contentHash": "3f570a075da021c341596b9587eb75c2",
+      "sourceName": "contracts/gmx/staking/RewardTracker.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "./interfaces/IRewardDistributor.sol",
+        "./interfaces/IRewardTracker.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "RewardTracker"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/interfaces/IRewardDistributor.sol": {
+      "lastModificationDate": 1679642483262,
+      "contentHash": "14be2787aa8fab1b34165070af5aeeba",
+      "sourceName": "contracts/gmx/staking/interfaces/IRewardDistributor.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IRewardDistributor"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/RewardDistributor.sol": {
+      "lastModificationDate": 1679642483259,
+      "contentHash": "0b512760ebf72eebac5e946d5b6a5c7e",
+      "sourceName": "contracts/gmx/staking/RewardDistributor.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "./interfaces/IRewardDistributor.sol",
+        "./interfaces/IRewardTracker.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "RewardDistributor"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/staking/BonusDistributor.sol": {
+      "lastModificationDate": 1679642483258,
+      "contentHash": "6e797bcd0179a0866eef132f621f9f46",
+      "sourceName": "contracts/gmx/staking/BonusDistributor.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/math/SafeMath.sol",
+        "../libraries/token/IERC20.sol",
+        "../libraries/token/SafeERC20.sol",
+        "../libraries/utils/ReentrancyGuard.sol",
+        "./interfaces/IRewardDistributor.sol",
+        "./interfaces/IRewardTracker.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "BonusDistributor"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gmx/GMX.sol": {
+      "lastModificationDate": 1679642483239,
+      "contentHash": "99d62d8e93bc1af736a8629ebd9c4277",
+      "sourceName": "contracts/gmx/gmx/GMX.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../tokens/MintableBaseToken.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "GMX"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gmx/GLP.sol": {
+      "lastModificationDate": 1679642483239,
+      "contentHash": "c47ac1a0429c688751ffefee82dfac70",
+      "sourceName": "contracts/gmx/gmx/GLP.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../tokens/MintableBaseToken.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "GLP"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/gmx/EsGMX.sol": {
+      "lastModificationDate": 1679642483238,
+      "contentHash": "e51b4478e720c7535962ed67eb21193c",
+      "sourceName": "contracts/gmx/gmx/EsGMX.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../tokens/MintableBaseToken.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "EsGMX"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/peripherals/BatchSender.sol": {
+      "lastModificationDate": 1679642483253,
+      "contentHash": "c3aeb3107d8036ec2da6db575c850339",
+      "sourceName": "contracts/gmx/peripherals/BatchSender.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../libraries/token/IERC20.sol",
+        "../libraries/math/SafeMath.sol",
+        "../access/Governable.sol"
+      ],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "BatchSender"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/amm/UniFactory.sol": {
+      "lastModificationDate": 1679642483221,
+      "contentHash": "f0456c29d6b85057723bf06aee62a306",
+      "sourceName": "contracts/gmx/amm/UniFactory.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "UniFactory"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/amm/UniNftManager.sol": {
+      "lastModificationDate": 1679642483222,
+      "contentHash": "487f93137a889c7a61913d47aae0c919",
+      "sourceName": "contracts/gmx/amm/UniNftManager.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "UniNftManager"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/amm/UniPool.sol": {
+      "lastModificationDate": 1679642483223,
+      "contentHash": "d39aa5cffb517b0dc19fec5c505bcbe8",
+      "sourceName": "contracts/gmx/amm/UniPool.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "UniPool"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/core/test/MaliciousTraderTest.sol": {
+      "lastModificationDate": 1679642483234,
+      "contentHash": "bba32a3a20642e4b7b2a799ec442bf6b",
+      "sourceName": "contracts/gmx/core/test/MaliciousTraderTest.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "hardhat/console.sol"
+      ],
+      "versionPragmas": [
+        "^0.6.0"
+      ],
+      "artifacts": [
+        "MaliciousTraderTest"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/math/Math.sol": {
+      "lastModificationDate": 1679642483243,
+      "contentHash": "a8dc87e10535bd4088c205995c1920af",
+      "sourceName": "contracts/gmx/libraries/math/Math.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "Math"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/libraries/math/UQ112x112.sol": {
+      "lastModificationDate": 1679642483244,
+      "contentHash": "b0947f7742dee277ed3b140ac7608f79",
+      "sourceName": "contracts/gmx/libraries/math/UQ112x112.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "UQ112x112"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/interfaces/IBridge.sol": {
+      "lastModificationDate": 1679642483267,
+      "contentHash": "07849a9c9867dbed17dcce5aa28d8da9",
+      "sourceName": "contracts/gmx/tokens/interfaces/IBridge.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IBridge"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/tokens/interfaces/IGLP.sol": {
+      "lastModificationDate": 1679642483267,
+      "contentHash": "99541bb6f3376dff7a925d7d436a9743",
+      "sourceName": "contracts/gmx/tokens/interfaces/IGLP.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "0.6.12"
+      ],
+      "artifacts": [
+        "IGLP"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/gmx/amm/interfaces/IPancakePair.sol": {
+      "lastModificationDate": 1679642483224,
+      "contentHash": "68cf4942e69e9e5ddf3f6f86f2d57e8f",
+      "sourceName": "contracts/gmx/amm/interfaces/IPancakePair.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.5.0"
+      ],
+      "artifacts": [
+        "IPancakePair"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/node_modules/hardhat/console.sol": {
+      "lastModificationDate": 1679513854453,
+      "contentHash": "4ff3cd2f6272c9a6516e9ee4f2b967d3",
+      "sourceName": "hardhat/console.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">= 0.4.22 <0.9.0"
+      ],
+      "artifacts": [
+        "console"
+      ]
+    },
+    "/Users/rohanshrothrium/Documents/truffle-perp/contracts/libraries/SafeMath.sol": {
+      "lastModificationDate": 1679744175763,
+      "contentHash": "7df9cdf6240a0c428a3db9ad85f79426",
+      "sourceName": "contracts/libraries/SafeMath.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.6.12"
+      ],
+      "artifacts": [
+        "SafeMath"
+      ]
+    }
+  }
+}
