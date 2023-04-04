@@ -318,7 +318,6 @@ contract AbstractPosition {
     function portfolioHealthFactor() public view returns (uint256) {
         uint256 _existingLoan = LendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress);
         uint256 _portfolioValue = getPortfolioValueWithMargin();
-        _portfolioValue = _portfolioValue.sub(_existingLoan);
 
         if (_existingLoan == 0) {
             return 0;

@@ -1,3 +1,7 @@
+#solidity
+artifacts/
+cache/
+
 # Logs
 logs
 *.log
