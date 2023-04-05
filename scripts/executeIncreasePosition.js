@@ -12,7 +12,7 @@ async function main() {
     const positionRouterContract = await hre.ethers.getContractAt("PositionRouter", config.positionRouterAddress, signer);
     const positionKey = await positionRouterContract.getRequestKey(
         config.abstractPositionAddress,
-        3
+        2
     );
     console.log(positionKey);
 

@@ -4,19 +4,34 @@ const config = require("../../config.json");
 const zeroContract = "0x0000000000000000000000000000000000000000"
 const referralCode = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-exports.GetPosition = async (indexToken, isLong) => {
+exports.GetPosition = async (indexToken, collateralToken, isLong) => {
     try {
         const abstractPositionContract = await hre.ethers.getContractAt("AbstractPosition", config.abstractPositionAddress);
         const position = await abstractPositionContract.getPosition(
             indexToken,
+            collateralToken,
             isLong,
         );
+
+        var positionValue;
+        if (position[1] == 0) {
+            positionValue = 0;
+        } else {
+            positionValue = await abstractPositionContract.getPositionValue(
+                position[1],
+                indexToken,
+                position[0],
+                position[2],
+                isLong,
+                position[3]
+            );
+        }
 
         return {
             size: `${position[0]}`,
             collateral: `${position[1]}`,
             averagePrice: `${position[2]}`,
-            maxLoan: `${position[3]}`,
+            positionValue: `${positionValue}`,
         }
     } catch (error) {
         return { success: false, error };
@@ -30,9 +45,9 @@ exports.GetPositions = async () => {
 
         var positionsResp = [];
         for (let i = 0; i < positions.length; i++) {
-            var position = await this.GetPosition(positions[i][0], positions[i][1]);
+            var position = await this.GetPosition(positions[i][0], positions[i][1], positions[i][2]);
             position.indexToken = positions[i][0];
-            position.isLong = positions[i][1];
+            position.isLong = positions[i][2];
             positionsResp.push(position)
         }
 

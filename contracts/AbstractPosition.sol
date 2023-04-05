@@ -25,6 +25,7 @@ contract AbstractPosition {
 
     struct PositionData {
         address indexToken;
+        address collateralToken;
         bool isLong;
     }
 
@@ -122,7 +123,7 @@ contract AbstractPosition {
         require(msg.sender == ownerAddress, "only the owner can call this function");
 
         if (!positionExists[getPositioKey(_indexToken, _isLong)]) {
-            existingPositionsData.push(PositionData(_indexToken, _isLong));
+            existingPositionsData.push(PositionData(_indexToken, _path[_path.length.sub(1)], _isLong));
             positionExists[getPositioKey(_indexToken, _isLong)] = true;
         }
 
@@ -194,7 +195,7 @@ contract AbstractPosition {
                 uint256 positionCollateral,
                 uint256 positionAveragePrice,
                 uint256 positionAastIncreasedTime
-            ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].isLong);
+            ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].collateralToken, existingPositionsData[i].isLong);
             if (positionCollateral > 0) {
                 _positionValue += getPositionValue(positionCollateral, existingPositionsData[i].indexToken, positionSize, positionAveragePrice, existingPositionsData[i].isLong, positionAastIncreasedTime);
             }
@@ -239,7 +240,7 @@ contract AbstractPosition {
                 uint256 positionSize,
                 uint256 positionCollateral,
                 uint256 positionAveragePrice,
-            ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].isLong);
+            ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].collateralToken, existingPositionsData[i].isLong);
             if (positionCollateral > 0) {
                 _portfolioValue += getPositionValueWithMargin(positionCollateral, existingPositionsData[i].indexToken, positionSize, positionAveragePrice, existingPositionsData[i].isLong);
                 _portfolioSize += positionSize;
@@ -276,6 +277,7 @@ contract AbstractPosition {
     // gets position for index token and side
     function getPosition(
         address _indexToken,
+        address _collateralToken,
         bool _isLong
     ) public view returns (uint256, uint256, uint256, uint256) {
         Position memory position;
@@ -288,7 +290,7 @@ contract AbstractPosition {
             ,
             ,
             position.lastIncreasedTime
-        ) = IVault(vaultContractAddress).getPosition(address(this), _indexToken, _indexToken, _isLong);
+        ) = IVault(vaultContractAddress).getPosition(address(this), _collateralToken, _indexToken, _isLong);
 
 
         return (
