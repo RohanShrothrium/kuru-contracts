@@ -47,7 +47,8 @@ contract AbstractPosition {
 
     uint256 public minExecutionFee;
 
-    PositionData[] public existingPositions;
+    mapping (bytes32 => bool) positionExists;
+    PositionData[] public existingPositionsData;
 
     constructor(
         address _gov,
@@ -120,7 +121,10 @@ contract AbstractPosition {
         // validate weather the function is called by the owner of this smart contract
         require(msg.sender == ownerAddress, "only the owner can call this function");
 
-        existingPositions.push(PositionData(_indexToken, _isLong));
+        if (!positionExists[getPositioKey(_indexToken, _isLong)]) {
+            existingPositionsData.push(PositionData(_indexToken, _isLong));
+            positionExists[getPositioKey(_indexToken, _isLong)] = true;
+        }
 
         // call GMX smart contract to create increase position
         IPositionRouter positionRouter = IPositionRouter(positionRouterAddress);
@@ -184,14 +188,16 @@ contract AbstractPosition {
     // returns the value of the overall portfolio
     function getPortfolioValue() public view returns (uint256) {
         uint256 _positionValue = 0;
-        for (uint256 i = 0; i < existingPositions.length; i++) {
+        for (uint256 i = 0; i < existingPositionsData.length; i++) {
             (
                 uint256 positionSize,
                 uint256 positionCollateral,
                 uint256 positionAveragePrice,
                 uint256 positionAastIncreasedTime
-            ) = getPosition(existingPositions[i].indexToken, existingPositions[i].isLong);
-            _positionValue += getPositionValue(positionCollateral, existingPositions[i].indexToken, positionSize, positionAveragePrice, existingPositions[i].isLong, positionAastIncreasedTime);
+            ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].isLong);
+            if (positionCollateral > 0) {
+                _positionValue += getPositionValue(positionCollateral, existingPositionsData[i].indexToken, positionSize, positionAveragePrice, existingPositionsData[i].isLong, positionAastIncreasedTime);
+            }
         }
 
         return _positionValue;
@@ -206,6 +212,9 @@ contract AbstractPosition {
         bool _isLong,
         uint256 _positionLastIncreasedTime
     ) public view returns (uint256) {
+        if (_positionCollateral == 0) {
+            return 0;
+        }
         (bool _hasProfit, uint256 delta) = IVault(vaultContractAddress).getDelta(
             _indexToken,
             _positionSize,
@@ -225,14 +234,16 @@ contract AbstractPosition {
     function getPortfolioValueWithMargin() public view returns (uint256) {
         uint256 _portfolioValue = 0;
         uint256 _portfolioSize = 0;
-        for (uint256 i = 0; i < existingPositions.length; i++) {
+        for (uint256 i = 0; i < existingPositionsData.length; i++) {
             (
                 uint256 positionSize,
                 uint256 positionCollateral,
                 uint256 positionAveragePrice,
-            ) = getPosition(existingPositions[i].indexToken, existingPositions[i].isLong);
-            _portfolioValue += getPositionValueWithMargin(positionCollateral, existingPositions[i].indexToken, positionSize, positionAveragePrice, existingPositions[i].isLong);
-            _portfolioSize += positionSize;
+            ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].isLong);
+            if (positionCollateral > 0) {
+                _portfolioValue += getPositionValueWithMargin(positionCollateral, existingPositionsData[i].indexToken, positionSize, positionAveragePrice, existingPositionsData[i].isLong);
+                _portfolioSize += positionSize;
+            }
         }
 
         _portfolioValue = _portfolioValue.sub(_portfolioSize.mul(L2).div(BASIS_POINTS_DIVISOR));
@@ -327,7 +338,11 @@ contract AbstractPosition {
     }
 
     function getPositios() public view returns (PositionData[] memory) {
-        return existingPositions;
+        return existingPositionsData;
+    }
+
+    function getPositioKey(address _indexToken, bool _isLong) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_indexToken, _isLong));
     }
 
     // allow only the governing body to run function
