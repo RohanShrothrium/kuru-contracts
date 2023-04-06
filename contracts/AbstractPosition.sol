@@ -358,3 +358,7 @@ contract AbstractPosition {
         require(msg.value == 1 ether);
     }
 }
+// for all purposes consider margin fees:
+// fundingRate + fee from vault utils
+// uint256 marginFees = getFundingFee(_account, _collateralToken, _indexToken, _isLong, position.size, position.entryFundingRate);
+// marginFees = marginFees.add(getPositionFee(_account, _collateralToken, _indexToken, _isLong, position.size));
