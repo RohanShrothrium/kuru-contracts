@@ -25,7 +25,7 @@ npx hardhat node --fork https://arb1.arbitrum.io/rpc
 5.2. Create an ETH long position with 0.05 eth collateral. \
 5.3. Execute that long by spoofing like the smartcontrat.
 ```
-npx hardhat run --network localhost scripts/initConfig.js
+npx hardhat run --network localhost scripts/initEnv.js
 ```
 
 6. Once this is done you can add USDC funds to the lending contract by running
