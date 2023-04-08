@@ -188,29 +188,30 @@ contract AbstractPosition {
 
     // returns the value of the overall portfolio
     function getPortfolioValue() public view returns (uint256) {
-        uint256 _positionValue = 0;
+        uint256 _portfolioValue = 0;
         for (uint256 i = 0; i < existingPositionsData.length; i++) {
             (
                 uint256 positionSize,
                 uint256 positionCollateral,
                 uint256 positionAveragePrice,
-                uint256 positionAastIncreasedTime
+                ,
+                uint256 positionLastIncreasedTime
             ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].collateralToken, existingPositionsData[i].isLong);
             if (positionCollateral > 0) {
-                _positionValue += getPositionValue(positionCollateral, existingPositionsData[i].indexToken, positionSize, positionAveragePrice, existingPositionsData[i].isLong, positionAastIncreasedTime);
+                _portfolioValue += getPositionValue(existingPositionsData[i].indexToken, existingPositionsData[i].isLong, positionCollateral, positionSize, positionAveragePrice, positionLastIncreasedTime);
             }
         }
 
-        return _positionValue;
+        return _portfolioValue;
     }
 
     // gets absolute value of the position
     function getPositionValue(
-        uint256 _positionCollateral,
         address _indexToken,
+        bool _isLong,
+        uint256 _positionCollateral,
         uint256 _positionSize,
         uint256 _positionAveragePrice,
-        bool _isLong,
         uint256 _positionLastIncreasedTime
     ) public view returns (uint256) {
         if (_positionCollateral == 0) {
@@ -237,13 +238,14 @@ contract AbstractPosition {
         uint256 _portfolioSize = 0;
         for (uint256 i = 0; i < existingPositionsData.length; i++) {
             (
-                uint256 positionSize,
-                uint256 positionCollateral,
-                uint256 positionAveragePrice,
+                uint256 _positionSize,
+                uint256 _positionCollateral,
+                uint256 _positionAveragePrice,
+                uint256 _positionEntryFundingRate,
             ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].collateralToken, existingPositionsData[i].isLong);
-            if (positionCollateral > 0) {
-                _portfolioValue += getPositionValueWithMargin(positionCollateral, existingPositionsData[i].indexToken, positionSize, positionAveragePrice, existingPositionsData[i].isLong);
-                _portfolioSize += positionSize;
+            if (_positionCollateral > 0) {
+                _portfolioValue += getPositionValueWithMargin(existingPositionsData[i].indexToken, existingPositionsData[i].collateralToken, existingPositionsData[i].isLong, _positionCollateral, _positionSize, _positionAveragePrice, _positionEntryFundingRate);
+                _portfolioSize += _positionSize;
             }
         }
 
@@ -254,11 +256,13 @@ contract AbstractPosition {
 
     // gets position value and factors in L1 percent price drop
     function getPositionValueWithMargin(
-        uint256 _positionCollateral,
         address _indexToken,
+        address _collateralToken,
+        bool _isLong,
+        uint256 _positionCollateral,
         uint256 _positionSize,
         uint256 _positionAveragePrice,
-        bool _isLong
+        uint256 _positionEntryFundingRate
     ) public view returns (uint256) {
         (bool _hasProfit, uint256 delta) = getDeltaWithMargin(
             _indexToken,
@@ -267,10 +271,13 @@ contract AbstractPosition {
             _isLong
         );
 
+        uint256 _marginFees = IVault(vaultContractAddress).getFundingFee(_collateralToken, _positionSize, _positionEntryFundingRate);
+        _marginFees += IVault(vaultContractAddress).getPositionFee(_positionSize);        
+
         if (_hasProfit) {
-            return _positionCollateral.add(delta);
+            return _positionCollateral.add(delta).sub(_marginFees);
         } else {
-            return _positionCollateral.sub(delta);
+            return _positionCollateral.sub(delta).sub(_marginFees);
         }
     }
 
@@ -279,13 +286,13 @@ contract AbstractPosition {
         address _indexToken,
         address _collateralToken,
         bool _isLong
-    ) public view returns (uint256, uint256, uint256, uint256) {
+    ) public view returns (uint256, uint256, uint256, uint256, uint256) {
         Position memory position;
         (
             position.size,
             position.collateral,
             position.averagePrice,
-            ,
+            position.entryFundingRate,
             ,
             ,
             ,
@@ -297,6 +304,7 @@ contract AbstractPosition {
             position.size,
             position.collateral,
             position.averagePrice,
+            position.entryFundingRate,
             position.lastIncreasedTime
         );
     }
@@ -339,7 +347,7 @@ contract AbstractPosition {
         return _portfolioValue.mul(MIN_HEALTH_FACTOR).div(_existingLoan);
     }
 
-    function getPositios() public view returns (PositionData[] memory) {
+    function getPositions() public view returns (PositionData[] memory) {
         return existingPositionsData;
     }
 
@@ -358,7 +366,3 @@ contract AbstractPosition {
         require(msg.value == 1 ether);
     }
 }
-// for all purposes consider margin fees:
-// fundingRate + fee from vault utils
-// uint256 marginFees = getFundingFee(_account, _collateralToken, _indexToken, _isLong, position.size, position.entryFundingRate);
-// marginFees = marginFees.add(getPositionFee(_account, _collateralToken, _indexToken, _isLong, position.size));

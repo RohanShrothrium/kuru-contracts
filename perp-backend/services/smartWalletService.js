@@ -13,25 +13,29 @@ exports.GetPosition = async (indexToken, collateralToken, isLong) => {
             isLong,
         );
 
+        const [size, collateral, averagePrice, entryFundingRate, lastIncreasedTime] = position;
+
+        console.log(size, collateral, averagePrice, lastIncreasedTime);
         var positionValue;
-        if (position[1] == 0) {
+        if (collateral == 0) {
             positionValue = 0;
         } else {
             positionValue = await abstractPositionContract.getPositionValue(
-                position[1],
                 indexToken,
-                position[0],
-                position[2],
                 isLong,
-                position[3]
+                `${collateral}`,
+                `${size}`,
+                `${averagePrice}`,
+                `${lastIncreasedTime}`
             );
         }
 
         return {
-            size: `${position[0]}`,
-            collateral: `${position[1]}`,
-            averagePrice: `${position[2]}`,
-            positionValue: `${positionValue}`,
+            size,
+            collateral,
+            averagePrice,
+            positionValue,
+            entryFundingRate,
         }
     } catch (error) {
         return { success: false, error };
@@ -41,13 +45,15 @@ exports.GetPosition = async (indexToken, collateralToken, isLong) => {
 exports.GetPositions = async () => {
     try {
         const abstractPositionContract = await hre.ethers.getContractAt("AbstractPosition", config.abstractPositionAddress);
-        const positions = await abstractPositionContract.getPositios();
+        const positions = await abstractPositionContract.getPositions();
+        console.log(positions)
 
         var positionsResp = [];
         for (let i = 0; i < positions.length; i++) {
-            var position = await this.GetPosition(positions[i][0], positions[i][1], positions[i][2]);
-            position.indexToken = positions[i][0];
-            position.isLong = positions[i][2];
+            const [indexToken, collateralToken, isLong] = positions[i];
+            var position = await this.GetPosition(indexToken, collateralToken, isLong);
+            position.indexToken = indexToken;
+            position.isLong = isLong;
             positionsResp.push(position)
         }
 
