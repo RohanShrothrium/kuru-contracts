@@ -20,7 +20,8 @@ npx hardhat node --fork https://arb1.arbitrum.io/rpc
 <img src="images/metamaskAddNetwork.png" width="400">\
 4.3. The network configuration for the local hardhat node is:\
 <img src="images/networkConfig.png" width="400">\
-4.4. Import a hardhat user into the metamask wallet as it has\
+4.4. Import a hardhat user into the metamask wallet as it has funds. You can import a user using it's private key.\
+If you can't find the private key you can use this: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
 <img src="images/importAccount.png" width="400">\
 
 5. Initialise the forked hardhat local state with the kuru contracts. This scrip achieves the following:\
