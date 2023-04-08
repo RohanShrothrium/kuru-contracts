@@ -24,10 +24,10 @@ npx hardhat node --fork https://arb1.arbitrum.io/rpc
 If you can't find the private key you can use this: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
 <img src="images/importAccount.png" width="400">\
 
-5. Initialise the forked hardhat local state with the kuru contracts. This scrip achieves the following:\
+5. Initialise the forked hardhat local state with the kuru contracts. This script achieves the following:\
 5.1. Deploy our smart contracts to local fork. \
 5.2. Create an ETH long position with 0.05 eth collateral. \
-5.3. Execute that long by spoofing like the smartcontrat.
+5.3. Executes that long by spoofing like the smartcontract.
 ```
 npx hardhat run --network localhost scripts/initEnv.js
 ```
@@ -37,4 +37,4 @@ npx hardhat run --network localhost scripts/initEnv.js
 npx hardhat run --network localhost scripts/sendUsdcToLending.js
 ```
 
-7. Access the [app](https://kuru-fi.vercel.app/) and hit launch app.
+7. Access the [app](https://kuru.app/) and hit launch app.
