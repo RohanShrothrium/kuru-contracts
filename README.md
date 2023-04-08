@@ -16,12 +16,12 @@ npx hardhat node --fork https://arb1.arbitrum.io/rpc
 
 4. Download and connect metamask to local hardhat network.\
 4.1. If you don't have metamask extension installed, download and install the extension from [here](https://metamask.io/download/).\
-4.2. Add local hardhat network to metamask.
-<img src="images/metamaskAddNetwork.png" width="200">\
-4.3. The network configuration for the local hardhat node is:
-<img src="images/networkConfig.png" width="200">\
-4.4. Import a hardhat user into the metamask wallet as it has 
-<img src="images/importAccount.png" width="200">
+4.2. Add local hardhat network to metamask.\
+<img src="images/metamaskAddNetwork.png" width="400">\
+4.3. The network configuration for the local hardhat node is:\
+<img src="images/networkConfig.png" width="400">\
+4.4. Import a hardhat user into the metamask wallet as it has\
+<img src="images/importAccount.png" width="400">\
 
 5. Initialise the forked hardhat local state with the kuru contracts. This scrip achieves the following:\
 5.1. Deploy our smart contracts to local fork. \
