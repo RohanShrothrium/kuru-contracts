@@ -77,7 +77,7 @@ async function main() {
     }
 
     // create an increase position: lvg 20x
-    var receipt = await abstractPositionContract.callCreateIncreasePosition(
+    var receipt = await abstractPositionContract.callCreateIncreasePositionETH(
         [wethAddress],
         wethAddress,
         0,

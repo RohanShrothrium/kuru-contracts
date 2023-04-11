@@ -105,10 +105,57 @@ contract AbstractPosition {
         minExecutionFee = _minExecutionFee;
     }
 
+    // can be called only by an internal smartcontract function and is used to update the list of all positions
+    function updateExistingPositions(address[] memory _path, address _indexToken, bool _isLong) internal {
+        address _collateralToken = _path[_path.length.sub(1)];
+
+        if (!positionExists[getPositioKey(_indexToken, _collateralToken, _isLong)]) {
+            existingPositionsData.push(PositionData(_indexToken, _collateralToken, _isLong));
+            positionExists[getPositioKey(_indexToken, _collateralToken, _isLong)] = true;
+        }
+    }
+
     // user calls this function when user wants to:
     // 1. opens a long or short position
     // 2. increase collateral for an existing position
     function callCreateIncreasePosition(
+        address[] memory _path,
+        address _indexToken,
+        uint256 _amountIn,
+        uint256 _minOut,
+        uint256 _sizeDelta,
+        bool _isLong,
+        uint256 _acceptablePrice,
+        uint256 _executionFee,
+        bytes32 _referralCode,
+        address _callbackTarget
+    ) external payable returns (bytes32) {
+        // validate weather the function is called by the owner of this smart contract
+        require(msg.sender == ownerAddress, "only the owner can call this function");
+
+        updateExistingPositions(_path, _indexToken, _isLong);
+
+        // call GMX smart contract to create increase position
+        IPositionRouter positionRouter = IPositionRouter(positionRouterAddress);
+        return
+            positionRouter.createIncreasePosition{value: msg.value}(
+                _path,
+                _indexToken,
+                _amountIn,
+                _minOut,
+                _sizeDelta,
+                _isLong,
+                _acceptablePrice,
+                _executionFee,
+                _referralCode,
+                _callbackTarget
+            );
+    }
+
+    // user calls this function when user wants to:
+    // 1. opens a long or short position
+    // 2. increase collateral for an existing position
+    function callCreateIncreasePositionETH(
         address[] memory _path,
         address _indexToken,
         uint256 _minOut,
@@ -122,10 +169,7 @@ contract AbstractPosition {
         // validate weather the function is called by the owner of this smart contract
         require(msg.sender == ownerAddress, "only the owner can call this function");
 
-        if (!positionExists[getPositioKey(_indexToken, _isLong)]) {
-            existingPositionsData.push(PositionData(_indexToken, _path[_path.length.sub(1)], _isLong));
-            positionExists[getPositioKey(_indexToken, _isLong)] = true;
-        }
+        updateExistingPositions(_path, _indexToken, _isLong);
 
         // call GMX smart contract to create increase position
         IPositionRouter positionRouter = IPositionRouter(positionRouterAddress);
@@ -351,8 +395,8 @@ contract AbstractPosition {
         return existingPositionsData;
     }
 
-    function getPositioKey(address _indexToken, bool _isLong) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_indexToken, _isLong));
+    function getPositioKey(address _indexToken, address _collateralToken, bool _isLong) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_indexToken, _collateralToken, _isLong));
     }
 
     // allow only the governing body to run function

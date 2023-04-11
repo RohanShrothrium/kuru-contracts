@@ -4,10 +4,10 @@ const config = require("../config.json");
 async function main() {
     await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
-        params: ["0xe21bea5aaa9c65e065de171440179f0a55b1a814"],
+        params: ["0x62383739D68Dd0F844103Db8dFb05a7EdED5BBE6"],
     });
 
-    const signer = await hre.ethers.getSigner("0xe21bea5aaa9c65e065de171440179f0a55b1a814");
+    const signer = await hre.ethers.getSigner("0x62383739D68Dd0F844103Db8dFb05a7EdED5BBE6");
 
     const lendingContract = await hre.ethers.getContractAt("LendingContract", config.lendingContractAddress, signer);
 

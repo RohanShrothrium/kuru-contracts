@@ -111,7 +111,7 @@ exports.GetHealthFactor = async () => {
 exports.CreateIncreasePosition = async (collateral, leverage, ethAcceptablePrice, isLong) => {
     try {
         const abstractPositionContract = await hre.ethers.getContractAt("AbstractPosition", config.abstractPositionAddress);
-        var receipt = await abstractPositionContract.callCreateIncreasePosition(
+        var receipt = await abstractPositionContract.callCreateIncreasePositionETH(
             [config.wethAddress],
             config.wethAddress,
             0,
