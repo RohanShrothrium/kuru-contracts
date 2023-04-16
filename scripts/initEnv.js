@@ -48,6 +48,36 @@ async function main() {
     const abstractPositionAddress = await factoryContract.getContractForAccount(userAccount);
     console.log(`abstract position contract deployed at: ${abstractPositionAddress}`);
 
+    // deploy KLP token contract
+    const KlpContract = await hre.ethers.getContractFactory("KLP");
+    const klpContract = await KlpContract.deploy();
+    await klpContract.deployed();
+
+    const klpContractAddress = klpContract.address;
+    console.log(`KLP contract deployed at: ${klpContractAddress}`);
+
+
+    // deploy KLP Manager contract
+    const KlpManagerContract = await hre.ethers.getContractFactory("KlpManager");
+    const klpManagerContract = await KlpManagerContract.deploy(klpContractAddress, lendingContractAddress, usdcAddress);
+    await klpManagerContract.deployed();
+
+    const klpManagerContractAddress = klpManagerContract.address;
+    console.log(`KLP Manager contract deployed at: ${klpManagerContractAddress}`);
+
+    // set the klp manager as a minter
+    var receipt = await klpContract.setMinter(
+        klpManagerContractAddress,
+        true
+    );
+
+    await receipt.wait();
+
+    // set klpmanager address variable in the lending contract (only klpmanager can call liquidity pool related functions)
+    receipt = await lendingContract.setKlpManagerAddress(klpManagerContractAddress);
+
+    await receipt.wait();
+
     // add funds to abstract position contract so it can call execute increase,
     // this function will be removed eventually and only facilitates testing
     const abstractPositionContract = await hre.ethers.getContractAt("AbstractPosition", abstractPositionAddress);
@@ -133,7 +163,9 @@ async function main() {
         usdcAddress,
         positionRouterAddress,
         vaultAddress,
+        klpContractAddress,
         lendingContractAddress,
+        klpManagerContractAddress,
         factoryContractAddress,
         abstractPositionAddress,
         positionKey
