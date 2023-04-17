@@ -2,14 +2,17 @@
 
 pragma solidity >=0.6.12;
 
-import "./LendingContract.sol";
+import "./interfaces/IAbstractPosition.sol";
+import "./interfaces/ILendingContract.sol";
+
 import "./interfaces/IRouter.sol";
 import "./interfaces/IPositionRouter.sol";
 import "./interfaces/IOrderBook.sol";
 import "./interfaces/IVault.sol";
+
 import "./libraries/SafeMath.sol";
 
-contract AbstractPosition {
+contract AbstractPosition is IAbstractPosition{
     using SafeMath for uint256;
 
     struct Position {
@@ -30,6 +33,7 @@ contract AbstractPosition {
     }
 
     uint256 public constant MIN_HEALTH_FACTOR = 10000;
+    uint256 public constant MIN_DECREASE_HEALTH_FACTOR = 11000;
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
     uint256 public constant L1 = 100;
     uint256 public constant L2 = 100;
@@ -118,6 +122,7 @@ contract AbstractPosition {
     // user calls this function when user wants to:
     // 1. opens a long or short position
     // 2. increase collateral for an existing position
+    // 3. increase leverage for an existing
     function callCreateIncreasePosition(
         address[] memory _path,
         address _indexToken,
@@ -190,6 +195,7 @@ contract AbstractPosition {
     // user calls this function when user wants to:
     // 1. closes a long or short position
     // 2. decrease collateral for an existing position
+    // 3. decrease size for an existing position
     function callCreateDecreasePosition(
         address[] memory _path,
         address _indexToken,
@@ -207,11 +213,10 @@ contract AbstractPosition {
         require(msg.sender == ownerAddress || msg.sender == lendingContractAddress, "only the owner or gov can call this function");
         require(msg.value == _executionFee, "fee");
 
-        // todo: if position is closed, delete position from here
-        // todo: update condition
+        {require(validateDecreasePosition(_indexToken, _path, _isLong), "");}
 
         // allow to decrease position of non loaned assets
-        require(LendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress) == 0, "can't liquidateposition as there is an existing loan");
+        {require(ILendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress) == 0, "can't liquidateposition as there is an existing loan");}
 
         // call GMX smart contract to create decrease position
         return
@@ -230,8 +235,39 @@ contract AbstractPosition {
             );
     }
 
+    function validateDecreasePosition(
+        address _indexToken,
+        address[] memory _path,
+        bool _isLong
+    ) public view returns (bool) {
+        (
+            uint256 _positionSize,
+            uint256 _positionCollateral,
+            uint256 _positionAveragePrice,
+            ,
+            uint256 _positionLastIncreasedTime
+        ) = getPosition(_indexToken, _path[_path.length.sub(1)], _isLong);
+
+        uint256 _portfolioValue = getPortfolioValueWithMargin();
+
+        uint256 positionValue = getPositionValue(
+            _indexToken,
+            _isLong,
+            _positionCollateral,
+            _positionSize,
+            _positionAveragePrice,
+            _positionLastIncreasedTime
+        );
+
+        uint256 _existingLoan = ILendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress);
+
+        uint256 _healthFactor = (_portfolioValue.sub(positionValue)).mul(MIN_HEALTH_FACTOR).div(_existingLoan);
+
+        return _healthFactor > MIN_DECREASE_HEALTH_FACTOR;
+    }
+
     // returns the value of the overall portfolio
-    function getPortfolioValue() public view returns (uint256) {
+    function getPortfolioValue() public override view returns (uint256) {
         uint256 _portfolioValue = 0;
         for (uint256 i = 0; i < existingPositionsData.length; i++) {
             (
@@ -293,7 +329,9 @@ contract AbstractPosition {
             }
         }
 
-        _portfolioValue = _portfolioValue.sub(_portfolioSize.mul(L2).div(BASIS_POINTS_DIVISOR));
+        uint256 _interestToCollect = ILendingContract(lendingContractAddress).interestToCollect(ownerAddress);
+
+        _portfolioValue = _portfolioValue.sub(_portfolioSize.mul(L2).div(BASIS_POINTS_DIVISOR)).sub(_interestToCollect);
 
         return _portfolioValue;
     }
@@ -381,7 +419,7 @@ contract AbstractPosition {
 
     // health factor is used to validate liquidation
     function portfolioHealthFactor() public view returns (uint256) {
-        uint256 _existingLoan = LendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress);
+        uint256 _existingLoan = ILendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress);
         uint256 _portfolioValue = getPortfolioValueWithMargin();
 
         if (_existingLoan == 0) {

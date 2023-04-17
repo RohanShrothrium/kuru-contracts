@@ -2,14 +2,17 @@
 
 pragma solidity >=0.6.12;
 
+import "./interfaces/ILendingContract.sol";
+import "./interfaces/IAbstractPosition.sol";
+import "./interfaces/IFactoryContract.sol";
+
 import "./interfaces/IVault.sol";
-import "./AbstractPosition.sol";
-import "./FactoryContract.sol";
+
 import "./libraries/IERC20.sol";
 import "./libraries/SafeMath.sol";
 import "./libraries/SafeERC20.sol";
 
-contract LendingContract {
+contract LendingContract is ILendingContract {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -91,7 +94,7 @@ contract LendingContract {
 
     function totalLiquidityProvided() public view returns (uint256) {
         uint256 _liquidityBalance = IERC20(usdcAddress).balanceOf(address(this));
-        return _liquidityBalance.add(totalLoanedAmount);
+        return (_liquidityBalance.mul(USDC_DECIMALS_DIVISOR)).add(totalLoanedAmount);
     }
 
     // returns the usdc reserves
@@ -99,7 +102,7 @@ contract LendingContract {
         return IERC20(usdcAddress).balanceOf(address(this)).mul(USDC_DECIMALS_DIVISOR);
     }
 
-    function interestToCollect(address _account) public view returns (uint256) {
+    function interestToCollect(address _account) public override view returns (uint256) {
         if (amountLoanedByUser[_account] == 0) { return 0; }
 
         uint256 _interestToCollect = amountLoanedByUser[_account].mul(cumulativeBorrowRate.sub(entryBorrowRate[_account])).div(BORROW_RATE_PRECISION);
@@ -111,11 +114,11 @@ contract LendingContract {
         uint256 _loanAmount
     ) external {
         // fetch abstract position address for msg.sender
-        FactoryContract factoryContract = FactoryContract(factoryContractAddress);
+        IFactoryContract factoryContract = IFactoryContract(factoryContractAddress);
         address abstractPositionAddress = factoryContract.getContractForAccount(msg.sender);
 
         // get portfolio value for the borrower against their abstract position address
-        AbstractPosition abstractPositionContract = AbstractPosition(abstractPositionAddress);
+        IAbstractPosition abstractPositionContract = IAbstractPosition(abstractPositionAddress);
 
         uint256 portfolioValue = abstractPositionContract.getPortfolioValue();
         require(amountLoanedByUser[msg.sender] < portfolioValue.mul(LTV).div(100), "existing loan amount exceeding LTV");
@@ -151,7 +154,7 @@ contract LendingContract {
         return;
     }
 
-    function existingLoanOnPortfolio (address _account) public view returns(uint256) {
+    function existingLoanOnPortfolio (address _account) public view override returns(uint256) {
         return amountLoanedByUser[_account];
     }
 

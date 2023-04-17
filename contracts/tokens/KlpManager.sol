@@ -6,7 +6,7 @@ import "../libraries/SafeMath.sol";
 import "../libraries/SafeERC20.sol";
 
 import "../tokens/MintableBaseToken.sol";
-import "../LendingContract.sol";
+import "../interfaces/ILendingContract.sol";
 import "../tokens/interfaces/IMintable.sol";
 
 contract KlpManager {
@@ -61,10 +61,11 @@ contract KlpManager {
         // todo allow swap with _minOut feature?
         require(_token == usdcAddress, "unsupported token");
 
+        uint256 _existingLiquidity = ILendingContract(lendingContractAddress).totalLiquidityProvided();
+
         IERC20(_token).transferFrom(msg.sender, lendingContractAddress, _amount.div(USDC_DECIMALS_DIVISOR));
 
         uint256 _klpSupply = IERC20(klp).totalSupply();
-        uint256 _existingLiquidity = LendingContract(lendingContractAddress).totalLiquidityProvided();
 
         uint256 _mintAmount = _klpSupply == 0 ? _amount.div(ERC_DECIMALS_DIVISOR) : _klpSupply.mul(_amount).div(_existingLiquidity);
 
@@ -78,13 +79,13 @@ contract KlpManager {
         require(_tokenOut == usdcAddress, "unsupported token");
 
         uint256 _klpSupply = IERC20(klp).totalSupply();
-        uint256 _existingLiquidity = LendingContract(lendingContractAddress).totalLiquidityProvided();
+        uint256 _existingLiquidity = ILendingContract(lendingContractAddress).totalLiquidityProvided();
 
         uint256 usdcAmount = _klpAmount.div(ERC_DECIMALS_DIVISOR).mul(_existingLiquidity).div(_klpSupply).div(USDC_DECIMALS_DIVISOR);
         
         IMintable(klp).burn(msg.sender, _klpAmount.div(ERC_DECIMALS_DIVISOR));
 
-        LendingContract(lendingContractAddress).sendUsdcToLp(msg.sender, usdcAmount);
+        ILendingContract(lendingContractAddress).sendUsdcToLp(msg.sender, usdcAmount);
 
         return usdcAmount;
     }

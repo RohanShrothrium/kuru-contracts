@@ -3,8 +3,9 @@
 pragma solidity >=0.6.12;
 
 import "./AbstractPosition.sol";
+import "./interfaces/IFactoryContract.sol";
 
-contract FactoryContract {
+contract FactoryContract is IFactoryContract {
     address public gov;
     address public lendingContractAddress;
 
@@ -32,7 +33,7 @@ contract FactoryContract {
     }
 
     // this creates an abstract position contract instance for the user, ie, msg.sender and saves as a state variable.
-    function createAbstractPosition() public returns (address) {
+    function createAbstractPosition() public override returns (address) {
         require(abstractPositionMap[msg.sender] == address(0), "abstract position contract already exists for user");
 
         AbstractPosition abstractPosition = new AbstractPosition(
@@ -52,7 +53,7 @@ contract FactoryContract {
 
 
     // gets the abstract position contract address for a particular user.
-    function getContractForAccount(address account) public view returns (address) {
+    function getContractForAccount(address account) public override view returns (address) {
         return abstractPositionMap[account];
     }
 }
