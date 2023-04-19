@@ -11,6 +11,7 @@ import "./interfaces/IOrderBook.sol";
 import "./interfaces/IVault.sol";
 
 import "./libraries/SafeMath.sol";
+import "./libraries/IERC20.sol";
 
 contract AbstractPosition is IAbstractPosition{
     using SafeMath for uint256;
@@ -140,6 +141,10 @@ contract AbstractPosition is IAbstractPosition{
 
         updateExistingPositions(_path, _indexToken, _isLong);
 
+        IERC20(_path[0]).transferFrom(msg.sender, address(this), _amountIn);
+
+        IERC20(_path[0]).approve(routerAddress, _amountIn);
+
         // call GMX smart contract to create increase position
         IPositionRouter positionRouter = IPositionRouter(positionRouterAddress);
         return
@@ -213,10 +218,7 @@ contract AbstractPosition is IAbstractPosition{
         require(msg.sender == ownerAddress || msg.sender == lendingContractAddress, "only the owner or gov can call this function");
         require(msg.value == _executionFee, "fee");
 
-        {require(validateDecreasePosition(_indexToken, _path, _isLong), "");}
-
-        // allow to decrease position of non loaned assets
-        {require(ILendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress) == 0, "can't liquidateposition as there is an existing loan");}
+        require(validateDecreasePosition(_indexToken, _path, _isLong), "loan amount does not permit liquidation");
 
         // call GMX smart contract to create decrease position
         return

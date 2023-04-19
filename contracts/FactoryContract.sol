@@ -54,6 +54,7 @@ contract FactoryContract is IFactoryContract {
 
     // gets the abstract position contract address for a particular user.
     function getContractForAccount(address account) public override view returns (address) {
+        require(abstractPositionMap[account] != address(0), "acount does not have abstract contract");
         return abstractPositionMap[account];
     }
 }

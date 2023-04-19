@@ -124,12 +124,15 @@ contract LendingContract is ILendingContract {
         require(amountLoanedByUser[msg.sender] < portfolioValue.mul(LTV).div(100), "existing loan amount exceeding LTV");
         require(amountLoanedByUser[msg.sender].add(_loanAmount) < portfolioValue.mul(LTV).div(100), "LTV does not support loan amount");
 
+        // calculate interest on existing loan
+        uint256 _interestToCollect = interestToCollect(msg.sender);
+
+        // increase loan amount stored against a user and update totals
         amountLoanedByUser[msg.sender] = amountLoanedByUser[msg.sender].add(_loanAmount);
         totalLoanedAmount = totalLoanedAmount.add(_loanAmount);
 
         // collect exiting interest: this means give lesser amount of usdc than requested
-        _loanAmount = _loanAmount.sub(interestToCollect(msg.sender));
-
+        _loanAmount = _loanAmount.sub(_interestToCollect);
         // set entery boorow rate as the current rate
         entryBorrowRate[msg.sender] = cumulativeBorrowRate;
 
