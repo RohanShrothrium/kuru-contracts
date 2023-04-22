@@ -26,6 +26,7 @@ use(solidity);
 
 describe("TEST: e2e workflow tests", async function () {
     var increaseRequests = 0;
+    var decreaseRequests = 0;
 
     // variables to store contract addresses
     let lendingContractAddress, factoryContractAddress, abstractPositionAddress, klpManagerContractAddress, klpContractAddress;
@@ -401,6 +402,12 @@ describe("TEST: e2e workflow tests", async function () {
     })
 
     describe("TEST: abstract position contract", async function () {
+        // eth position variables
+        let ethSize, ethCollateral, ethAvgPrice, ethEntryFundingRate, ethLastIncreasedTime, ethValue, ethValueWithMargin;
+
+        // btc position variables
+        let btcSize, btcCollateral, btcAvgPrice, btcEntryFundingRate, btcLastIncreasedTime, btcValueWithMargin;
+
         it("should throw error: only gov can update factory contract address", async function () {
             const [owner, user1] = await ethers.getSigners();
             await expect(abstractPositionContract.connect(user1).setLendingContractAddress(user1.address))
@@ -456,6 +463,261 @@ describe("TEST: e2e workflow tests", async function () {
                 zeroContract,
                 { value: executionPrice })
             ).to.be.revertedWith("only the owner can call this function");
+        })
+
+        it ("should get existing position", async function () {
+            const indexToken = wethAddress;
+            const collateralToken = wethAddress;
+            const isLong = true;
+            
+            [ethSize, ethCollateral, ethAvgPrice, ethEntryFundingRate, ethLastIncreasedTime] = await abstractPositionContract.getPosition(indexToken, collateralToken, isLong);
+
+            // todo: do expect
+        })
+
+        it ("should get existing position value", async function () {
+            const indexToken = wethAddress;
+            const collateralToken = wethAddress;
+            const isLong = true;
+            
+            ethValue = await abstractPositionContract.getPositionValue(
+                indexToken,
+                isLong,
+                ethCollateral.toString(),
+                ethSize.toString(),
+                ethAvgPrice.toString(),
+                ethLastIncreasedTime.toString(),
+            );
+
+            // todo: do expect
+        })
+
+        it ("should get existing position value with fee margin", async function () {
+            const indexToken = wethAddress;
+            const collateralToken = wethAddress;
+            const isLong = true;
+            
+            ethValueWithMargin = await abstractPositionContract.getPositionValueWithMargin(
+                indexToken,
+                collateralToken,
+                isLong,
+                ethCollateral.toString(),
+                ethSize.toString(),
+                ethAvgPrice.toString(),
+                ethEntryFundingRate.toString(),
+            );
+
+            // todo: do expect
+        })
+
+        it ("should create decrease position request", async function () {
+            const indexToken = wethAddress;
+            const collateralToken = wethAddress;
+            const isLong = true;
+
+            // get min price for eth from vault
+            const vaultContract = await ethers.getContractAt("Vault", vaultAddress);
+            const vaultMinPrice = await vaultContract.getMinPrice(
+                wethAddress
+            );
+            
+            var receipt = await abstractPositionContract.callCreateDecreasePosition(
+                [collateralToken],
+                indexToken,
+                ethValueWithMargin.toString(),
+                ethSize.toString(),
+                isLong,
+                userAccount,
+                vaultMinPrice.mul(9).div(10).toString(), // we want this request to go through
+                0,
+                executionPrice,
+                true,
+                zeroContract,
+                { value: executionPrice }
+            );
+
+            await receipt.wait();
+
+            decreaseRequests += 1;
+        }).timeout(300000)
+
+        it ("should execute decrease eth position request", async function () {
+            // get the key for the position to execute the position
+            const positionRouterContract = await ethers.getContractAt("PositionRouter", positionRouterAddress);
+            const positionKey = await positionRouterContract.getRequestKey(
+                abstractPositionAddress,
+                decreaseRequests
+            );
+    
+            // execute decrease position as the abstract position contract (positions can be executeed by owners or keepers)
+            await network.provider.request({
+                method: "hardhat_impersonateAccount",
+                params: [abstractPositionAddress],
+            });
+            const abstractPositionSigner = await ethers.getSigner(abstractPositionAddress);
+            const positionRouterContractForAp = await ethers.getContractAt("PositionRouter", positionRouterAddress, abstractPositionSigner);
+            var receipt = await positionRouterContractForAp.executeDecreasePosition(
+                positionKey,
+                abstractPositionAddress,
+            );
+            await receipt.wait();
+        }).timeout(300000)
+
+        it ("should have closed position completely", async function () {
+            const indexToken = wethAddress;
+            const collateralToken = wethAddress;
+            const isLong = true;
+            
+            const [updatedEthSize, updatedEthCollateral, updatedEthAvgPrice, updatedEthEntryFundingRate, updatedEthLastIncreasedTime] = await abstractPositionContract.getPosition(indexToken, collateralToken, isLong);
+
+            expect(updatedEthSize.toString()).to.equal("0");
+            expect(updatedEthCollateral.toString()).to.equal("0");
+            expect(updatedEthAvgPrice.toString()).to.equal("0");
+            expect(updatedEthEntryFundingRate.toString()).to.equal("0");
+            expect(updatedEthLastIncreasedTime.toString()).to.equal("0");
+        })
+
+        it ("should get existing btc position", async function () {
+            const indexToken = wbtcAddress;
+            const collateralToken = usdcAddress;
+            const isLong = false;
+            
+            [btcSize, btcCollateral, btcAvgPrice, btcEntryFundingRate, btcLastIncreasedTime] = await abstractPositionContract.getPosition(indexToken, collateralToken, isLong);
+
+            // todo: do expect
+        })
+
+        it ("should get existing btc position value with fee margin", async function () {
+            const indexToken = wbtcAddress;
+            const collateralToken = usdcAddress;
+            const isLong = false;
+
+            btcValueWithMargin = await abstractPositionContract.getPositionValueWithMargin(
+                indexToken,
+                collateralToken,
+                isLong,
+                btcCollateral.toString(),
+                btcSize.toString(),
+                btcAvgPrice.toString(),
+                btcEntryFundingRate.toString(),
+            );
+
+            // todo: do expect
+        })
+
+        it ("should throw error: existing loan won't allow liquidation", async function () {
+            const indexToken = wbtcAddress;
+            const collateralToken = usdcAddress;
+            const isLong = false;
+
+            // get max price for btc from vault
+            const vaultContract = await ethers.getContractAt("Vault", vaultAddress);
+            const vaultMinPrice = await vaultContract.getMinPrice(
+                wbtcAddress
+            );
+            
+            await expect(abstractPositionContract.callCreateDecreasePosition(
+                [collateralToken],
+                indexToken,
+                btcValueWithMargin.toString(),
+                btcSize.toString(),
+                isLong,
+                userAccount,
+                vaultMinPrice.mul(11).div(10).toString(), // we want this request to go through
+                0,
+                executionPrice,
+                false,
+                zeroContract,
+                { value: executionPrice }
+            )).to.be.revertedWith("loan amount does not permit liquidation");
+        }).timeout(300000)
+
+        it ("repay loan on portfolio", async function () {
+            // calculate amount to nrepay
+            const existingLoan = await lendingContract.existingLoanOnPortfolio(userAccount);
+            const interestAccumulated = existingLoan.div(10000);
+
+            // approve usdc amount for paying back loan
+            const usdcContract = await ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", usdcAddress);
+            var receipt = await usdcContract.approve(
+                lendingContractAddress,
+                existingLoan.add(interestAccumulated).div(10**12).div(10**12).toString(),
+            );
+            await receipt.wait();
+
+            // repay loan with interest
+            receipt = await lendingContract.paybackLoan((existingLoan.add(interestAccumulated)).toString());
+            await receipt.wait();
+
+            // feth new loan on portfolio and assert to 0
+            const loanRemaining = await lendingContract.existingLoanOnPortfolio(userAccount);
+            expect(loanRemaining).to.equal("0");
+        })
+
+        it ("should create decrease order on btc position", async function () {
+            const indexToken = wbtcAddress;
+            const collateralToken = usdcAddress;
+            const isLong = false;
+
+            // get max price for btc from vault
+            const vaultContract = await ethers.getContractAt("Vault", vaultAddress);
+            const vaultMinPrice = await vaultContract.getMinPrice(
+                wbtcAddress
+            );
+            
+            var receipt = await abstractPositionContract.callCreateDecreasePosition(
+                [collateralToken],
+                indexToken,
+                btcValueWithMargin.toString(),
+                btcSize.toString(),
+                isLong,
+                userAccount,
+                vaultMinPrice.mul(11).div(10).toString(), // we want this request to go through
+                0,
+                executionPrice,
+                false,
+                zeroContract,
+                { value: executionPrice }
+            );
+            await receipt.wait();
+
+            decreaseRequests += 1;
+        }).timeout(300000)
+
+        it ("should execute decrease btc position request", async function () {
+            // get the key for the position to execute the position
+            const positionRouterContract = await ethers.getContractAt("PositionRouter", positionRouterAddress);
+            const positionKey = await positionRouterContract.getRequestKey(
+                abstractPositionAddress,
+                decreaseRequests
+            );
+    
+            // execute decrease position as the abstract position contract (positions can be executeed by owners or keepers)
+            await network.provider.request({
+                method: "hardhat_impersonateAccount",
+                params: [abstractPositionAddress],
+            });
+            const abstractPositionSigner = await ethers.getSigner(abstractPositionAddress);
+            const positionRouterContractForAp = await ethers.getContractAt("PositionRouter", positionRouterAddress, abstractPositionSigner);
+            var receipt = await positionRouterContractForAp.executeDecreasePosition(
+                positionKey,
+                abstractPositionAddress,
+            );
+            await receipt.wait();
+        }).timeout(300000)
+
+        it ("should have closed btc position completely", async function () {
+            const indexToken = wbtcAddress;
+            const collateralToken = usdcAddress;
+            const isLong = false;
+            
+            const [updatedBtcSize, updatedBtcCollateral, updatedBtcAvgPrice, updatedBtcEntryFundingRate, updatedBtcLastIncreasedTime] = await abstractPositionContract.getPosition(indexToken, collateralToken, isLong);
+
+            expect(updatedBtcSize.toString()).to.equal("0");
+            expect(updatedBtcCollateral.toString()).to.equal("0");
+            expect(updatedBtcAvgPrice.toString()).to.equal("0");
+            expect(updatedBtcEntryFundingRate.toString()).to.equal("0");
+            expect(updatedBtcLastIncreasedTime.toString()).to.equal("0");
         })
     })
 });

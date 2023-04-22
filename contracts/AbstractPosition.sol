@@ -242,6 +242,12 @@ contract AbstractPosition is IAbstractPosition{
         address[] memory _path,
         bool _isLong
     ) public view returns (bool) {
+        uint256 _existingLoan = ILendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress);
+
+        if (_existingLoan == 0) {
+            return true;
+        }
+
         (
             uint256 _positionSize,
             uint256 _positionCollateral,
@@ -261,7 +267,9 @@ contract AbstractPosition is IAbstractPosition{
             _positionLastIncreasedTime
         );
 
-        uint256 _existingLoan = ILendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress);
+        if (_portfolioValue < positionValue) {
+            return false;
+        }
 
         uint256 _healthFactor = (_portfolioValue.sub(positionValue)).mul(MIN_HEALTH_FACTOR).div(_existingLoan);
 

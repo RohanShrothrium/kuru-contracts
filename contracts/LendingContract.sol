@@ -105,8 +105,10 @@ contract LendingContract is ILendingContract {
     function interestToCollect(address _account) public override view returns (uint256) {
         if (amountLoanedByUser[_account] == 0) { return 0; }
 
+        uint256 _baseInterest = amountLoanedByUser[_account].mul(borrowRateFactor).div(BORROW_RATE_PRECISION);
         uint256 _interestToCollect = amountLoanedByUser[_account].mul(cumulativeBorrowRate.sub(entryBorrowRate[_account])).div(BORROW_RATE_PRECISION);
-        return _interestToCollect > 0 ? _interestToCollect : amountLoanedByUser[_account].mul(borrowRateFactor).div(BORROW_RATE_PRECISION);
+
+        return _interestToCollect.add(_baseInterest);
     }
 
     // function to take loan on position
@@ -142,11 +144,12 @@ contract LendingContract is ILendingContract {
     function paybackLoan(
         uint256 _repayLoanAmount
     ) external {
-        uint256 _loanWithBorrowFee = amountLoanedByUser[msg.sender].add(interestToCollect(msg.sender));
+        uint256 _interestToCollect = interestToCollect(msg.sender);
+        uint256 _loanWithBorrowFee = amountLoanedByUser[msg.sender].add(_interestToCollect);
         require(_loanWithBorrowFee >= _repayLoanAmount, "loan taken lesser than paying amount");
 
         amountLoanedByUser[msg.sender] = _loanWithBorrowFee.sub(_repayLoanAmount);
-        totalLoanedAmount = totalLoanedAmount.sub(_repayLoanAmount.sub(interestToCollect(msg.sender)));
+        totalLoanedAmount = totalLoanedAmount.sub(_repayLoanAmount.sub(_interestToCollect));
 
         // set entery boorow rate as the current rate
         entryBorrowRate[msg.sender] = cumulativeBorrowRate;

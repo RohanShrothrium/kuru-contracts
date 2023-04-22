@@ -1,0 +1,59 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "PositionRouterCallbackReceiverTest",
+  "sourceName": "contracts/gmx/core/test/PositionRouterCallbackReceiverTest.sol",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "positionKey",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "isExecuted",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "isIncrease",
+          "type": "bool"
+        }
+      ],
+      "name": "CallbackCalled",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "positionKey",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bool",
+          "name": "isExecuted",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "isIncrease",
+          "type": "bool"
+        }
+      ],
+      "name": "gmxPositionCallback",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600f57600080fd5b5060f68061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063edf3daec14602d575b600080fd5b606e60048036036060811015604157600080fd5b81019080803590602001909291908035151590602001909291908035151590602001909291905050506070565b005b7f4c5b183c9c52e97ac4369ee0a4685a3af880b74946655c4b6e7366b6af1733808383836040518084815260200183151581526020018215158152602001935050505060405180910390a150505056fea264697066735822122034a7de96d91b0eda24e796a1b8ad31b72255ef375f5adfb50725086c7548400564736f6c634300060c0033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063edf3daec14602d575b600080fd5b606e60048036036060811015604157600080fd5b81019080803590602001909291908035151590602001909291908035151590602001909291905050506070565b005b7f4c5b183c9c52e97ac4369ee0a4685a3af880b74946655c4b6e7366b6af1733808383836040518084815260200183151581526020018215158152602001935050505060405180910390a150505056fea264697066735822122034a7de96d91b0eda24e796a1b8ad31b72255ef375f5adfb50725086c7548400564736f6c634300060c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
