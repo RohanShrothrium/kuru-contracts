@@ -13,9 +13,20 @@ import "./interfaces/IVault.sol";
 import "./libraries/SafeMath.sol";
 import "./libraries/IERC20.sol";
 
+/**
+ * @title AbstractPosition
+ * @dev This contract implements the basic functionality of managing long and short positions for an index token, using a lending contract to borrow funds.
+ * It relies on external smart contracts to create a position.
+ * This contract holds the collateral and index tokens for all existing positions, and calculates the margin, the health factor, and the unrealized and realized profits and losses of each position.
+ * This contract is owned by an external account, which is responsible for calling its functions in order to open, increase, or close positions.
+ */
 contract AbstractPosition is IAbstractPosition{
     using SafeMath for uint256;
 
+    /**
+     * @dev This struct represents a long or short position for an index token, along with some basic information about the position.
+     * It contains the size, or the number of index tokens borrowed, the collateral, or the amount of collateral tokens held, the average entry price, the entry funding rate, the reserve amount, the realized P&L, the last time the position was increased, and the maximum loan amount.
+     */
     struct Position {
         uint256 size;
         uint256 collateral;
@@ -27,6 +38,9 @@ contract AbstractPosition is IAbstractPosition{
         uint256 maxLoanAmount;
     }
 
+    /**
+     * @dev This struct represents the data of a long or short position for an index token, such as the index token, the collateral token, and whether it is a long or short position.
+     */
     struct PositionData {
         address indexToken;
         address collateralToken;
@@ -85,43 +99,66 @@ contract AbstractPosition is IAbstractPosition{
         router.approvePlugin(positionRouterAddress);
     }
 
-    // update the weth address
+    /**
+     * @dev Updates the WETH address.
+     * @param _wethAddress The new WETH address.
+     */
     function setWethAddress(address _wethAddress) external {
         _onlyGov();
         wethAddress = _wethAddress;
     }
 
-    // update the positionRouter address, maybe GMX positionRouter address changes
+    /**
+     * @dev Updates the lending contract address.
+     * @param _lendingContractAddress The new lending contract address.
+     */
     function setLendingContractAddress(address _lendingContractAddress) external {
         _onlyGov();
         lendingContractAddress = _lendingContractAddress;
     }
 
-    // update the positionRouter address, maybe GMX positionRouter address changes
+    /**
+     * @dev Updates the position router address.
+     * @param newAddress The new position router address.
+     */
     function setPositionRouterAddress(address newAddress) external {
         _onlyGov();
         positionRouterAddress = newAddress;
     }
 
-    // update the router address, maybe GMX router address changes
+    /**
+     * @dev Updates the router address.
+     * @param newAddress The new router address.
+     */
     function setRouterAddress(address newAddress) external {
         _onlyGov();
         routerAddress = newAddress;
     }
 
-    // set min vault contract address
-    function setVaultContractAddress(uint256 _minExecutionFee) public {
+    /**
+     * @dev Updates the vault contract address.
+     * @param _vaultContractAddress The new minimum execution fee.
+     */
+    function setVaultContractAddress(address _vaultContractAddress) public {
         _onlyGov();
-        minExecutionFee = _minExecutionFee;
+        vaultContractAddress = _vaultContractAddress;
     }
 
-    // set min execution fee for setting stop loss
+    /**
+     * @dev Sets the minimum execution fee for orders.
+     * @param _minExecutionFee The new minimum execution fee.
+     */
     function setMinExecutionFee(uint256 _minExecutionFee) public {
         _onlyGov();
         minExecutionFee = _minExecutionFee;
     }
 
-    // can be called only by an internal smartcontract function and is used to update the list of all positions
+    /**
+     * @dev Updates the list of all positions.
+     * @param _path The path of tokens for the position.
+     * @param _indexToken The index token for the position.
+     * @param _isLong The position direction, long or short.
+     */
     function updateExistingPositions(address[] memory _path, address _indexToken, bool _isLong) internal {
         address _collateralToken = _path[_path.length.sub(1)];
 
@@ -131,10 +168,20 @@ contract AbstractPosition is IAbstractPosition{
         }
     }
 
-    // user calls this function when user wants to:
-    // 1. opens a long or short position
-    // 2. increase collateral for an existing position
-    // 3. increase leverage for an existing
+     /**
+     * @dev Function to open or increase a long or short position with the specified parameters.
+     * @param _path An array of token addresses that form the path to the destination token.
+     * @param _indexToken The address of the index token that the position is based on.
+     * @param _amountIn The input amount of tokens.
+     * @param _minOut The minimum acceptable amount of index tokens to receive as output from the trade.
+     * @param _sizeDelta The amount to increase the position size by. If opening a new position, this value is the size of the position.
+     * @param _isLong A boolean flag indicating if the position is long (true) or short (false).
+     * @param _acceptablePrice The maximum price in basis points that the position can be opened or increased at.
+     * @param _executionFee The fee to be paid for executing the trade.
+     * @param _referralCode The referral code for the user.
+     * @param _callbackTarget The address of the contract to be called on successful execution of the trade.
+     * @return A bytes32 value representing the request ID for the trade.
+     */
     function callCreateIncreasePosition(
         address[] memory _path,
         address _indexToken,
@@ -173,9 +220,19 @@ contract AbstractPosition is IAbstractPosition{
             );
     }
 
-    // user calls this function when user wants to:
-    // 1. opens a long or short position
-    // 2. increase collateral for an existing position
+    /**
+     * @dev Function to open or increase a long or short position with the specified parameters.
+     * @param _path An array of token addresses that form the path to the destination token.
+     * @param _indexToken The address of the index token that the position is based on.
+     * @param _minOut The minimum acceptable amount of index tokens to receive as output from the trade.
+     * @param _sizeDelta The amount to increase the position size by. If opening a new position, this value is the size of the position.
+     * @param _isLong A boolean flag indicating if the position is long (true) or short (false).
+     * @param _acceptablePrice The maximum price in basis points that the position can be opened or increased at.
+     * @param _executionFee The fee to be paid for executing the trade.
+     * @param _referralCode The referral code for the user.
+     * @param _callbackTarget The address of the contract to be called on successful execution of the trade.
+     * @return A bytes32 value representing the request ID for the trade.
+     */
     function callCreateIncreasePositionETH(
         address[] memory _path,
         address _indexToken,
@@ -208,10 +265,21 @@ contract AbstractPosition is IAbstractPosition{
             );
     }
 
-    // user calls this function when user wants to:
-    // 1. closes a long or short position
-    // 2. decrease collateral for an existing position
-    // 3. decrease size for an existing position
+    /**
+     * @dev Internal helper function to decrease a position.
+     * @param _path An array of token addresses that form the path to the index token.
+     * @param _indexToken The address of the index token that the position is based on.
+     * @param _collateralDelta The change in collateral size of the position.
+     * @param _sizeDelta The change in position size.
+     * @param _isLong A boolean flag indicating if the position is long (true) or short (false).
+     * @param _receiver The address of the receiver of the decreased position.
+     * @param _acceptablePrice The acceptable price for the trade.
+     * @param _minOut The minimum output of the trade.
+     * @param _executionFee The fee for executing the trade.
+     * @param _withdrawETH A boolean flag to determine if ETH should be withdrawn.
+     * @param _callbackTarget The address of the contract to be called on successful execution of the trade.
+     * @return True if the decrease position was executed successfully.
+     */
     function callCreateDecreasePosition(
         address[] memory _path,
         address _indexToken,
@@ -252,7 +320,21 @@ contract AbstractPosition is IAbstractPosition{
         return executeDecreasePosition();
     }
 
-    // internal helper function to decrease position
+    /**
+     * @dev Internal helper function to decrease a position.
+     * @param _path An array of token addresses that form the path to the destination token.
+     * @param _indexToken The address of the index token that the position is based on.
+     * @param _collateralDelta The change in collateral size of the position.
+     * @param _sizeDelta The change in position size.
+     * @param _isLong A boolean flag indicating if the position is long (true) or short (false).
+     * @param _receiver The address of the receiver of the decreased position.
+     * @param _acceptablePrice The acceptable price for the trade.
+     * @param _minOut The minimum output of the trade.
+     * @param _executionFee The fee for executing the trade.
+     * @param _withdrawETH A boolean flag to determine if ETH should be withdrawn.
+     * @param _callbackTarget The address of the contract to be called on successful execution of the trade.
+     * @return True if the decrease position was executed successfully.
+     */
     function _callCreateDecreasePosition(
         address[] memory _path,
         address _indexToken,
@@ -283,14 +365,19 @@ contract AbstractPosition is IAbstractPosition{
         return executeDecreasePosition();
     }
 
-    // execute the decrease position at a particular index
+    /**
+     * @dev Execute the decrease position at a particular index.
+     * @return True if the decrease position was executed successfully.
+     */
     function executeDecreasePosition() public returns (bool) {
         bytes32 _key = getRequestKey(address(this), decreasePositionRequests);
 
         return IPositionRouter(positionRouterAddress).executeDecreasePosition(_key, address(this));
     }
 
-    // function used by liquidator nodes to liquidate the portfolio when health factor goes bellow 1
+    /**
+     * @dev Function used by liquidator nodes to liquidate the portfolio when the health factor goes below 1.
+     */
     function liquidatePortfolio() public {
         uint256 _healthFactor = portfolioHealthFactor();
         require(_healthFactor < MIN_HEALTH_FACTOR, "health factor");
@@ -329,7 +416,15 @@ contract AbstractPosition is IAbstractPosition{
         }
     }
 
-    // internal helper function to liquidate each position
+    /**
+     * @dev Internal helper function to liquidate each position.
+     * @param _indexToken The address of the index token that the position is based on.
+     * @param _collateralToken The collateral token for the position.
+     * @param _isLong A boolean flag to determine if the position is long.
+     * @param _positionSize The size of the position to liquidate.
+     * @param _positionValue The value of the position to liquidate.
+     * @param _acceptablePrice The acceptable price for the trade.
+     */
     function _liquidatePosition(
         address _indexToken,
         address _collateralToken,
@@ -354,10 +449,20 @@ contract AbstractPosition is IAbstractPosition{
         );
     }
 
+    /**
+     * @dev Internal helper function to check if a token is WETH.
+     * @param _tokenAddress The address of the token to check.
+     * @return True if the token is WETH.
+     */
     function _isWeth(address _tokenAddress) internal view returns (bool) {
         return _tokenAddress == wethAddress;
     }
 
+    /**
+     * @dev Internal helper function to get the path of tokens from collateral.
+     * @param _tokenAddress The address of the collateral token.
+     * @return The path of tokens from the collateral.
+     */
     function _pathFromCollateral(address _tokenAddress) internal pure returns (address[] memory) {
         address[] memory  _path = new address[](1);
         _path[0] = _tokenAddress;
@@ -365,6 +470,13 @@ contract AbstractPosition is IAbstractPosition{
         return _path;
     }
 
+    /**
+    * @dev Validates whether a decrease in position can be made without breaching the minimum health factor requirement.
+    * @param _indexToken The address of the index token in the position to be decreased.
+    * @param _path The array of addresses representing the path from the index token to the collateral token.
+    * @param _isLong The boolean value representing whether the position is long or short.
+    * @return A boolean value indicating whether a decrease in position can be made without breaching the minimum health factor requirement.
+    */
     function validateDecreasePosition(
         address _indexToken,
         address[] memory _path,
@@ -404,7 +516,10 @@ contract AbstractPosition is IAbstractPosition{
         return _healthFactor > MIN_DECREASE_HEALTH_FACTOR;
     }
 
-    // returns the value of the overall portfolio
+    /**
+    * @dev Returns the value of the overall portfolio.
+    * @return A uint256 value representing the value of the overall portfolio.
+    */
     function getPortfolioValue() public override view returns (uint256) {
         uint256 _portfolioValue = 0;
         for (uint256 i = 0; i < existingPositionsData.length; i++) {
@@ -423,7 +538,16 @@ contract AbstractPosition is IAbstractPosition{
         return _portfolioValue;
     }
 
-    // gets absolute value of the position
+    /**
+    * @dev Gets the absolute value of a position.
+    * @param _indexToken The address of the index token in the position.
+    * @param _isLong The boolean value representing whether the position is long or short.
+    * @param _positionCollateral The amount of collateral in the position.
+    * @param _positionSize The size of the position.
+    * @param _positionAveragePrice The average price of the position.
+    * @param _positionLastIncreasedTime The timestamp representing the last time the position was increased.
+    * @return A uint256 value representing the absolute value of the position.
+    */
     function getPositionValue(
         address _indexToken,
         bool _isLong,
@@ -450,7 +574,10 @@ contract AbstractPosition is IAbstractPosition{
         }
     }
 
-    // returns the value of the overall portfolio with L1 percent margin
+    /**
+    * @dev Returns the value of the overall portfolio with L1 percent margin.
+    * @return A uint256 value representing the value of the overall portfolio with L1 percent margin.
+    */
     function getPortfolioValueWithMargin() public view returns (uint256) {
         uint256 _portfolioValue = 0;
         uint256 _portfolioSize = 0;
@@ -474,7 +601,17 @@ contract AbstractPosition is IAbstractPosition{
         return _portfolioValue;
     }
 
-    // gets position value and factors in L1 percent price drop
+    /**
+     * @dev Gets position value and factors in L1 percent price drop.
+     * @param _indexToken The address of the index token.
+     * @param _collateralToken The address of the collateral token.
+     * @param _isLong Whether the position is long.
+     * @param _positionCollateral The amount of collateral held in the position.
+     * @param _positionSize The size of the position.
+     * @param _positionAveragePrice The average price of the position.
+     * @param _positionEntryFundingRate The entry funding rate of the position.
+     * @return The position value with margin.
+     */
     function getPositionValueWithMargin(
         address _indexToken,
         address _collateralToken,
@@ -501,7 +638,14 @@ contract AbstractPosition is IAbstractPosition{
         }
     }
 
-    // gets position for index token and side
+    
+    /**
+     * @dev Gets position for index token and side.
+     * @param _indexToken The address of the index token.
+     * @param _collateralToken The address of the collateral token.
+     * @param _isLong Whether the position is long.
+     * @return The size, collateral, average price, entry funding rate, and last increased time of the position.
+     */
     function getPosition(
         address _indexToken,
         address _collateralToken,
@@ -529,7 +673,14 @@ contract AbstractPosition is IAbstractPosition{
         );
     }
 
-    // gets pnl for position with L1 percent drop margin
+    /**
+     * @dev Gets pnl for position with L1 percent drop margin.
+     * @param _indexToken The address of the index token.
+     * @param _size The size of the position.
+     * @param _averagePrice The average price of the position.
+     * @param _isLong Whether the position is long.
+     * @return Whether the position has profit and the delta with margin.
+     */
     function getDeltaWithMargin(address _indexToken, uint256 _size, uint256 _averagePrice, bool _isLong) public view returns (bool, uint256) {
         require(_averagePrice > 0, "averge price of position has to be greater than 0");
         uint256 price = _isLong
@@ -555,7 +706,10 @@ contract AbstractPosition is IAbstractPosition{
         return (hasProfit, delta);
     }
 
-    // health factor is used to validate liquidation
+    /**
+     * @dev Calculates the portfolio health factor which is used to validate liquidation.
+     * @return The portfolio health factor.
+     */
     function portfolioHealthFactor() public view returns (uint256) {
         uint256 _existingLoan = ILendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress);
         uint256 _portfolioValue = getPortfolioValueWithMargin();
@@ -567,23 +721,44 @@ contract AbstractPosition is IAbstractPosition{
         return _portfolioValue.mul(MIN_HEALTH_FACTOR).div(_existingLoan);
     }
 
+    /**
+     * @dev Retrieves an array of all the existing positions.
+     * @return An array of `PositionData` structs.
+     */
     function getPositions() public view returns (PositionData[] memory) {
         return existingPositionsData;
     }
 
+    /**
+     * @dev Computes the unique key for a given position.
+     * @param _indexToken The address of the index token in the position.
+     * @param _collateralToken The address of the collateral token in the position.
+     * @param _isLong Indicates whether the position is long or short.
+     * @return The key of the position.
+     */
     function getPositioKey(address _indexToken, address _collateralToken, bool _isLong) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(_indexToken, _collateralToken, _isLong));
     }
 
+    /**
+     * @dev Computes the unique key for a given request.
+     * @param _account The address of the account that made the request.
+     * @param _index The index of the request.
+     * @return The key of the request.
+     */
     function getRequestKey(address _account, uint256 _index) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(_account, _index));
     }
 
-    // allow only the governing body to run function
+    /**
+     * @dev Restricts function access to the governing body.
+     */
     function _onlyGov() private view {
         require(msg.sender == gov, "only gov can call this function");
     }
 
-    // deposit ethers into contract
+    /**
+     * @dev Deposits Ether into the contract.
+     */
     function deposit() payable external {}
 }

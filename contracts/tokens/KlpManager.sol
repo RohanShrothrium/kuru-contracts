@@ -9,6 +9,10 @@ import "../tokens/MintableBaseToken.sol";
 import "../interfaces/ILendingContract.sol";
 import "../tokens/interfaces/IMintable.sol";
 
+/**
+ * @title KlpManager
+ * @dev Manages the liquidity for the Kuru liquidity pool.
+ */
 contract KlpManager {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -29,11 +33,22 @@ contract KlpManager {
     // external tokens addresses
     address usdcAddress;
 
+    // Modifiers
+    /**
+     * @dev Throws if called by any account other than the governance address.
+     */
     modifier onlyGov() {
         require(msg.sender == gov, "BaseToken: forbidden");
         _;
     }
 
+    // Constructor
+    /**
+     * @dev Initializes the contract with the given parameters.
+     * @param _klp The liquidity provider token contract address.
+     * @param _lendingContractAddress The kuru app lending contract address.
+     * @param _usdcAddress The external USDC token contract address.
+     */
     constructor(address _klp, address _lendingContractAddress, address _usdcAddress) {
         gov = msg.sender;
         klp = _klp;
@@ -41,22 +56,46 @@ contract KlpManager {
         usdcAddress = _usdcAddress;
     }
 
+    // Setter functions
+    /**
+     * @dev Allows the governance address to set the liquidity provider token contract address.
+     * @param _klp The new liquidity provider token contract address.
+     */
     function setKlp(address _klp) external onlyGov {
         klp = _klp;
     }
 
+    /**
+     * @dev Allows the governance address to set the governance address.
+     * @param _gov The new governance address.
+     */
     function setGov(address _gov) external onlyGov {
         gov = _gov;
     }
 
+    /**
+     * @dev Allows the governance address to set the kuru app lending contract address.
+     * @param _lendingContractAddress The new kuru app lending contract address.
+     */
     function setLendingContractAddress(address _lendingContractAddress) external onlyGov {
         lendingContractAddress = _lendingContractAddress;
     }
 
-    function setUsdcAddress(address _ussdcAddress) external onlyGov {
-        usdcAddress = _ussdcAddress;
+    /**
+     * @dev Allows the governance address to set the external USDC token contract address.
+     * @param _usdcAddress The new external USDC token contract address.
+     */
+    function setUsdcAddress(address _usdcAddress) external onlyGov {
+        usdcAddress = _usdcAddress;
     }
 
+    // External functions
+    /**
+     * @dev Allows a user to add liquidity to the Kuru liquidity pool.
+     * @param _token The token address of the asset being added.
+     * @param _amount The amount of the asset being added.
+     * @return The amount of liquidity provider tokens minted.
+     */
     function addLiquidity(address _token, uint256 _amount) external returns (uint256) {
         // todo allow swap with _minOut feature?
         require(_token == usdcAddress, "unsupported token");
@@ -74,6 +113,12 @@ contract KlpManager {
         return _mintAmount;
     }
 
+    /**
+     * @dev Removes liquidity from the pool and returns USDC to the caller.
+     * @param _tokenOut The address of the token being withdrawn. Only USDC is supported.
+     * @param _klpAmount The amount of liquidity tokens to withdraw.
+     * @return The amount of USDC returned to the caller.
+     */
     function removeLiquidity(address _tokenOut, uint256 _klpAmount) external returns (uint256) {
         // todo allow swap with at the end with _minOut feature
         require(_tokenOut == usdcAddress, "unsupported token");

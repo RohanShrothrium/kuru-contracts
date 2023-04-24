@@ -11,7 +11,12 @@ import "./interfaces/IVault.sol";
 import "./libraries/IERC20.sol";
 import "./libraries/SafeMath.sol";
 import "./libraries/SafeERC20.sol";
-
+/**
+ * @title LendingContract
+ * @dev A smart contract that allows users to take loans on their abstract positions, which are managed by the FactoryContract.
+ * Loans are granted in USDC and the contract collects interest from borrowers. The interest rate is updated periodically
+ * and depends on the total amount of liquidity provided by lenders and the amount of loans currently taken.
+ */
 contract LendingContract is ILendingContract {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -38,30 +43,48 @@ contract LendingContract is ILendingContract {
     uint256 public cumulativeBorrowRate;
     uint256 public lastBorrowTimes;
 
+    /**
+     * @dev Creates a new instance of the LendingContract
+     * @param _usdcAddress Address of the USDC token contract
+     */
     constructor(address _usdcAddress) {
         gov = msg.sender;
 
         usdcAddress = _usdcAddress;
     }
 
-    // set the factory contract address
+    /**
+     * @dev Sets the factory contract address. Only callable by the contract owner
+     * @param newAddress Address of the new factory contract
+     */
     function setFactoryaContractAddress(address newAddress) external {
         _onlyGov();
         factoryContractAddress = newAddress;
     }
 
-    // set the klp contract address
+    /**
+     * @dev Sets the KLP manager address. Only callable by the contract owner
+     * @param newAddress Address of the new KLP manager
+     */
     function setKlpManagerAddress(address newAddress) external {
         _onlyGov();
         klpManagerAddress = newAddress;
     }
 
+    /**
+     * @dev Sends USDC tokens to a KLP account. Only callable by the KLP manager
+     * @param _account Address of the account to send the tokens to
+     * @param _amount Amount of USDC tokens to send
+     */
     function sendUsdcToLp(address _account, uint256 _amount) external {
         require(msg.sender == klpManagerAddress, "only the klp manager can call this function");
 
         IERC20(usdcAddress).transfer(_account, _amount);
     }
 
+    /**
+     * @dev Updates the cumulative borrow rate
+     */
     function updateCumulativeBorrowRate() public {
         // first time the borrow rate is being set
         if (lastBorrowTimes == 0) {
@@ -80,6 +103,11 @@ contract LendingContract is ILendingContract {
         return;
     }
 
+
+    /**
+     * @dev Calculates the next borrow rate
+     * @return The next borrow rate
+     */
     function getNextBorrowRate() public view returns (uint256) {
         if (lastBorrowTimes.add(borrowInterval) > block.timestamp) {
             return 0;
@@ -92,16 +120,28 @@ contract LendingContract is ILendingContract {
         return borrowRateFactor.mul(totalLoanedAmount).mul(intervals).div(_liquidityProvided);
     }
 
+    /**
+     * @dev Calculates the total liquidity provided
+     * @return The total liquidity provided
+     */
     function totalLiquidityProvided() public view returns (uint256) {
         uint256 _liquidityBalance = IERC20(usdcAddress).balanceOf(address(this));
         return (_liquidityBalance.mul(USDC_DECIMALS_DIVISOR)).add(totalLoanedAmount);
     }
 
-    // returns the usdc reserves
+    /**
+     * @dev Calculates the USDC reserves
+     * @return The USDC reserves
+     */
     function getReserve() public view returns (uint256) {
         return IERC20(usdcAddress).balanceOf(address(this)).mul(USDC_DECIMALS_DIVISOR);
     }
 
+    /**
+     * @dev Calculates the interest to collect for a user
+     * @param _account The address of the user
+     * @return The interest to collect
+     */
     function interestToCollect(address _account) public override view returns (uint256) {
         if (amountLoanedByUser[_account] == 0) { return 0; }
 
@@ -111,7 +151,10 @@ contract LendingContract is ILendingContract {
         return _interestToCollect.add(_baseInterest);
     }
 
-    // function to take loan on position
+    /**
+     * @dev Takes a loan on a position
+     * @param _loanAmount The amount of the loan to take
+     */
     function takeLoanOnPosition(
         uint256 _loanAmount
     ) external {
@@ -142,6 +185,10 @@ contract LendingContract is ILendingContract {
         IERC20(usdcAddress).transfer(msg.sender, _loanAmount.div(USDC_DECIMALS_DIVISOR));
     }
 
+    /**
+     * @dev Repay loan on portfolio
+     * @param _repayLoanAmount The amount of the loan to take
+     */
     function paybackLoan(
         uint256 _repayLoanAmount
     ) external {
@@ -152,7 +199,7 @@ contract LendingContract is ILendingContract {
         amountLoanedByUser[msg.sender] = _loanWithBorrowFee.sub(_repayLoanAmount);
         totalLoanedAmount = totalLoanedAmount.sub(_repayLoanAmount.sub(_interestToCollect));
 
-        // set entery boorow rate as the current rate
+        // set entery borrow rate as the current rate
         entryBorrowRate[msg.sender] = cumulativeBorrowRate;
 
         // transfer in usdc from the borrower
@@ -161,11 +208,18 @@ contract LendingContract is ILendingContract {
         return;
     }
 
+    /**
+     * @dev Returns the amount of loans existing on a given user's portfolio.
+     * @param _account The user's address to check for loans.
+     * @return The total amount of loans the user has.
+     */
     function existingLoanOnPortfolio (address _account) public view override returns(uint256) {
         return amountLoanedByUser[_account];
     }
 
-    // allow only the governing body to run function
+    /**
+     * @dev Private function that only allows the governing body to call it.
+     */
     function _onlyGov() private view {
         require(msg.sender == gov, "only gov can call this function");
     }
