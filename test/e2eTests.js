@@ -6,6 +6,7 @@ const { solidity } = require("ethereum-waffle");
 
 const userAccount = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 const usdcSharkAccount = "0x62383739D68Dd0F844103Db8dFb05a7EdED5BBE6";
+const priceFeedUpdator = "0x2bcd0d9dde4bd69c516af4ebd3fb7173e1fa12d0";
 var executionPrice = 200000000000000;
 
 // token addresses
@@ -21,6 +22,7 @@ const positionRouterAddress = "0xb87a436B93fFE9D75c5cFA7bAcFff96430b09868";
 const vaultAddress = "0x489ee077994B6658eAfA855C308275EAd8097C4A";
 const routerAddress = "0xaBBc5F99639c9B6bCb58544ddf04EFA6802F4064";
 const orderBookAddress = "0x09f77e8a13de9a35a7231028187e9fd5db8a2acb";
+const priceFeedAddress = "0x11D62807dAE812a0F1571243460Bf94325F43BB7";
 
 use(solidity);
 
@@ -45,7 +47,7 @@ describe("TEST: e2e workflow tests", async function () {
 
         // deploy factory contract
         const FactoryContract = await ethers.getContractFactory("FactoryContract");
-        factoryContract = await FactoryContract.deploy(lendingContractAddress, positionRouterAddress, routerAddress, orderBookAddress, vaultAddress);
+        factoryContract = await FactoryContract.deploy(wethAddress, lendingContractAddress, positionRouterAddress, routerAddress, orderBookAddress, vaultAddress);
         await factoryContract.deployed();
 
         factoryContractAddress = factoryContract.address;
@@ -357,6 +359,12 @@ describe("TEST: e2e workflow tests", async function () {
             await expect(lendingContract.paybackLoan(ethers.utils.parseEther(repayAmount.toString()).mul(10**12)))
                 .to.be.revertedWith("loan taken lesser than paying amount")
         }).timeout(300000)
+    })
+
+    describe("TEST: liquidate portfolio tests", async function () {
+        it("should throw error: health factor", async function () {
+            await expect(abstractPositionContract.liquidatePortfolio()).to.be.revertedWith("health factor");
+        });
     })
 
     describe("TEST: factory contract tests", async function () {

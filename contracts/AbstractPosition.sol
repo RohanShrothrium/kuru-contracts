@@ -41,6 +41,7 @@ contract AbstractPosition is IAbstractPosition{
 
     // addresses
     address public gov;
+    address public wethAddress;
     address public lendingContractAddress;
 
     // gmx contracts
@@ -56,8 +57,11 @@ contract AbstractPosition is IAbstractPosition{
     mapping (bytes32 => bool) positionExists;
     PositionData[] public existingPositionsData;
 
+    uint256 decreasePositionRequests = 0;
+
     constructor(
         address _gov,
+        address _wethAddress,
         address _lendingContractAddress,
         address _ownerAddress,
         address _positionRouterAddress,
@@ -68,6 +72,7 @@ contract AbstractPosition is IAbstractPosition{
         // init state variables
         gov = _gov;
         ownerAddress = _ownerAddress;
+        wethAddress = _wethAddress;
         lendingContractAddress = _lendingContractAddress;
 
         positionRouterAddress = _positionRouterAddress;
@@ -78,6 +83,12 @@ contract AbstractPosition is IAbstractPosition{
         // approve position router address for router for smartcontract address
         IRouter router = IRouter(_routerAddress);
         router.approvePlugin(positionRouterAddress);
+    }
+
+    // update the weth address
+    function setWethAddress(address _wethAddress) external {
+        _onlyGov();
+        wethAddress = _wethAddress;
     }
 
     // update the positionRouter address, maybe GMX positionRouter address changes
@@ -213,28 +224,145 @@ contract AbstractPosition is IAbstractPosition{
         uint256 _executionFee,
         bool _withdrawETH,
         address _callbackTarget
-    ) external payable returns (bytes32) {
+    ) external payable returns (bool) {
         // validate weather the function is called by the owner of this smart contract
         require(msg.sender == ownerAddress || msg.sender == lendingContractAddress, "only the owner or gov can call this function");
         require(msg.value == _executionFee, "fee");
 
         require(validateDecreasePosition(_indexToken, _path, _isLong), "loan amount does not permit liquidation");
 
+        // increment the decrease position requests by 1
+        decreasePositionRequests = decreasePositionRequests.add(1);
+
         // call GMX smart contract to create decrease position
-        return
-            IPositionRouter(positionRouterAddress).createDecreasePosition{value: msg.value}(
-                _path,
-                _indexToken,
-                _collateralDelta,
-                _sizeDelta,
-                _isLong,
-                _receiver,
-                _acceptablePrice,
-                _minOut,
-                _executionFee,
-                _withdrawETH,
-                _callbackTarget
-            );
+        _callCreateDecreasePosition(
+            _path,
+            _indexToken,
+            _collateralDelta,
+            _sizeDelta,
+            _isLong,
+            _receiver,
+            _acceptablePrice,
+            _minOut,
+            _executionFee,
+            _withdrawETH,
+            _callbackTarget
+        );
+
+        return executeDecreasePosition();
+    }
+
+    // internal helper function to decrease position
+    function _callCreateDecreasePosition(
+        address[] memory _path,
+        address _indexToken,
+        uint256 _collateralDelta,
+        uint256 _sizeDelta,
+        bool _isLong,
+        address _receiver,
+        uint256 _acceptablePrice,
+        uint256 _minOut,
+        uint256 _executionFee,
+        bool _withdrawETH,
+        address _callbackTarget
+    ) internal returns (bool) {
+        IPositionRouter(positionRouterAddress).createDecreasePosition{value: msg.value}(
+            _path,
+            _indexToken,
+            _collateralDelta,
+            _sizeDelta,
+            _isLong,
+            _receiver,
+            _acceptablePrice,
+            _minOut,
+            _executionFee,
+            _withdrawETH,
+            _callbackTarget
+        );
+
+        return executeDecreasePosition();
+    }
+
+    // execute the decrease position at a particular index
+    function executeDecreasePosition() public returns (bool) {
+        bytes32 _key = getRequestKey(address(this), decreasePositionRequests);
+
+        return IPositionRouter(positionRouterAddress).executeDecreasePosition(_key, address(this));
+    }
+
+    // function used by liquidator nodes to liquidate the portfolio when health factor goes bellow 1
+    function liquidatePortfolio() public {
+        uint256 _healthFactor = portfolioHealthFactor();
+        require(_healthFactor < MIN_HEALTH_FACTOR, "health factor");
+
+        for (uint256 i = 0; i < existingPositionsData.length; i++) {
+            (
+                uint256 _positionSize,
+                uint256 _positionCollateral,
+                uint256 _positionAveragePrice,
+                uint256 _positionEntryFundingRate,
+            ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].collateralToken, existingPositionsData[i].isLong);
+            // if there is collateral for the position, liquidate it
+            if (_positionCollateral > 0) {
+                // get the portfolio value with margin: collateralDelta
+                uint256 _positionValue = getPositionValueWithMargin(
+                    existingPositionsData[i].indexToken,
+                    existingPositionsData[i].collateralToken,
+                    existingPositionsData[i].isLong,
+                    _positionCollateral,
+                    _positionSize,
+                    _positionAveragePrice,
+                    _positionEntryFundingRate
+                );
+
+                // acceptable price set to 0 if it is long and twice the vault price for longs
+                uint256 _acceptablePrice = existingPositionsData[i].isLong ? 0 : IVault(vaultContractAddress).getMaxPrice(existingPositionsData[i].indexToken).mul(2);
+                _liquidatePosition(
+                    existingPositionsData[i].indexToken,
+                    existingPositionsData[i].collateralToken,
+                    existingPositionsData[i].isLong,
+                    _positionSize,
+                    _positionValue,
+                    _acceptablePrice
+                );
+            }
+        }
+    }
+
+    // internal helper function to liquidate each position
+    function _liquidatePosition(
+        address _indexToken,
+        address _collateralToken,
+        bool _isLong,
+        uint256 _positionSize,
+        uint256 _positionValue,
+        uint256 _acceptablePrice
+    ) internal {
+        // call decrease position and execute it
+        _callCreateDecreasePosition(
+            _pathFromCollateral(_collateralToken),
+            _indexToken,
+            _positionValue,
+            _positionSize,
+            _isLong,
+            lendingContractAddress,
+            _acceptablePrice,
+            0,
+            minExecutionFee,
+            _isWeth(_collateralToken),
+            address(0)
+        );
+    }
+
+    function _isWeth(address _tokenAddress) internal view returns (bool) {
+        return _tokenAddress == wethAddress;
+    }
+
+    function _pathFromCollateral(address _tokenAddress) internal pure returns (address[] memory) {
+        address[] memory  _path = new address[](1);
+        _path[0] = _tokenAddress;
+
+        return _path;
     }
 
     function validateDecreasePosition(
@@ -447,14 +575,15 @@ contract AbstractPosition is IAbstractPosition{
         return keccak256(abi.encodePacked(_indexToken, _collateralToken, _isLong));
     }
 
+    function getRequestKey(address _account, uint256 _index) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_account, _index));
+    }
+
     // allow only the governing body to run function
     function _onlyGov() private view {
         require(msg.sender == gov, "only gov can call this function");
     }
 
-    // this function will be removed after testing.
-    function deposit() payable external {
-        // deposit sizes are restricted to 1 ether
-        require(msg.value == 1 ether);
-    }
+    // deposit ethers into contract
+    function deposit() payable external {}
 }

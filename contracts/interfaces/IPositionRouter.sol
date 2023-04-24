@@ -46,4 +46,9 @@ interface IPositionRouter {
         uint256 _key,
         address payable _executionFeeReceiver
     ) external returns (bool);
+
+    function executeDecreasePosition(
+        bytes32 _key,
+        address _executionFeeReceiver
+    ) external returns (bool);
 }

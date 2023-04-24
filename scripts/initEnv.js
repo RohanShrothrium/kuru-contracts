@@ -31,7 +31,7 @@ async function main() {
 
     // deploy factory contract
     const FactoryContract = await hre.ethers.getContractFactory("FactoryContract");
-    const factoryContract = await FactoryContract.deploy(lendingContractAddress, positionRouterAddress, routerAddress, orderBookAddress, vaultAddress);
+    const factoryContract = await FactoryContract.deploy(wethAddress, lendingContractAddress, positionRouterAddress, routerAddress, orderBookAddress, vaultAddress);
     await factoryContract.deployed();
 
     const factoryContractAddress = factoryContract.address;

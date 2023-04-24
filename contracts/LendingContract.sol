@@ -118,6 +118,7 @@ contract LendingContract is ILendingContract {
         // fetch abstract position address for msg.sender
         IFactoryContract factoryContract = IFactoryContract(factoryContractAddress);
         address abstractPositionAddress = factoryContract.getContractForAccount(msg.sender);
+        require(abstractPositionAddress != address(0), "acount does not have abstract contract");
 
         // get portfolio value for the borrower against their abstract position address
         IAbstractPosition abstractPositionContract = IAbstractPosition(abstractPositionAddress);

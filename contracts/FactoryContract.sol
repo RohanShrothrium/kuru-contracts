@@ -7,6 +7,7 @@ import "./interfaces/IFactoryContract.sol";
 
 contract FactoryContract is IFactoryContract {
     address public gov;
+    address public wethAddress;
     address public lendingContractAddress;
 
     address public positionRouterAddress;
@@ -17,6 +18,7 @@ contract FactoryContract is IFactoryContract {
     mapping(address => address) public abstractPositionMap;
 
     constructor(
+        address _wethAddress,
         address _lendingContractAddress,
         address _positionRouterAddress,
         address _routerAddress,
@@ -25,6 +27,7 @@ contract FactoryContract is IFactoryContract {
     ) {
         // init state variables
         gov = msg.sender;
+        wethAddress = _wethAddress;
         lendingContractAddress = _lendingContractAddress;
         positionRouterAddress = _positionRouterAddress;
         routerAddress = _routerAddress;
@@ -38,6 +41,7 @@ contract FactoryContract is IFactoryContract {
 
         AbstractPosition abstractPosition = new AbstractPosition(
             gov,
+            wethAddress,
             lendingContractAddress,
             msg.sender,
             positionRouterAddress,
@@ -54,7 +58,6 @@ contract FactoryContract is IFactoryContract {
 
     // gets the abstract position contract address for a particular user.
     function getContractForAccount(address account) public override view returns (address) {
-        require(abstractPositionMap[account] != address(0), "acount does not have abstract contract");
         return abstractPositionMap[account];
     }
 }
