@@ -11,7 +11,7 @@ async function main() {
 
     const lendingContract = await hre.ethers.getContractAt("LendingContract", config.lendingContractAddress, signer);
 
-    const usdcContract = await hre.ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", config.usdcAddress, signer);
+    const usdcContract = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", config.usdcAddress, signer);
 
     var receipt = await usdcContract.transfer(
         config.lendingContractAddress,

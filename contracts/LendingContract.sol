@@ -79,7 +79,7 @@ contract LendingContract is ILendingContract {
     function sendUsdcToLp(address _account, uint256 _amount) external {
         require(msg.sender == klpManagerAddress, "only the klp manager can call this function");
 
-        IERC20(usdcAddress).transfer(_account, _amount);
+        require(IERC20(usdcAddress).transfer(_account, _amount), "failed to transfer out");
     }
 
     /**
@@ -182,7 +182,7 @@ contract LendingContract is ILendingContract {
         // set entery boorow rate as the current rate
         entryBorrowRate[msg.sender] = cumulativeBorrowRate;
 
-        IERC20(usdcAddress).transfer(msg.sender, _loanAmount.div(USDC_DECIMALS_DIVISOR));
+        require(IERC20(usdcAddress).transfer(msg.sender, _loanAmount.div(USDC_DECIMALS_DIVISOR)), "failed to transfer out");
     }
 
     /**
@@ -203,7 +203,7 @@ contract LendingContract is ILendingContract {
         entryBorrowRate[msg.sender] = cumulativeBorrowRate;
 
         // transfer in usdc from the borrower
-        IERC20(usdcAddress).transferFrom(msg.sender, address(this), _repayLoanAmount.div(USDC_DECIMALS_DIVISOR));
+        require(IERC20(usdcAddress).transferFrom(msg.sender, address(this), _repayLoanAmount.div(USDC_DECIMALS_DIVISOR)), "failed to transfer in");
 
         return;
     }

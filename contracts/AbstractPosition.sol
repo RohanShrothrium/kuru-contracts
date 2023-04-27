@@ -12,6 +12,7 @@ import "./interfaces/IVault.sol";
 
 import "./libraries/SafeMath.sol";
 import "./libraries/IERC20.sol";
+import "./libraries/Types.sol";
 
 /**
  * @title AbstractPosition
@@ -52,6 +53,7 @@ contract AbstractPosition is IAbstractPosition{
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
     uint256 public constant L1 = 100;
     uint256 public constant L2 = 100;
+    address public gellatoAutomateAddress = 0xB3f5503f93d5Ef84b06993a1975B9D21B962892F;
 
     // addresses
     address public gov;
@@ -70,8 +72,6 @@ contract AbstractPosition is IAbstractPosition{
 
     mapping (bytes32 => bool) positionExists;
     PositionData[] public existingPositionsData;
-
-    uint256 decreasePositionRequests = 0;
 
     constructor(
         address _gov,
@@ -97,6 +97,35 @@ contract AbstractPosition is IAbstractPosition{
         // approve position router address for router for smartcontract address
         IRouter router = IRouter(_routerAddress);
         router.approvePlugin(positionRouterAddress);
+
+        _createTask();
+    }
+
+    /**
+     * @dev Internal function to create a new Gellato task that will execute the `liquidatePortfolio` function on this contract.
+     * @notice The task is created using the Gellato automation service and the TIME module.
+     * @notice The task will have no condition or action module, and will be executed with no payment.
+     */
+    function _createTask() internal {
+        bytes memory execData = abi.encodeCall(this.liquidatePortfolio, ());
+
+        ModuleData memory moduleData = ModuleData({
+            modules: new Module[](1),
+            args: new bytes[](1)
+        });
+        moduleData.modules[0] = Module.TIME;
+
+        moduleData.args[0] = abi.encode(0, uint128(1 seconds));
+
+        IAutomate(gellatoAutomateAddress).createTask(address(this), execData, moduleData, address(0));
+    }
+
+    function _timeModuleArg(uint256 _startTime, uint256 _interval)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return abi.encode(uint128(_startTime), uint128(_interval));
     }
 
     /**
@@ -154,6 +183,15 @@ contract AbstractPosition is IAbstractPosition{
     }
 
     /**
+     * @dev Updates the gellato automate contract address.
+     * @param _gellatoAutomateAddress The new gellatoAutomateAddress address.
+     */
+    function setGellatoAutomateAddress(address _gellatoAutomateAddress) external {
+        _onlyGov();
+        gellatoAutomateAddress = _gellatoAutomateAddress;
+    }
+
+    /**
      * @dev Updates the list of all positions.
      * @param _path The path of tokens for the position.
      * @param _indexToken The index token for the position.
@@ -162,9 +200,9 @@ contract AbstractPosition is IAbstractPosition{
     function updateExistingPositions(address[] memory _path, address _indexToken, bool _isLong) internal {
         address _collateralToken = _path[_path.length.sub(1)];
 
-        if (!positionExists[getPositioKey(_indexToken, _collateralToken, _isLong)]) {
+        if (!positionExists[getPositionKey(_indexToken, _collateralToken, _isLong)]) {
             existingPositionsData.push(PositionData(_indexToken, _collateralToken, _isLong));
-            positionExists[getPositioKey(_indexToken, _collateralToken, _isLong)] = true;
+            positionExists[getPositionKey(_indexToken, _collateralToken, _isLong)] = true;
         }
     }
 
@@ -199,9 +237,9 @@ contract AbstractPosition is IAbstractPosition{
 
         updateExistingPositions(_path, _indexToken, _isLong);
 
-        IERC20(_path[0]).transferFrom(msg.sender, address(this), _amountIn);
+        require(IERC20(_path[0]).transferFrom(msg.sender, address(this), _amountIn), "failed to transfer in collateral");
 
-        IERC20(_path[0]).approve(routerAddress, _amountIn);
+        require(IERC20(_path[0]).approve(routerAddress, _amountIn), "failed to approve collateral transfer");
 
         // call GMX smart contract to create increase position
         IPositionRouter positionRouter = IPositionRouter(positionRouterAddress);
@@ -299,11 +337,8 @@ contract AbstractPosition is IAbstractPosition{
 
         require(validateDecreasePosition(_indexToken, _path, _isLong), "loan amount does not permit liquidation");
 
-        // increment the decrease position requests by 1
-        decreasePositionRequests = decreasePositionRequests.add(1);
-
         // call GMX smart contract to create decrease position
-        _callCreateDecreasePosition(
+        return _callCreateDecreasePosition(
             _path,
             _indexToken,
             _collateralDelta,
@@ -316,8 +351,6 @@ contract AbstractPosition is IAbstractPosition{
             _withdrawETH,
             _callbackTarget
         );
-
-        return executeDecreasePosition();
     }
 
     /**
@@ -348,7 +381,7 @@ contract AbstractPosition is IAbstractPosition{
         bool _withdrawETH,
         address _callbackTarget
     ) internal returns (bool) {
-        IPositionRouter(positionRouterAddress).createDecreasePosition{value: msg.value}(
+        bytes32 _reqKey = IPositionRouter(positionRouterAddress).createDecreasePosition{value: msg.value}(
             _path,
             _indexToken,
             _collateralDelta,
@@ -362,17 +395,15 @@ contract AbstractPosition is IAbstractPosition{
             _callbackTarget
         );
 
-        return executeDecreasePosition();
+        return executeDecreasePosition(_reqKey);
     }
 
     /**
      * @dev Execute the decrease position at a particular index.
      * @return True if the decrease position was executed successfully.
      */
-    function executeDecreasePosition() public returns (bool) {
-        bytes32 _key = getRequestKey(address(this), decreasePositionRequests);
-
-        return IPositionRouter(positionRouterAddress).executeDecreasePosition(_key, address(this));
+    function executeDecreasePosition(bytes32 _reqKey) public returns (bool) {
+        return IPositionRouter(positionRouterAddress).executeDecreasePosition(_reqKey, address(this));
     }
 
     /**
@@ -380,7 +411,7 @@ contract AbstractPosition is IAbstractPosition{
      */
     function liquidatePortfolio() public {
         uint256 _healthFactor = portfolioHealthFactor();
-        require(_healthFactor < MIN_HEALTH_FACTOR, "health factor");
+        require(_healthFactor < MIN_HEALTH_FACTOR && _healthFactor != 0, "health factor");
 
         for (uint256 i = 0; i < existingPositionsData.length; i++) {
             (
@@ -434,7 +465,7 @@ contract AbstractPosition is IAbstractPosition{
         uint256 _acceptablePrice
     ) internal {
         // call decrease position and execute it
-        _callCreateDecreasePosition(
+        require(_callCreateDecreasePosition(
             _pathFromCollateral(_collateralToken),
             _indexToken,
             _positionValue,
@@ -446,7 +477,7 @@ contract AbstractPosition is IAbstractPosition{
             minExecutionFee,
             _isWeth(_collateralToken),
             address(0)
-        );
+        ), "failed to liquidate position");
     }
 
     /**
@@ -712,11 +743,11 @@ contract AbstractPosition is IAbstractPosition{
      */
     function portfolioHealthFactor() public view returns (uint256) {
         uint256 _existingLoan = ILendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress);
-        uint256 _portfolioValue = getPortfolioValueWithMargin();
-
         if (_existingLoan == 0) {
             return 0;
         }
+
+        uint256 _portfolioValue = getPortfolioValueWithMargin();
 
         return _portfolioValue.mul(MIN_HEALTH_FACTOR).div(_existingLoan);
     }
@@ -736,18 +767,8 @@ contract AbstractPosition is IAbstractPosition{
      * @param _isLong Indicates whether the position is long or short.
      * @return The key of the position.
      */
-    function getPositioKey(address _indexToken, address _collateralToken, bool _isLong) public pure returns (bytes32) {
+    function getPositionKey(address _indexToken, address _collateralToken, bool _isLong) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(_indexToken, _collateralToken, _isLong));
-    }
-
-    /**
-     * @dev Computes the unique key for a given request.
-     * @param _account The address of the account that made the request.
-     * @param _index The index of the request.
-     * @return The key of the request.
-     */
-    function getRequestKey(address _account, uint256 _index) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_account, _index));
     }
 
     /**
