@@ -15,39 +15,31 @@ contract FactoryContract is IFactoryContract {
     address public wethAddress;
     address public lendingContractAddress;
 
-    address public positionRouterAddress;
-    address public routerAddress;
-    address public orderBookAddress;
-    address public vaultContractAddress;
+    address public bnbOrderManagerAddress;
+    address public bnbPoolAddress;
+    address public bnbLevelOracleAddress;
+
+    address public gellatoAutomateAddress;
 
     // Mapping to store AbstractPosition contract addresses for each user
     mapping(address => address) public abstractPositionMap;
 
-    /**
-     * @dev Constructs the FactoryContract contract
-     * @param _wethAddress The address of the WETH token contract
-     * @param _lendingContractAddress The address of the lending contract
-     * @param _positionRouterAddress The address of the PositionRouter contract
-     * @param _routerAddress The address of the Router contract
-     * @param _orderBookAddress The address of the OrderBook contract
-     * @param _vaultContractAddress The address of the Vault contract
-     */
     constructor(
-        address _wethAddress,
         address _lendingContractAddress,
-        address _positionRouterAddress,
-        address _routerAddress,
-        address _orderBookAddress,
-        address _vaultContractAddress
+        address _bnbOrderManagerAddress,
+        address _bnbPoolAddress,
+        address _bnbLevelOracleAddress,
+        address _gellatoAutomateAddress
     ) {
         // Initialize state variables
         gov = msg.sender;
-        wethAddress = _wethAddress;
         lendingContractAddress = _lendingContractAddress;
-        positionRouterAddress = _positionRouterAddress;
-        routerAddress = _routerAddress;
-        orderBookAddress = _orderBookAddress;
-        vaultContractAddress = _vaultContractAddress;
+
+        bnbOrderManagerAddress = _bnbOrderManagerAddress;
+        bnbPoolAddress = _bnbPoolAddress;
+        bnbLevelOracleAddress = _bnbLevelOracleAddress;
+
+        gellatoAutomateAddress = _gellatoAutomateAddress;
     }
 
     /**
@@ -63,10 +55,10 @@ contract FactoryContract is IFactoryContract {
             wethAddress,
             lendingContractAddress,
             msg.sender,
-            positionRouterAddress,
-            routerAddress,
-            orderBookAddress,
-            vaultContractAddress
+            bnbOrderManagerAddress,
+            bnbPoolAddress,
+            bnbLevelOracleAddress,
+            gellatoAutomateAddress
         );
 
         abstractPositionMap[msg.sender] = address(abstractPosition);

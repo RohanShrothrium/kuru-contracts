@@ -5,10 +5,15 @@ pragma solidity >=0.6.12;
 import "./interfaces/IAbstractPosition.sol";
 import "./interfaces/ILendingContract.sol";
 
+// GMX interfaces
 import "./interfaces/IRouter.sol";
 import "./interfaces/IPositionRouter.sol";
-import "./interfaces/IOrderBook.sol";
 import "./interfaces/IVault.sol";
+
+// Level interfaces
+import "./interfaces/ILevelOracle.sol";
+import "./interfaces/IPool.sol";
+import "./interfaces/IOrderManager.sol";
 
 import "./libraries/SafeMath.sol";
 import "./libraries/IERC20.sol";
@@ -21,7 +26,7 @@ import "./libraries/Types.sol";
  * This contract holds the collateral and index tokens for all existing positions, and calculates the margin, the health factor, and the unrealized and realized profits and losses of each position.
  * This contract is owned by an external account, which is responsible for calling its functions in order to open, increase, or close positions.
  */
-contract AbstractPosition is IAbstractPosition{
+contract AbstractPosition {
     using SafeMath for uint256;
 
     /**
@@ -53,35 +58,37 @@ contract AbstractPosition is IAbstractPosition{
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
     uint256 public constant L1 = 100;
     uint256 public constant L2 = 100;
-    address public gellatoAutomateAddress = 0xB3f5503f93d5Ef84b06993a1975B9D21B962892F;
+    address private constant BNB = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     // addresses
     address public gov;
     address public wethAddress;
     address public lendingContractAddress;
 
-    // gmx contracts
-    address public positionRouterAddress;
-    address public routerAddress;
-    address public orderBookAddress;
-    address public vaultContractAddress;
+    // bnb contracts
+    address public orderManagerAddress;
+    address public poolAddress;
+    address public levelOracleAddress;
+
+    // geleato automate task address
+    address public gellatoAutomateAddress;
 
     address public ownerAddress;
 
     uint256 public minExecutionFee;
 
     mapping (bytes32 => bool) positionExists;
-    PositionData[] public existingPositionsData;
+    BnbPositionData[] public existingPositionsData;
 
     constructor(
         address _gov,
         address _wethAddress,
         address _lendingContractAddress,
         address _ownerAddress,
-        address _positionRouterAddress,
-        address _routerAddress,
-        address _orderBookAddress,
-        address _vaultContractAddress
+        address _orderManagerAddress,
+        address _poolAddress,
+        address _levelOracleAddress,
+        address _gellatoAutomateAddress
     ) {
         // init state variables
         gov = _gov;
@@ -89,15 +96,13 @@ contract AbstractPosition is IAbstractPosition{
         wethAddress = _wethAddress;
         lendingContractAddress = _lendingContractAddress;
 
-        positionRouterAddress = _positionRouterAddress;
-        routerAddress = _routerAddress;
-        orderBookAddress = _orderBookAddress;
-        vaultContractAddress = _vaultContractAddress;
+        // initial level fi variables
+        orderManagerAddress = _orderManagerAddress;
+        poolAddress = _poolAddress;
+        levelOracleAddress = _levelOracleAddress;
 
-        // approve position router address for router for smartcontract address
-        IRouter router = IRouter(_routerAddress);
-        router.approvePlugin(positionRouterAddress);
-
+        // initialize gelato variables
+        gellatoAutomateAddress = _gellatoAutomateAddress;
         _createTask();
     }
 
@@ -120,290 +125,64 @@ contract AbstractPosition is IAbstractPosition{
         IAutomate(gellatoAutomateAddress).createTask(address(this), execData, moduleData, address(0));
     }
 
-    function _timeModuleArg(uint256 _startTime, uint256 _interval)
-        internal
-        pure
-        returns (bytes memory)
-    {
-        return abi.encode(uint128(_startTime), uint128(_interval));
-    }
-
     /**
-     * @dev Updates the WETH address.
-     * @param _wethAddress The new WETH address.
-     */
-    function setWethAddress(address _wethAddress) external {
-        _onlyGov();
-        wethAddress = _wethAddress;
-    }
-
-    /**
-     * @dev Updates the lending contract address.
+     * @dev Updates the leding contract address.
      * @param _lendingContractAddress The new lending contract address.
      */
-    function setLendingContractAddress(address _lendingContractAddress) external {
+    function setLendingContractAddress(address _lendingContractAddress) public {
         _onlyGov();
         lendingContractAddress = _lendingContractAddress;
     }
 
     /**
-     * @dev Updates the position router address.
-     * @param newAddress The new position router address.
+     * @dev Updates the order manager address.
+     * @param _orderManagerAddress The new order manager address.
      */
-    function setPositionRouterAddress(address newAddress) external {
+    function setOrderManagerAddress(address _orderManagerAddress) public {
         _onlyGov();
-        positionRouterAddress = newAddress;
+        orderManagerAddress = _orderManagerAddress;
     }
 
     /**
-     * @dev Updates the router address.
-     * @param newAddress The new router address.
+     * @dev Updates the level pool address.
+     * @param _poolAddress The new level pool address.
      */
-    function setRouterAddress(address newAddress) external {
+    function setLevelPoolAddress(address _poolAddress) public {
         _onlyGov();
-        routerAddress = newAddress;
+        poolAddress = _poolAddress;
     }
 
     /**
-     * @dev Updates the vault contract address.
-     * @param _vaultContractAddress The new minimum execution fee.
+     * @dev Updates the level oracle address.
+     * @param _levelOracleAddress The new level oracle address.
      */
-    function setVaultContractAddress(address _vaultContractAddress) public {
+    function setLevelOracleAddress(address _levelOracleAddress) public {
         _onlyGov();
-        vaultContractAddress = _vaultContractAddress;
+        levelOracleAddress = _levelOracleAddress;
     }
 
     /**
-     * @dev Sets the minimum execution fee for orders.
-     * @param _minExecutionFee The new minimum execution fee.
+     * @dev Computes the unique key for a given position.
+     * @param _indexToken The address of the index token in the position.
+     * @param _collateralToken The address of the collateral token in the position.
+     * @param _isLong Indicates whether the position is long or short.
+     * @return The key of the position.
      */
-    function setMinExecutionFee(uint256 _minExecutionFee) public {
-        _onlyGov();
-        minExecutionFee = _minExecutionFee;
-    }
-
-    /**
-     * @dev Updates the gellato automate contract address.
-     * @param _gellatoAutomateAddress The new gellatoAutomateAddress address.
-     */
-    function setGellatoAutomateAddress(address _gellatoAutomateAddress) external {
-        _onlyGov();
-        gellatoAutomateAddress = _gellatoAutomateAddress;
+    function getPositionKey(address _indexToken, address _collateralToken, bool _isLong) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_indexToken, _collateralToken, _isLong));
     }
 
     /**
      * @dev Updates the list of all positions.
-     * @param _path The path of tokens for the position.
+     * @param _collateralToken The path of tokens for the position.
      * @param _indexToken The index token for the position.
-     * @param _isLong The position direction, long or short.
+     * @param _side The position direction, long or short.
      */
-    function updateExistingPositions(address[] memory _path, address _indexToken, bool _isLong) internal {
-        address _collateralToken = _path[_path.length.sub(1)];
-
-        if (!positionExists[getPositionKey(_indexToken, _collateralToken, _isLong)]) {
-            existingPositionsData.push(PositionData(_indexToken, _collateralToken, _isLong));
-            positionExists[getPositionKey(_indexToken, _collateralToken, _isLong)] = true;
+    function updateExistingPositions(address _collateralToken, address _indexToken, Side _side) internal {
+        if (!positionExists[getPositionKey(_indexToken, _collateralToken, _side == Side.LONG)]) {
+            existingPositionsData.push(BnbPositionData(_indexToken, _collateralToken, _side));
+            positionExists[getPositionKey(_indexToken, _collateralToken, _side == Side.LONG)] = true;
         }
-    }
-
-     /**
-     * @dev Function to open or increase a long or short position with the specified parameters.
-     * @param _path An array of token addresses that form the path to the destination token.
-     * @param _indexToken The address of the index token that the position is based on.
-     * @param _amountIn The input amount of tokens.
-     * @param _minOut The minimum acceptable amount of index tokens to receive as output from the trade.
-     * @param _sizeDelta The amount to increase the position size by. If opening a new position, this value is the size of the position.
-     * @param _isLong A boolean flag indicating if the position is long (true) or short (false).
-     * @param _acceptablePrice The maximum price in basis points that the position can be opened or increased at.
-     * @param _executionFee The fee to be paid for executing the trade.
-     * @param _referralCode The referral code for the user.
-     * @param _callbackTarget The address of the contract to be called on successful execution of the trade.
-     * @return A bytes32 value representing the request ID for the trade.
-     */
-    function callCreateIncreasePosition(
-        address[] memory _path,
-        address _indexToken,
-        uint256 _amountIn,
-        uint256 _minOut,
-        uint256 _sizeDelta,
-        bool _isLong,
-        uint256 _acceptablePrice,
-        uint256 _executionFee,
-        bytes32 _referralCode,
-        address _callbackTarget
-    ) external payable returns (bytes32) {
-        // validate weather the function is called by the owner of this smart contract
-        require(msg.sender == ownerAddress, "only the owner can call this function");
-
-        updateExistingPositions(_path, _indexToken, _isLong);
-
-        require(IERC20(_path[0]).transferFrom(msg.sender, address(this), _amountIn), "failed to transfer in collateral");
-
-        require(IERC20(_path[0]).approve(routerAddress, _amountIn), "failed to approve collateral transfer");
-
-        // call GMX smart contract to create increase position
-        IPositionRouter positionRouter = IPositionRouter(positionRouterAddress);
-        return
-            positionRouter.createIncreasePosition{value: msg.value}(
-                _path,
-                _indexToken,
-                _amountIn,
-                _minOut,
-                _sizeDelta,
-                _isLong,
-                _acceptablePrice,
-                _executionFee,
-                _referralCode,
-                _callbackTarget
-            );
-    }
-
-    /**
-     * @dev Function to open or increase a long or short position with the specified parameters.
-     * @param _path An array of token addresses that form the path to the destination token.
-     * @param _indexToken The address of the index token that the position is based on.
-     * @param _minOut The minimum acceptable amount of index tokens to receive as output from the trade.
-     * @param _sizeDelta The amount to increase the position size by. If opening a new position, this value is the size of the position.
-     * @param _isLong A boolean flag indicating if the position is long (true) or short (false).
-     * @param _acceptablePrice The maximum price in basis points that the position can be opened or increased at.
-     * @param _executionFee The fee to be paid for executing the trade.
-     * @param _referralCode The referral code for the user.
-     * @param _callbackTarget The address of the contract to be called on successful execution of the trade.
-     * @return A bytes32 value representing the request ID for the trade.
-     */
-    function callCreateIncreasePositionETH(
-        address[] memory _path,
-        address _indexToken,
-        uint256 _minOut,
-        uint256 _sizeDelta,
-        bool _isLong,
-        uint256 _acceptablePrice,
-        uint256 _executionFee,
-        bytes32 _referralCode,
-        address _callbackTarget
-    ) external payable returns (bytes32) {
-        // validate weather the function is called by the owner of this smart contract
-        require(msg.sender == ownerAddress, "only the owner can call this function");
-
-        updateExistingPositions(_path, _indexToken, _isLong);
-
-        // call GMX smart contract to create increase position
-        IPositionRouter positionRouter = IPositionRouter(positionRouterAddress);
-        return
-            positionRouter.createIncreasePositionETH{value: msg.value}(
-                _path,
-                _indexToken,
-                _minOut,
-                _sizeDelta,
-                _isLong,
-                _acceptablePrice,
-                _executionFee,
-                _referralCode,
-                _callbackTarget
-            );
-    }
-
-    /**
-     * @dev Internal helper function to decrease a position.
-     * @param _path An array of token addresses that form the path to the index token.
-     * @param _indexToken The address of the index token that the position is based on.
-     * @param _collateralDelta The change in collateral size of the position.
-     * @param _sizeDelta The change in position size.
-     * @param _isLong A boolean flag indicating if the position is long (true) or short (false).
-     * @param _receiver The address of the receiver of the decreased position.
-     * @param _acceptablePrice The acceptable price for the trade.
-     * @param _minOut The minimum output of the trade.
-     * @param _executionFee The fee for executing the trade.
-     * @param _withdrawETH A boolean flag to determine if ETH should be withdrawn.
-     * @param _callbackTarget The address of the contract to be called on successful execution of the trade.
-     * @return True if the decrease position was executed successfully.
-     */
-    function callCreateDecreasePosition(
-        address[] memory _path,
-        address _indexToken,
-        uint256 _collateralDelta,
-        uint256 _sizeDelta,
-        bool _isLong,
-        address _receiver,
-        uint256 _acceptablePrice,
-        uint256 _minOut,
-        uint256 _executionFee,
-        bool _withdrawETH,
-        address _callbackTarget
-    ) external payable returns (bool) {
-        // validate weather the function is called by the owner of this smart contract
-        require(msg.sender == ownerAddress || msg.sender == lendingContractAddress, "only the owner or gov can call this function");
-        require(msg.value == _executionFee, "fee");
-
-        require(validateDecreasePosition(_indexToken, _path, _isLong), "loan amount does not permit liquidation");
-
-        // call GMX smart contract to create decrease position
-        return _callCreateDecreasePosition(
-            _path,
-            _indexToken,
-            _collateralDelta,
-            _sizeDelta,
-            _isLong,
-            _receiver,
-            _acceptablePrice,
-            _minOut,
-            _executionFee,
-            _withdrawETH,
-            _callbackTarget
-        );
-    }
-
-    /**
-     * @dev Internal helper function to decrease a position.
-     * @param _path An array of token addresses that form the path to the destination token.
-     * @param _indexToken The address of the index token that the position is based on.
-     * @param _collateralDelta The change in collateral size of the position.
-     * @param _sizeDelta The change in position size.
-     * @param _isLong A boolean flag indicating if the position is long (true) or short (false).
-     * @param _receiver The address of the receiver of the decreased position.
-     * @param _acceptablePrice The acceptable price for the trade.
-     * @param _minOut The minimum output of the trade.
-     * @param _executionFee The fee for executing the trade.
-     * @param _withdrawETH A boolean flag to determine if ETH should be withdrawn.
-     * @param _callbackTarget The address of the contract to be called on successful execution of the trade.
-     * @return True if the decrease position was executed successfully.
-     */
-    function _callCreateDecreasePosition(
-        address[] memory _path,
-        address _indexToken,
-        uint256 _collateralDelta,
-        uint256 _sizeDelta,
-        bool _isLong,
-        address _receiver,
-        uint256 _acceptablePrice,
-        uint256 _minOut,
-        uint256 _executionFee,
-        bool _withdrawETH,
-        address _callbackTarget
-    ) internal returns (bool) {
-        bytes32 _reqKey = IPositionRouter(positionRouterAddress).createDecreasePosition{value: msg.value}(
-            _path,
-            _indexToken,
-            _collateralDelta,
-            _sizeDelta,
-            _isLong,
-            _receiver,
-            _acceptablePrice,
-            _minOut,
-            _executionFee,
-            _withdrawETH,
-            _callbackTarget
-        );
-
-        return executeDecreasePosition(_reqKey);
-    }
-
-    /**
-     * @dev Execute the decrease position at a particular index.
-     * @return True if the decrease position was executed successfully.
-     */
-    function executeDecreasePosition(bytes32 _reqKey) public returns (bool) {
-        return IPositionRouter(positionRouterAddress).executeDecreasePosition(_reqKey, address(this));
     }
 
     /**
@@ -414,104 +193,138 @@ contract AbstractPosition is IAbstractPosition{
         require(_healthFactor < MIN_HEALTH_FACTOR && _healthFactor != 0, "health factor");
 
         for (uint256 i = 0; i < existingPositionsData.length; i++) {
-            (
-                uint256 _positionSize,
-                uint256 _positionCollateral,
-                uint256 _positionAveragePrice,
-                uint256 _positionEntryFundingRate,
-            ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].collateralToken, existingPositionsData[i].isLong);
-            // if there is collateral for the position, liquidate it
-            if (_positionCollateral > 0) {
-                // get the portfolio value with margin: collateralDelta
-                uint256 _positionValue = getPositionValueWithMargin(
-                    existingPositionsData[i].indexToken,
-                    existingPositionsData[i].collateralToken,
-                    existingPositionsData[i].isLong,
-                    _positionCollateral,
-                    _positionSize,
-                    _positionAveragePrice,
-                    _positionEntryFundingRate
-                );
+            BnbPosition memory _position = getPosition(
+                existingPositionsData[i].indexToken,
+                existingPositionsData[i].collateralToken,
+                existingPositionsData[i].side
+            );
 
-                // acceptable price set to 0 if it is long and twice the vault price for longs
-                uint256 _acceptablePrice = existingPositionsData[i].isLong ? 0 : IVault(vaultContractAddress).getMaxPrice(existingPositionsData[i].indexToken).mul(2);
-                _liquidatePosition(
-                    existingPositionsData[i].indexToken,
-                    existingPositionsData[i].collateralToken,
-                    existingPositionsData[i].isLong,
-                    _positionSize,
-                    _positionValue,
-                    _acceptablePrice
-                );
-            }
+            uint256 _oraclePrice = ILevelOracle(levelOracleAddress).getPrice(existingPositionsData[i].indexToken, true);
+
+            uint256 _price = existingPositionsData[i].side == Side.LONG ? 0 : _oraclePrice.mul(2);
+            bytes memory _data = abi.encode(
+                _price,
+                existingPositionsData[i].collateralToken,
+                _position.size,
+                _position.collateralValue,
+                bytes("")
+            );
+
+            _callDecreasePlaceOrder(
+                existingPositionsData[i].side,
+                existingPositionsData[i].indexToken,
+                existingPositionsData[i].collateralToken,
+                _data
+            );
+            
         }
     }
 
     /**
-     * @dev Internal helper function to liquidate each position.
-     * @param _indexToken The address of the index token that the position is based on.
-     * @param _collateralToken The collateral token for the position.
-     * @param _isLong A boolean flag to determine if the position is long.
-     * @param _positionSize The size of the position to liquidate.
-     * @param _positionValue The value of the position to liquidate.
-     * @param _acceptablePrice The acceptable price for the trade.
+     * @dev Function to open or increase a long or short position with the specified parameters.
+     *
+     * @param _side The side of the order, either LONG or SHORT.
+     * @param _indexToken The token that the position is in.
+     * @param _collateralToken The token used as collateral for the position.
+     * @param price The acceptable price for token.
+     * @param payToken The token used to pay for the order.
+     * @param purchaseAmount The amount of the payToken used to purchase the position.
+     * @param sizeChange The amount by which to increase the position size.
+     * @param _collateral The amount of collateral to use for the order.
      */
-    function _liquidatePosition(
+    function callIncreasePlaceOrder(
+        Side _side,
         address _indexToken,
         address _collateralToken,
-        bool _isLong,
-        uint256 _positionSize,
-        uint256 _positionValue,
-        uint256 _acceptablePrice
-    ) internal {
-        // call decrease position and execute it
-        require(_callCreateDecreasePosition(
-            _pathFromCollateral(_collateralToken),
+        uint256 price,
+        address payToken,
+        uint256 purchaseAmount,
+        uint256 sizeChange,
+        uint256 _collateral
+    ) public payable {
+        require(msg.sender == ownerAddress, "only the owner can call this function");
+
+        UpdatePositionType _updateType = UpdatePositionType.INCREASE;
+        // todo: support limit orders
+        OrderType _orderType = OrderType.MARKET;
+
+        updateExistingPositions(_collateralToken, _indexToken, _side);
+
+        if (payToken != BNB) {
+            require(IERC20(payToken).transferFrom(msg.sender, address(this), purchaseAmount), "failed to transfer in collateral");
+            require(IERC20(payToken).approve(orderManagerAddress, purchaseAmount), "failed to approve collateral transfer");
+        }
+
+        bytes memory _data = abi.encode(price, payToken, purchaseAmount, sizeChange, _collateral, bytes(""));
+
+        IOrderManager(orderManagerAddress).placeOrder{value: msg.value}(
+            _updateType,
+            _side,
             _indexToken,
-            _positionValue,
-            _positionSize,
-            _isLong,
-            lendingContractAddress,
-            _acceptablePrice,
-            0,
-            minExecutionFee,
-            _isWeth(_collateralToken),
-            address(0)
-        ), "failed to liquidate position");
+            _collateralToken,
+            _orderType,
+            _data
+        );
     }
 
     /**
-     * @dev Internal helper function to check if a token is WETH.
-     * @param _tokenAddress The address of the token to check.
-     * @return True if the token is WETH.
+     * @dev Function to close or decrease a long or short position with the specified parameters.
+     * @param _side The side of the order, either LONG or SHORT.
+     * @param _indexToken The token that the position is in.
+     * @param _collateralToken The token used as collateral for the position.
+     * @param price The acceptable price for token.
+     * @param payToken The token used to pay for the order.
+     * @param sizeChange The amount by which to decrease the position size.
+     * @param _collateral The amount of collateral to use for the order.
      */
-    function _isWeth(address _tokenAddress) internal view returns (bool) {
-        return _tokenAddress == wethAddress;
+    function callDecreasePlaceOrder(
+        Side _side,
+        address _indexToken,
+        address _collateralToken,
+        uint256 price,
+        address payToken,
+        uint256 sizeChange,
+        uint256 _collateral
+    ) public payable {
+        require(msg.sender == ownerAddress, "only the owner can call this function");
+
+        require(validateDecreasePosition(_indexToken, _collateralToken, _side), "loan amount does not permit liquidation");
+
+        bytes memory _data = abi.encode(price, payToken, sizeChange, _collateral, bytes(""));
+
+        _callDecreasePlaceOrder(_side, _indexToken, _collateralToken, _data);
     }
 
     /**
-     * @dev Internal helper function to get the path of tokens from collateral.
-     * @param _tokenAddress The address of the collateral token.
-     * @return The path of tokens from the collateral.
+     * @dev Function to close or decrease a long or short position with the specified parameters.
+     * @param _side The side of the order, either LONG or SHORT.
+     * @param _indexToken The token that the position is in.
+     * @param _collateralToken The token used as collateral for the position.
+     * @param _data encoded data for placing the order.
      */
-    function _pathFromCollateral(address _tokenAddress) internal pure returns (address[] memory) {
-        address[] memory  _path = new address[](1);
-        _path[0] = _tokenAddress;
-
-        return _path;
+    function _callDecreasePlaceOrder(
+        Side _side,
+        address _indexToken,
+        address _collateralToken,
+        bytes memory _data
+    ) internal {
+        // todo: support limit orders
+        IOrderManager(orderManagerAddress).placeOrder(
+            UpdatePositionType.DECREASE, _side, _indexToken, _collateralToken, OrderType.MARKET, _data
+        );
     }
 
     /**
     * @dev Validates whether a decrease in position can be made without breaching the minimum health factor requirement.
     * @param _indexToken The address of the index token in the position to be decreased.
-    * @param _path The array of addresses representing the path from the index token to the collateral token.
-    * @param _isLong The boolean value representing whether the position is long or short.
+    * @param _collateralToken The address of the collateral token in the position to be decreased.
+    * @param _side The side of the order, either LONG or SHORT.
     * @return A boolean value indicating whether a decrease in position can be made without breaching the minimum health factor requirement.
     */
     function validateDecreasePosition(
         address _indexToken,
-        address[] memory _path,
-        bool _isLong
+        address _collateralToken,
+        Side _side
     ) public view returns (bool) {
         uint256 _existingLoan = ILendingContract(lendingContractAddress).existingLoanOnPortfolio(ownerAddress);
 
@@ -519,110 +332,141 @@ contract AbstractPosition is IAbstractPosition{
             return true;
         }
 
-        (
-            uint256 _positionSize,
-            uint256 _positionCollateral,
-            uint256 _positionAveragePrice,
-            ,
-            uint256 _positionLastIncreasedTime
-        ) = getPosition(_indexToken, _path[_path.length.sub(1)], _isLong);
-
         uint256 _portfolioValue = getPortfolioValueWithMargin();
 
-        uint256 positionValue = getPositionValue(
-            _indexToken,
-            _isLong,
-            _positionCollateral,
-            _positionSize,
-            _positionAveragePrice,
-            _positionLastIncreasedTime
-        );
+        uint256 _positionValue = getPositionValue(_indexToken, _collateralToken, _side);
 
-        if (_portfolioValue < positionValue) {
+        if (_portfolioValue < _positionValue) {
             return false;
         }
 
-        uint256 _healthFactor = (_portfolioValue.sub(positionValue)).mul(MIN_HEALTH_FACTOR).div(_existingLoan);
+        uint256 _healthFactor = (_portfolioValue.sub(_positionValue)).mul(MIN_HEALTH_FACTOR).div(_existingLoan);
 
         return _healthFactor > MIN_DECREASE_HEALTH_FACTOR;
     }
 
     /**
-    * @dev Returns the value of the overall portfolio.
-    * @return A uint256 value representing the value of the overall portfolio.
-    */
-    function getPortfolioValue() public override view returns (uint256) {
+     * @dev Gets position for index token and side.
+     * @param _indexToken The address of the index token.
+     * @param _collateralToken The address of the collateral token.
+     * @param _side The side of the order, either LONG or SHORT.
+     * @return The size, collateral, average price, entry funding rate, and last increased time of the position.
+     */
+    function getPosition(
+        address _indexToken,
+        address _collateralToken,
+        Side _side
+    ) public view returns (BnbPosition memory) {
+        BnbPosition memory _position;
+        (
+            _position.size,
+            _position.collateralValue,
+            _position.reserveAmount,
+            _position.entryPrice,
+            _position.borrowIndex
+        ) = IPool(poolAddress).positions(
+            _getPositionKey(address(this), _indexToken, _collateralToken, _side)
+        );
+
+        return _position;
+    }
+
+    /**
+     * @dev Gets the absolute value of a position.
+     * @param _indexToken The address of the index token.
+     * @param _collateralToken The address of the collateral token.
+     * @param _side The side of the order, either LONG or SHORT.
+     * @return _positionValue A uint256 value representing the absolute value of the position.
+     */
+    function getPositionValue(
+        address _indexToken,
+        address _collateralToken,
+        Side _side
+    ) public view returns (uint256 _positionValue) {
+        BnbPosition memory _position = getPosition(_indexToken, _collateralToken, _side);
+
+        (uint256 delta, bool hasProfit) = getDelta(_indexToken, _side, _position.size, _position.entryPrice);
+
+        if (!hasProfit && delta > _position.collateralValue) {
+            return 0;
+        }
+
+        hasProfit ? _positionValue = _position.collateralValue.add(delta) : _positionValue = _position.collateralValue.sub(delta);
+    }
+
+    /**
+     * @dev Gets position value and factors in L1 percent price drop.
+     * @param _indexToken The address of the index token.
+     * @param _collateralToken The address of the collateral token.
+     * @param _side The side of the order, either LONG or SHORT.
+     * @return _positionValue The position value with margin.
+     */
+    function getPositionValueWithMargin(
+        address _indexToken,
+        address _collateralToken,
+        Side _side
+    ) public view returns (uint256 _positionValue) {
+        BnbPosition memory _position = getPosition(_indexToken, _collateralToken, _side);
+
+        uint256 _positionFee = _getPositionFee(_position, _indexToken, _position.size);
+
+        (uint256 delta, bool hasProfit) = getDeltaWithMargin(_indexToken, _side, _position.size, _position.entryPrice);
+
+        if (!hasProfit && delta.add(_positionFee) > _position.collateralValue) {
+            return 0;
+        }
+
+        _positionValue = hasProfit ? _position.collateralValue.add(delta).sub(_positionFee) : _position.collateralValue.sub(delta).sub(_positionFee);
+    }
+
+    /**
+     * @dev Returns the value of the overall portfolio.
+     * @return A uint256 value representing the value of the overall portfolio.
+     */
+    function getPortfolioValue() public view returns (uint256) {
         uint256 _portfolioValue = 0;
+
+        // iterate over all existing position
         for (uint256 i = 0; i < existingPositionsData.length; i++) {
-            (
-                uint256 positionSize,
-                uint256 positionCollateral,
-                uint256 positionAveragePrice,
-                ,
-                uint256 positionLastIncreasedTime
-            ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].collateralToken, existingPositionsData[i].isLong);
-            if (positionCollateral > 0) {
-                _portfolioValue += getPositionValue(existingPositionsData[i].indexToken, existingPositionsData[i].isLong, positionCollateral, positionSize, positionAveragePrice, positionLastIncreasedTime);
-            }
+            // get value of the position
+            uint256 _positionValue = getPositionValueWithMargin(
+                existingPositionsData[i].indexToken,
+                existingPositionsData[i].collateralToken,
+                existingPositionsData[i].side
+            );
+            
+            // add the value to the overall portfolio value
+            _portfolioValue = _portfolioValue.add(_positionValue);
         }
 
         return _portfolioValue;
     }
 
     /**
-    * @dev Gets the absolute value of a position.
-    * @param _indexToken The address of the index token in the position.
-    * @param _isLong The boolean value representing whether the position is long or short.
-    * @param _positionCollateral The amount of collateral in the position.
-    * @param _positionSize The size of the position.
-    * @param _positionAveragePrice The average price of the position.
-    * @param _positionLastIncreasedTime The timestamp representing the last time the position was increased.
-    * @return A uint256 value representing the absolute value of the position.
-    */
-    function getPositionValue(
-        address _indexToken,
-        bool _isLong,
-        uint256 _positionCollateral,
-        uint256 _positionSize,
-        uint256 _positionAveragePrice,
-        uint256 _positionLastIncreasedTime
-    ) public view returns (uint256) {
-        if (_positionCollateral == 0) {
-            return 0;
-        }
-        (bool _hasProfit, uint256 delta) = IVault(vaultContractAddress).getDelta(
-            _indexToken,
-            _positionSize,
-            _positionAveragePrice,
-            _isLong,
-            _positionLastIncreasedTime
-        );
-
-        if (_hasProfit) {
-            return _positionCollateral.add(delta);
-        } else {
-            return _positionCollateral.sub(delta);
-        }
-    }
-
-    /**
-    * @dev Returns the value of the overall portfolio with L1 percent margin.
-    * @return A uint256 value representing the value of the overall portfolio with L1 percent margin.
-    */
+     * @dev Returns the value of the overall portfolio with L1 percent margin.
+     * @return A uint256 value representing the value of the overall portfolio with L1 percent margin.
+     */
     function getPortfolioValueWithMargin() public view returns (uint256) {
         uint256 _portfolioValue = 0;
         uint256 _portfolioSize = 0;
         for (uint256 i = 0; i < existingPositionsData.length; i++) {
-            (
-                uint256 _positionSize,
-                uint256 _positionCollateral,
-                uint256 _positionAveragePrice,
-                uint256 _positionEntryFundingRate,
-            ) = getPosition(existingPositionsData[i].indexToken, existingPositionsData[i].collateralToken, existingPositionsData[i].isLong);
-            if (_positionCollateral > 0) {
-                _portfolioValue += getPositionValueWithMargin(existingPositionsData[i].indexToken, existingPositionsData[i].collateralToken, existingPositionsData[i].isLong, _positionCollateral, _positionSize, _positionAveragePrice, _positionEntryFundingRate);
-                _portfolioSize += _positionSize;
-            }
+            uint256 _positionValue = getPositionValue(
+                existingPositionsData[i].indexToken,
+                existingPositionsData[i].collateralToken,
+                existingPositionsData[i].side
+            );
+
+            // add the value to the overall portfolio value
+            _portfolioValue = _portfolioValue.add(_positionValue);
+
+            BnbPosition memory _position = getPosition(
+                existingPositionsData[i].indexToken,
+                existingPositionsData[i].collateralToken,
+                existingPositionsData[i].side
+            );
+
+            // add the position size to portfolio size
+            _portfolioSize = _portfolioSize.add(_position.size);
         }
 
         uint256 _interestToCollect = ILendingContract(lendingContractAddress).interestToCollect(ownerAddress);
@@ -630,111 +474,6 @@ contract AbstractPosition is IAbstractPosition{
         _portfolioValue = _portfolioValue.sub(_portfolioSize.mul(L2).div(BASIS_POINTS_DIVISOR)).sub(_interestToCollect);
 
         return _portfolioValue;
-    }
-
-    /**
-     * @dev Gets position value and factors in L1 percent price drop.
-     * @param _indexToken The address of the index token.
-     * @param _collateralToken The address of the collateral token.
-     * @param _isLong Whether the position is long.
-     * @param _positionCollateral The amount of collateral held in the position.
-     * @param _positionSize The size of the position.
-     * @param _positionAveragePrice The average price of the position.
-     * @param _positionEntryFundingRate The entry funding rate of the position.
-     * @return The position value with margin.
-     */
-    function getPositionValueWithMargin(
-        address _indexToken,
-        address _collateralToken,
-        bool _isLong,
-        uint256 _positionCollateral,
-        uint256 _positionSize,
-        uint256 _positionAveragePrice,
-        uint256 _positionEntryFundingRate
-    ) public view returns (uint256) {
-        (bool _hasProfit, uint256 delta) = getDeltaWithMargin(
-            _indexToken,
-            _positionSize,
-            _positionAveragePrice,
-            _isLong
-        );
-
-        uint256 _marginFees = IVault(vaultContractAddress).getFundingFee(_collateralToken, _positionSize, _positionEntryFundingRate);
-        _marginFees += IVault(vaultContractAddress).getPositionFee(_positionSize);        
-
-        if (_hasProfit) {
-            return _positionCollateral.add(delta).sub(_marginFees);
-        } else {
-            return _positionCollateral.sub(delta).sub(_marginFees);
-        }
-    }
-
-    
-    /**
-     * @dev Gets position for index token and side.
-     * @param _indexToken The address of the index token.
-     * @param _collateralToken The address of the collateral token.
-     * @param _isLong Whether the position is long.
-     * @return The size, collateral, average price, entry funding rate, and last increased time of the position.
-     */
-    function getPosition(
-        address _indexToken,
-        address _collateralToken,
-        bool _isLong
-    ) public view returns (uint256, uint256, uint256, uint256, uint256) {
-        Position memory position;
-        (
-            position.size,
-            position.collateral,
-            position.averagePrice,
-            position.entryFundingRate,
-            ,
-            ,
-            ,
-            position.lastIncreasedTime
-        ) = IVault(vaultContractAddress).getPosition(address(this), _collateralToken, _indexToken, _isLong);
-
-
-        return (
-            position.size,
-            position.collateral,
-            position.averagePrice,
-            position.entryFundingRate,
-            position.lastIncreasedTime
-        );
-    }
-
-    /**
-     * @dev Gets pnl for position with L1 percent drop margin.
-     * @param _indexToken The address of the index token.
-     * @param _size The size of the position.
-     * @param _averagePrice The average price of the position.
-     * @param _isLong Whether the position is long.
-     * @return Whether the position has profit and the delta with margin.
-     */
-    function getDeltaWithMargin(address _indexToken, uint256 _size, uint256 _averagePrice, bool _isLong) public view returns (bool, uint256) {
-        require(_averagePrice > 0, "averge price of position has to be greater than 0");
-        uint256 price = _isLong
-            ? IVault(vaultContractAddress)
-                .getMinPrice(_indexToken)
-                .mul(BASIS_POINTS_DIVISOR.sub(L1))
-                .div(BASIS_POINTS_DIVISOR)
-            : IVault(vaultContractAddress)
-                .getMaxPrice(_indexToken)
-                .mul(BASIS_POINTS_DIVISOR.add(L1))
-                .div(BASIS_POINTS_DIVISOR);
-        uint256 priceDelta = _averagePrice > price ? _averagePrice.sub(price) : price.sub(_averagePrice);
-        uint256 delta = _size.mul(priceDelta).div(_averagePrice);
-
-        bool hasProfit;
-
-        if (_isLong) {
-            hasProfit = price > _averagePrice;
-        } else {
-            hasProfit = _averagePrice > price;
-        }
-
-        return (hasProfit, delta);
     }
 
     /**
@@ -753,25 +492,116 @@ contract AbstractPosition is IAbstractPosition{
     }
 
     /**
+     * @dev Gets pnl for position.
+     * @param _indexToken The address of the index token.
+     * @param _side The side of the order, either LONG or SHORT.
+     * @param _size The overall size of the position.
+     * @param _averagePrice The average price of the position.
+     * @return delta The absolute value of profit/loss.
+     * @return hasProfit Bool representing the position has a profit.
+     */
+    function getDelta(
+        address _indexToken,
+        Side _side,
+        uint256 _size,
+        uint256 _averagePrice
+    ) internal view returns (uint256 delta, bool hasProfit) {
+        if (_size == 0 || _averagePrice == 0) {
+            return (0, false);
+        }
+
+        uint256 _price = ILevelOracle(levelOracleAddress).getPrice(_indexToken, _side == Side.LONG);
+
+        uint256 priceDelta = _averagePrice > _price ? _averagePrice.sub(_price) : _price.sub(_averagePrice);
+        delta = _size.mul(priceDelta).div(_averagePrice);
+
+        hasProfit;
+
+       hasProfit = _side == Side.LONG ?  _price > _averagePrice : _averagePrice > _price;
+    }
+
+    /**
+     * @dev Gets pnl for position with L1 percent drop margin.
+     * @param _indexToken The address of the index token.
+     * @param _side The side of the order, either LONG or SHORT.
+     * @param _size The overall size of the position.
+     * @param _averagePrice The average price of the position.
+     * @return delta The absolute value of profit/loss.
+     * @return hasProfit Bool representing the position has a profit.
+     */
+    function getDeltaWithMargin(
+        address _indexToken,
+        Side _side,
+        uint256 _size,
+        uint256 _averagePrice
+    ) public view returns (uint256 delta, bool hasProfit) {
+        require(_averagePrice > 0, "averge price of position has to be greater than 0");
+
+        uint256 _price = _side == Side.LONG
+            ? ILevelOracle(levelOracleAddress)
+                .getPrice(_indexToken, false)
+                .mul(BASIS_POINTS_DIVISOR.sub(L1))
+                .div(BASIS_POINTS_DIVISOR)
+            : ILevelOracle(levelOracleAddress)
+                .getPrice(_indexToken, true)
+                .mul(BASIS_POINTS_DIVISOR.add(L1))
+                .div(BASIS_POINTS_DIVISOR);
+        uint256 priceDelta = _averagePrice > _price ? _averagePrice.sub(_price) : _price.sub(_averagePrice);
+
+        delta = _size.mul(priceDelta).div(_averagePrice);
+
+        hasProfit = _side == Side.LONG ?  _price > _averagePrice : _averagePrice > _price;
+    }
+
+    /**
+     * @dev Calculates the fee value for updating a BNB position with a changed size, denominated in the specified index token.
+     * The fee value consists of two components: a borrow fee and a position fee. The borrow fee is based on the change in the borrow index
+     * of the index token and the size of the position being updated. The position fee is based on the percentage change in size of the
+     * position being updated and the position fee percentage defined in the pool's fee configuration.
+     * @param _position The BNB position being updated.
+     * @param _indexToken The address of the index token denominated in which the fee is calculated.
+     * @param _sizeChanged The change in size of the position being updated.
+     *
+     * @return _feeValue The total fee value, in the specified index token.
+     */
+    function _getPositionFee(
+        BnbPosition memory _position,
+        address _indexToken,
+        uint256 _sizeChanged
+    ) public view returns (uint256 _feeValue) {
+        // fetch fee data from level poool
+        Fee memory _fee = IPool(poolAddress).fee();
+
+        // fetch borrow index for index token from level pool
+        uint256 _borrowIndex = IPool(poolAddress).poolTokens(_indexToken).borrowIndex;
+
+        // calculate the borrow fee
+        uint256 borrowFee = ((_borrowIndex.sub(_position.borrowIndex)).mul(_position.size)).div(PRECISION);
+
+        // calculate the one time fee for updating possition
+        uint256 positionFee = (_sizeChanged.mul(_fee.positionFee)).div(PRECISION);
+
+        _feeValue = borrowFee + positionFee;
+    }
+
+    /**
      * @dev Retrieves an array of all the existing positions.
      * @return An array of `PositionData` structs.
      */
-    function getPositions() public view returns (PositionData[] memory) {
+    function getPositions() public view returns (BnbPositionData[] memory) {
         return existingPositionsData;
     }
 
-    /**
-     * @dev Computes the unique key for a given position.
-     * @param _indexToken The address of the index token in the position.
-     * @param _collateralToken The address of the collateral token in the position.
-     * @param _isLong Indicates whether the position is long or short.
-     * @return The key of the position.
-     */
-    function getPositionKey(address _indexToken, address _collateralToken, bool _isLong) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_indexToken, _collateralToken, _isLong));
+    function _getPositionKey(
+        address _owner,
+        address _indexToken,
+        address _collateralToken,
+        Side _side
+    ) public pure returns (bytes32) {
+        return keccak256(abi.encode(_owner, _indexToken, _collateralToken, _side));
     }
 
-    /**
+     /**
      * @dev Restricts function access to the governing body.
      */
     function _onlyGov() private view {

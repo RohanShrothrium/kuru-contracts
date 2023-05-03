@@ -1,0 +1,146 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IPool",
+  "sourceName": "contracts/interfaces/IPool.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "fee",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "positionFee",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "liquidationFee",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "baseSwapFee",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "taxBasisPoint",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "stableCoinBaseSwapFee",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "stableCoinTaxBasisPoint",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "daoFee",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct Fee",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "poolTokens",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "feeReserve",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "poolBalance",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "lastAccrualTimestamp",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "borrowIndex",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "___averageShortPrice",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct BnbPoolTokenInfo",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "positions",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "size",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "collateralValue",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "reserveAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "entryPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "borrowIndex",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

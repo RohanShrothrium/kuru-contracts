@@ -6,8 +6,6 @@ import "./interfaces/ILendingContract.sol";
 import "./interfaces/IAbstractPosition.sol";
 import "./interfaces/IFactoryContract.sol";
 
-import "./interfaces/IVault.sol";
-
 import "./libraries/IERC20.sol";
 import "./libraries/SafeMath.sol";
 import "./libraries/SafeERC20.sol";
@@ -99,6 +97,8 @@ contract LendingContract is ILendingContract {
 
         uint256 borrowRate = getNextBorrowRate();
         cumulativeBorrowRate = cumulativeBorrowRate.add(borrowRate);
+
+        lastBorrowTimes = block.timestamp.div(borrowInterval).mul(borrowInterval);
 
         return;
     }
