@@ -1,0 +1,236 @@
+{
+  "contractName": "IPriceReporter",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address[]",
+          "name": "tokens",
+          "type": "address[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "prices",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "orders",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "postPriceAndExecuteOrders",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "metadata": "{\"compiler\":{\"version\":\"0.8.4+commit.c7e474f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"tokens\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"prices\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"orders\",\"type\":\"uint256[]\"}],\"name\":\"postPriceAndExecuteOrders\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/interfaces/IPriceReporter.sol\":\"IPriceReporter\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/interfaces/IPriceReporter.sol\":{\"keccak256\":\"0x71cba5547040b477854c16ab1e8ccac171d3a4b7c5e9b171a42259bf76570a20\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://10604c9d6d6ac2c3a17664057e0e23c064321f68737d86390cea30263c2f21a9\",\"dweb:/ipfs/QmaBtLqHoYkxAXcThCB1mcLceytXrZyY8RkzzD75rmQTEv\"]}},\"version\":1}",
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "immutableReferences": {},
+  "generatedSources": [],
+  "deployedGeneratedSources": [],
+  "sourceMap": "",
+  "deployedSourceMap": "",
+  "source": "// SPDX-License-Identifier: MIT\n\npragma solidity >=0.6.12;\n\ninterface IPriceReporter {\n    function postPriceAndExecuteOrders(address[] calldata tokens, uint256[] calldata prices, uint256[] calldata orders) external;\n}\n",
+  "sourcePath": "/Users/rohanshrothrium/Documents/kuru-contracts/contracts/interfaces/IPriceReporter.sol",
+  "ast": {
+    "absolutePath": "project:/contracts/interfaces/IPriceReporter.sol",
+    "exportedSymbols": {
+      "IPriceReporter": [
+        2548
+      ]
+    },
+    "id": 2549,
+    "license": "MIT",
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 2535,
+        "literals": [
+          "solidity",
+          ">=",
+          "0.6",
+          ".12"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "33:25:11"
+      },
+      {
+        "abstract": false,
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "fullyImplemented": false,
+        "id": 2548,
+        "linearizedBaseContracts": [
+          2548
+        ],
+        "name": "IPriceReporter",
+        "nameLocation": "70:14:11",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "functionSelector": "5bf9ac5b",
+            "id": 2547,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "postPriceAndExecuteOrders",
+            "nameLocation": "100:25:11",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 2545,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 2538,
+                  "mutability": "mutable",
+                  "name": "tokens",
+                  "nameLocation": "145:6:11",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 2547,
+                  "src": "126:25:11",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_address_$dyn_calldata_ptr",
+                    "typeString": "address[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 2536,
+                      "name": "address",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "126:7:11",
+                      "stateMutability": "nonpayable",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_address",
+                        "typeString": "address"
+                      }
+                    },
+                    "id": 2537,
+                    "nodeType": "ArrayTypeName",
+                    "src": "126:9:11",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_address_$dyn_storage_ptr",
+                      "typeString": "address[]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 2541,
+                  "mutability": "mutable",
+                  "name": "prices",
+                  "nameLocation": "172:6:11",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 2547,
+                  "src": "153:25:11",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_uint256_$dyn_calldata_ptr",
+                    "typeString": "uint256[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 2539,
+                      "name": "uint256",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "153:7:11",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "id": 2540,
+                    "nodeType": "ArrayTypeName",
+                    "src": "153:9:11",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_uint256_$dyn_storage_ptr",
+                      "typeString": "uint256[]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 2544,
+                  "mutability": "mutable",
+                  "name": "orders",
+                  "nameLocation": "199:6:11",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 2547,
+                  "src": "180:25:11",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_uint256_$dyn_calldata_ptr",
+                    "typeString": "uint256[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 2542,
+                      "name": "uint256",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "180:7:11",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "id": 2543,
+                    "nodeType": "ArrayTypeName",
+                    "src": "180:9:11",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_uint256_$dyn_storage_ptr",
+                      "typeString": "uint256[]"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "125:81:11"
+            },
+            "returnParameters": {
+              "id": 2546,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "215:0:11"
+            },
+            "scope": 2548,
+            "src": "91:125:11",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "scope": 2549,
+        "src": "60:158:11",
+        "usedErrors": []
+      }
+    ],
+    "src": "33:186:11"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.8.4+commit.c7e474f2.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.4.13",
+  "updatedAt": "2023-05-04T09:09:53.959Z",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  }
+}

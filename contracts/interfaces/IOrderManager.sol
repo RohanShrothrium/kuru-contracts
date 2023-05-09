@@ -31,4 +31,8 @@ interface IOrderManager {
     function nextOrderId() external view returns (uint256);
 
     function executeOrder(uint256 _orderId, address payable _feeTo) external;
+
+    function minPerpetualExecutionFee() external view returns (uint256);
+
+    function minSwapExecutionFee() external view returns (uint256);
 }

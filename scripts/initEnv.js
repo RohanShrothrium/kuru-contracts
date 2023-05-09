@@ -5,7 +5,7 @@ async function main() {
     const userAccount = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
     // token addresses
-    const usdcAddress = "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8";
+    const usdcAddress = "0x55d398326f99059fF775485246999027B3197955";
     const wethAddress = "0x2170Ed0880ac9A755fd29B2688956BD959F933F8";
 
     // Level Fi contract address
@@ -33,8 +33,7 @@ async function main() {
         lendingContractAddress,
         bnbOrderManagerAddress,
         bnbPoolAddress,
-        bnbLevelOracleAddress,
-        gellatoAutomateAddress
+        bnbLevelOracleAddress
     );
     await factoryContract.deployed();
 
@@ -49,7 +48,8 @@ async function main() {
     var receipt = await factoryContract.createAbstractPosition();
     await receipt.wait();
 
-    const abstractPositionAddress = await factoryContract.getContractForAccount(userAccount);
+    const [owner] = await hre.ethers.getSigners();
+    const abstractPositionAddress = await factoryContract.getContractForAccount(owner.address);
     console.log(`abstract position contract deployed at: ${abstractPositionAddress}`);
 
     // deploy KLP token contract
@@ -90,7 +90,8 @@ async function main() {
 
     // create json object for writing to config file
     const networkConfig = {
-        userAccount,
+        userAccount: owner.address,
+        usdcAddress,
         bnbExecutorAddress,
         wethAddress,
         bnbOrderManagerAddress,

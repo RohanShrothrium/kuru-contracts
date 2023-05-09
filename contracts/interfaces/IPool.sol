@@ -2,8 +2,6 @@
 
 pragma solidity >=0.6.12;
 
-uint256 constant PRECISION = 1e10;
-
 enum Side {
     LONG,
     SHORT

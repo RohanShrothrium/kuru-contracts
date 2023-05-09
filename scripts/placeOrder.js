@@ -18,12 +18,12 @@ async function main() {
         0,
         config.wethAddress,
         config.wethAddress,
-        tokenPrice.mul(2000).toString(),
+        "3905987589000000",
         "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-        hre.ethers.utils.parseEther("1").toString(),
-        tokenPrice.mul(hre.ethers.utils.parseEther("1")).toString(),
-        hre.ethers.utils.parseEther("1").toString(),
-        { value: hre.ethers.utils.parseEther(`1.01`) }
+        "40000000000000000",
+        "169402681734930000000000000000000",
+        "40000000000000000",
+        { value: "50000000000000000" }
     );
     var resp = await receipt.wait();
 
@@ -32,12 +32,12 @@ async function main() {
         0,
         config.wethAddress,
         config.wethAddress,
-        tokenPrice.mul(2000).toString(),
+        "3905987589000000",
         "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-        hre.ethers.utils.parseEther("1").toString(),
-        tokenPrice.mul(hre.ethers.utils.parseEther("1")).toString(),
-        hre.ethers.utils.parseEther("1").toString(),
-        { value: hre.ethers.utils.parseEther(`1.01`) }
+        "40000000000000000",
+        "169402681734930000000000000000000",
+        "40000000000000000",
+        { value: "50000000000000000" }
     );
     resp = await receipt.wait();
 

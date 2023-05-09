@@ -70,11 +70,20 @@ contract LendingContract is ILendingContract {
     }
 
     /**
+     * @dev Sets the KLP manager address. Only callable by the contract owner
+     * @param newAddress new USDC address
+     */
+    function setUsdcAddress(address newAddress) external {
+        _onlyGov();
+        usdcAddress = newAddress;
+    }
+
+    /**
      * @dev Sends USDC tokens to a KLP account. Only callable by the KLP manager
      * @param _account Address of the account to send the tokens to
      * @param _amount Amount of USDC tokens to send
      */
-    function sendUsdcToLp(address _account, uint256 _amount) external {
+    function sendUsdcToLp(address _account, uint256 _amount) external override {
         require(msg.sender == klpManagerAddress, "only the klp manager can call this function");
 
         require(IERC20(usdcAddress).transfer(_account, _amount), "failed to transfer out");
@@ -124,7 +133,7 @@ contract LendingContract is ILendingContract {
      * @dev Calculates the total liquidity provided
      * @return The total liquidity provided
      */
-    function totalLiquidityProvided() public view returns (uint256) {
+    function totalLiquidityProvided() public view override returns (uint256) {
         uint256 _liquidityBalance = IERC20(usdcAddress).balanceOf(address(this));
         return (_liquidityBalance.mul(USDC_DECIMALS_DIVISOR)).add(totalLoanedAmount);
     }

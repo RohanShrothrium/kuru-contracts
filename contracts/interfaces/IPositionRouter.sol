@@ -51,4 +51,6 @@ interface IPositionRouter {
         bytes32 _key,
         address _executionFeeReceiver
     ) external returns (bool);
+
+    function minExecutionFee() external view returns(uint256);
 }

@@ -19,8 +19,6 @@ contract FactoryContract is IFactoryContract {
     address public bnbPoolAddress;
     address public bnbLevelOracleAddress;
 
-    address public gellatoAutomateAddress;
-
     // Mapping to store AbstractPosition contract addresses for each user
     mapping(address => address) public abstractPositionMap;
 
@@ -28,8 +26,7 @@ contract FactoryContract is IFactoryContract {
         address _lendingContractAddress,
         address _bnbOrderManagerAddress,
         address _bnbPoolAddress,
-        address _bnbLevelOracleAddress,
-        address _gellatoAutomateAddress
+        address _bnbLevelOracleAddress
     ) {
         // Initialize state variables
         gov = msg.sender;
@@ -38,8 +35,6 @@ contract FactoryContract is IFactoryContract {
         bnbOrderManagerAddress = _bnbOrderManagerAddress;
         bnbPoolAddress = _bnbPoolAddress;
         bnbLevelOracleAddress = _bnbLevelOracleAddress;
-
-        gellatoAutomateAddress = _gellatoAutomateAddress;
     }
 
     /**
@@ -57,8 +52,7 @@ contract FactoryContract is IFactoryContract {
             msg.sender,
             bnbOrderManagerAddress,
             bnbPoolAddress,
-            bnbLevelOracleAddress,
-            gellatoAutomateAddress
+            bnbLevelOracleAddress
         );
 
         abstractPositionMap[msg.sender] = address(abstractPosition);

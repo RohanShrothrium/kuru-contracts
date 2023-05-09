@@ -4,16 +4,16 @@ const config = require("../config.json");
 async function main() {
     await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
-        params: ["0x62383739D68Dd0F844103Db8dFb05a7EdED5BBE6"],
+        params: ["0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa"],
     });
 
-    const signer = await hre.ethers.getSigner("0x62383739D68Dd0F844103Db8dFb05a7EdED5BBE6");
+    const signer = await hre.ethers.getSigner("0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa");
 
     const usdcContract = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", config.usdcAddress, signer);
 
     var receipt = await usdcContract.transfer(
         config.userAccount,
-        1000000000,
+        hre.ethers.utils.parseEther("1000"),
     );
 
     const resp = await receipt.wait()

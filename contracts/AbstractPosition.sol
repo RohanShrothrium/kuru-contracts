@@ -58,6 +58,7 @@ contract AbstractPosition {
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
     uint256 public constant L1 = 100;
     uint256 public constant L2 = 100;
+    uint256 public constant PRECISION = 10**10;
     address private constant BNB = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     // addresses
@@ -70,12 +71,7 @@ contract AbstractPosition {
     address public poolAddress;
     address public levelOracleAddress;
 
-    // geleato automate task address
-    address public gellatoAutomateAddress;
-
     address public ownerAddress;
-
-    uint256 public minExecutionFee;
 
     mapping (bytes32 => bool) positionExists;
     BnbPositionData[] public existingPositionsData;
@@ -87,8 +83,7 @@ contract AbstractPosition {
         address _ownerAddress,
         address _orderManagerAddress,
         address _poolAddress,
-        address _levelOracleAddress,
-        address _gellatoAutomateAddress
+        address _levelOracleAddress
     ) {
         // init state variables
         gov = _gov;
@@ -100,29 +95,6 @@ contract AbstractPosition {
         orderManagerAddress = _orderManagerAddress;
         poolAddress = _poolAddress;
         levelOracleAddress = _levelOracleAddress;
-
-        // initialize gelato variables
-        gellatoAutomateAddress = _gellatoAutomateAddress;
-        _createTask();
-    }
-
-    /**
-     * @dev Internal function to create a new Gellato task that will execute the `liquidatePortfolio` function on this contract.
-     * @notice The task is created using the Gellato automation service and the TIME module.
-     * @notice The task will have no condition or action module, and will be executed with no payment.
-     */
-    function _createTask() internal {
-        bytes memory execData = abi.encodeCall(this.liquidatePortfolio, ());
-
-        ModuleData memory moduleData = ModuleData({
-            modules: new Module[](1),
-            args: new bytes[](1)
-        });
-        moduleData.modules[0] = Module.TIME;
-
-        moduleData.args[0] = abi.encode(0, uint128(1 seconds));
-
-        IAutomate(gellatoAutomateAddress).createTask(address(this), execData, moduleData, address(0));
     }
 
     /**
