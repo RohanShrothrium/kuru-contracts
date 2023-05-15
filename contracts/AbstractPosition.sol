@@ -380,6 +380,10 @@ contract AbstractPosition {
     ) public view returns (uint256 _positionValue) {
         BnbPosition memory _position = getPosition(_indexToken, _collateralToken, _side);
 
+        if (_position.size == 0) {
+            return 0;
+        }
+
         uint256 _positionFee = _getPositionFee(_position, _indexToken, _position.size);
 
         (uint256 delta, bool hasProfit) = getDeltaWithMargin(_indexToken, _side, _position.size, _position.entryPrice);

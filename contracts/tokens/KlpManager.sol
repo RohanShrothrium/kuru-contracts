@@ -19,7 +19,7 @@ contract KlpManager {
 
     uint256 public constant PRICE_PRECISION = 10 ** 30;
     uint256 public constant USDC_PRECISION = 10 ** 6;
-    uint256 public constant USDC_DECIMALS_DIVISOR = 10**24;
+    uint256 public constant USDC_DECIMALS_DIVISOR = 10**12;
     uint256 public constant ERC_DECIMALS_DIVISOR = 10**12;
     uint public constant KLP_PRECISION = 10**18;
 
@@ -106,7 +106,7 @@ contract KlpManager {
 
         uint256 _klpSupply = IERC20(klp).totalSupply();
 
-        uint256 _mintAmount = _klpSupply == 0 ? _amount.div(ERC_DECIMALS_DIVISOR) : _klpSupply.mul(_amount).div(_existingLiquidity);
+        uint256 _mintAmount = _klpSupply == 0 ? _amount.div(USDC_DECIMALS_DIVISOR) : _klpSupply.mul(_amount).div(_existingLiquidity);
 
         IMintable(klp).mint(msg.sender, _mintAmount);
 

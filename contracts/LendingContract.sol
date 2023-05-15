@@ -20,7 +20,7 @@ contract LendingContract is ILendingContract {
     using SafeERC20 for IERC20;
 
     uint256 public constant PRICE_PRECISION = 10 ** 30;
-    uint256 public constant USDC_DECIMALS_DIVISOR = 10**24; // usdc has a decimal precision of 10^6 but GMX uses 10^18 (wei)
+    uint256 public constant USDC_DECIMALS_DIVISOR = 10**12; // usdc has a decimal precision of 10^6 but GMX uses 10^18 (wei)
     uint256 public constant LTV = 60;
     uint256 public constant BORROW_RATE_PRECISION = 1000000;
 
@@ -167,6 +167,8 @@ contract LendingContract is ILendingContract {
     function takeLoanOnPosition(
         uint256 _loanAmount
     ) external {
+        updateCumulativeBorrowRate();
+
         // fetch abstract position address for msg.sender
         IFactoryContract factoryContract = IFactoryContract(factoryContractAddress);
         address abstractPositionAddress = factoryContract.getContractForAccount(msg.sender);
@@ -201,6 +203,8 @@ contract LendingContract is ILendingContract {
     function paybackLoan(
         uint256 _repayLoanAmount
     ) external {
+        updateCumulativeBorrowRate();
+
         uint256 _interestToCollect = interestToCollect(msg.sender);
         uint256 _loanWithBorrowFee = amountLoanedByUser[msg.sender].add(_interestToCollect);
         require(_loanWithBorrowFee >= _repayLoanAmount, "loan taken lesser than paying amount");

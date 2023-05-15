@@ -15,7 +15,7 @@ async function main() {
 
     const poolC = await hre.ethers.getContractAt("IOrderManager", "0xf584A17dF21Afd9de84F47842ECEAF6042b1Bb5b");
     var position = await poolC.orders(
-        61844
+        62037
     )
 
     const bnbLevelContract = await hre.ethers.getContractAt("ILevelOracle", config.bnbLevelOracleAddress);
