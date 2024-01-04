@@ -55,6 +55,9 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
 
     uint256 constant sizePrecision = 10**10;
     uint256 constant pricePrecision = 10**2;
+    uint256 constant takerFeeBps = 2;
+
+    uint256 constant BPS_MULTIPLIER = 10000;
 
     /**
      * @dev Constructor.

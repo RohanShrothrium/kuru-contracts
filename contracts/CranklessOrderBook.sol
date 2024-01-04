@@ -96,7 +96,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
         tokenA.transfer(
             msg.sender,
-            ((_executedSize * 10 ** tokenADecimals) / sizePrecision)
+            ((_executedSize * 10 ** tokenADecimals) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER))
         );
 
         emit OrdersCompletedOrCanceled(_filledOrders);
@@ -184,7 +184,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
         tokenB.transfer(
             msg.sender,
-            (((_priceToGet * 10 ** tokenBDecimals) / pricePrecision) / sizePrecision)
+            (((_priceToGet * 10 ** tokenBDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER))
         );
 
         emit OrdersCompletedOrCanceled(_filledOrders);
