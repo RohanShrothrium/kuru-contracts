@@ -33,7 +33,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint96[] calldata c_order_ids,
         uint128 _size,
         bool _isFillOrKill
-    ) external override returns (uint128) {
+    ) public override returns (uint128) {
         uint256 _orderIndex = 0;
         Order memory _order = s_orders[c_order_ids[_orderIndex]];
         PricePoint memory m_pricePoint = s_buyPricePoints[_order.price];
@@ -53,12 +53,13 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
             uint256 _existinPrice = _order.price;
 
-            // TODO: Transfer tokens to limit order.
+            // TODO: Improve this.
             tokenB.transferFrom(
                 msg.sender,
-                _order.ownerAddress,
+                address(this),
                 _amountPayable(_order.size, _order.price)
             );
+            tokenB.transfer(_order.ownerAddress, _amountPayable(_order.size, _order.price));
 
             _order.size = 0;
             s_orders[c_order_ids[_orderIndex]] = _order;
@@ -78,12 +79,13 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             m_pricePoint.totalCompletedOrCanceledOrders += _size;
             _executedSize += _size;
 
-            // TODO: Transfer tokens to limit order.
+            // TODO: Improve this.
             tokenB.transferFrom(
                 msg.sender,
-                _order.ownerAddress,
-                _amountPayable(_size, _order.price)
+                address(this),
+                _amountPayable(_order.size, _order.price)
             );
+            tokenB.transfer(_order.ownerAddress, _amountPayable(_order.size, _order.price));
 
             _order.size -= _size;
             s_orders[c_order_ids[_orderIndex]] = _order;
@@ -121,7 +123,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint96[] calldata c_order_ids,
         uint128 _size,
         bool _isFillOrKill
-    ) external returns (uint128) {
+    ) public returns (uint128) {
         uint256 _orderIndex = 0;
         Order memory _order = s_orders[c_order_ids[_orderIndex]];
         PricePoint memory m_pricePoint = s_sellPricePoints[_order.price];
@@ -141,12 +143,13 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
             uint256 _existinPrice = _order.price;
 
-            // TODO: Transfer tokens to limit order.
+            // TODO: Improve this.
             tokenA.transferFrom(
                 msg.sender,
-                _order.ownerAddress,
+                address(this),
                 (_order.size * 10 ** tokenADecimals) / sizePrecision
             );
+            tokenA.transfer(_order.ownerAddress, (_order.size * 10 ** tokenADecimals) / sizePrecision);
 
             _order.size = 0;
             s_orders[c_order_ids[_orderIndex]] = _order;
@@ -166,12 +169,13 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             m_pricePoint.totalCompletedOrCanceledOrders += _size;
             _priceToGet += _size * _order.price;
 
-            // TODO: Transfer tokens to limit order.
+            // TODO: Improve this.
             tokenA.transferFrom(
                 msg.sender,
-                _order.ownerAddress,
-                ((_size * 10 ** tokenADecimals) / sizePrecision)
+                address(this),
+                (_order.size * 10 ** tokenADecimals) / sizePrecision
             );
+            tokenA.transfer(_order.ownerAddress, (_order.size * 10 ** tokenADecimals) / sizePrecision);
 
             _order.size -= _size;
             s_orders[c_order_ids[_orderIndex]] = _order;
@@ -203,13 +207,13 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint128 _size,
         uint96 _price
     ) external {
-        uint128 _remainingSize = this.placeAndExecuteMarketSell(
+        uint128 _remainingSize = placeAndExecuteMarketSell(
             c_order_ids,
             _size,
             false
         );
 
-        this.addSellOrder(_price, _remainingSize);
+        addSellOrder(_price, _remainingSize);
     }
 
     /**
@@ -223,12 +227,12 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint128 _size,
         uint96 _price
     ) external {
-        uint128 _remainingSize = this.placeAndExecuteMarketBuy(
+        uint128 _remainingSize = placeAndExecuteMarketBuy(
             c_order_ids,
             _size,
             false
         );
 
-        this.addBuyOrder(_price, _remainingSize);
+        addBuyOrder(_price, _remainingSize);
     }
 }

@@ -8,8 +8,7 @@ interface IAbstractOrderBook {
     function addSellOrder(uint96 _price, uint128 size) external;
 
     function batchCancelOrders(
-        uint256[] memory _orderIds,
-        bool[] memory _isBuy
+        uint256[] memory _orderIds
     ) external;
 
     function placeMultipleBuyOrders(

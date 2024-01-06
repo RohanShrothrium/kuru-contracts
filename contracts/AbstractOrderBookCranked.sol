@@ -126,48 +126,35 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
     /**
      * @dev Cancels multiple orders in a batch.
      * @param _orderIds Array of order IDs to cancel.
-     * @param _isBuy Array of bools representing if an order is a buy order
      */
-    function batchCancelOrders(uint256[] memory _orderIds, bool[] memory _isBuy) external {
+    function batchCancelOrders(uint256[] memory _orderIds) external {
         for (uint256 i = 0; i < _orderIds.length; i++) {
-            _isBuy[i] ? _cancelBuyOrder(_orderIds[i]) : _cancelSellOrder(_orderIds[i]);
+            _cancelOrder(_orderIds[i]);
         }
 
         emit OrdersCompletedOrCanceled(_orderIds);
     }
 
     /**
-     * @dev Internal helper function to cancel a single buy order.
-     * @param _orderId ID of the buy order to cancel.
+     * @dev Internal helper function to cancel a single order.
+     * @param _orderId ID of the order to cancel.
      */
-    function _cancelBuyOrder(uint256 _orderId) internal {
+    function _cancelOrder(uint256 _orderId) internal {
         Order memory _order = s_orders[_orderId];
-        
-        require(_order.isBuy, "OrderBook: Cancelling sell order");
+
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can cancel order");
 
-        s_buyPricePoints[_order.price].totalCompletedOrCanceledOrders += _order.size;
+        if (_order.isBuy) {
+            s_buyPricePoints[_order.price].totalCompletedOrCanceledOrders += _order.size;
+
+            tokenB.transfer(_order.ownerAddress, ((((_order.size * _order.price) * 10**tokenBDecimals) / pricePrecision) / sizePrecision));
+        } else {
+            s_sellPricePoints[_order.price].totalCompletedOrCanceledOrders += _order.size;
+
+            tokenA.transfer(_order.ownerAddress, (_order.size * 10**tokenADecimals) / sizePrecision);
+        }
 
         delete s_orders[_orderId];
-
-        tokenB.transfer(_order.ownerAddress, ((((_order.size * _order.price) * 10**tokenBDecimals) / pricePrecision) / sizePrecision));
-    }
-
-    /**
-     * @dev Internal helper function to cancel a single sell order.
-     * @param _orderId ID of the sell order to cancel.
-     */
-    function _cancelSellOrder(uint256 _orderId) internal {
-        Order memory _order = s_orders[_orderId];
-        
-        require(!_order.isBuy, "OrderBook: Cancelling buy order");
-        require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can cancel order");
-
-        s_sellPricePoints[_order.price].totalCompletedOrCanceledOrders += _order.size;
-
-        delete s_orders[_orderId];
-
-        tokenA.transfer(_order.ownerAddress, (_order.size * 10**tokenADecimals) / sizePrecision);
     }
 
     /**

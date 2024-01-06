@@ -144,11 +144,6 @@
           "internalType": "uint256[]",
           "name": "_orderIds",
           "type": "uint256[]"
-        },
-        {
-          "internalType": "bool[]",
-          "name": "_isBuy",
-          "type": "bool[]"
         }
       ],
       "name": "batchCancelOrders",
