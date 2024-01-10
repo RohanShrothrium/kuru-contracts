@@ -13,7 +13,7 @@ contract MintableERC20 is ERC20 {
 }
 
 contract OrderBookTest is Test {
-    uint128 constant SIZE_PRECISION = 10**10;
+    uint96 constant SIZE_PRECISION = 10**10;
     uint96 constant PRICE_PRECISION = 10**2;
 
     CranklessOrderBook orderBook;
@@ -37,17 +37,33 @@ contract OrderBookTest is Test {
         usdc.mint(user2, initUsdc);
     }
 
-    function testAddBuyOrder() public {
+    function _addBuyOrder() internal {
         uint96 price = 1800;
-        uint128 size = 10;
+        uint96 size = 10;
 
         vm.startPrank(user2);
         usdc.approve(address(orderBook), initUsdc);
         orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
         vm.stopPrank();
+    }
+
+    function _addSellOrder() internal {
+        uint96 price = 1800;
+        uint96 size = 10;
+
+        vm.startPrank(user1);
+        eth.approve(address(orderBook), initEth);
+        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        vm.stopPrank();
+    }
+
+    function testAddBuyOrder() public {
+        _addBuyOrder();
+        uint96 price = 1800;
+        uint96 size = 10;
 
         // Fetch the PricePoint from the contract
-        (uint128 totalCompletedOrCanceledOrders, uint128 totalOrdersAtPrice) = orderBook.s_buyPricePoints(price*PRICE_PRECISION);
+        (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(price*PRICE_PRECISION);
 
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
         assertEq(usdc.balanceOf(address(orderBook)), (price*size)*10**18);
@@ -58,7 +74,7 @@ contract OrderBookTest is Test {
 
     function testAddBuyOrderInsufficientAllowanceFail() public {
         uint96 price = 1800;
-        uint128 size = 10;
+        uint96 size = 10;
 
         vm.startPrank(user2);
         vm.expectRevert("ERC20: insufficient allowance");
@@ -68,7 +84,7 @@ contract OrderBookTest is Test {
 
     function testAddBuyOrderExceedsBalanceFail() public {
         uint96 price = 1800;
-        uint128 size = 10;
+        uint96 size = 10;
 
         vm.startPrank(user3);
         usdc.approve(address(orderBook), initUsdc);
@@ -78,16 +94,12 @@ contract OrderBookTest is Test {
     }
 
     function testAddSellOrder() public {
+        _addSellOrder();
         uint96 price = 1800;
-        uint128 size = 10;
-
-        vm.startPrank(user1);
-        eth.approve(address(orderBook), initEth);
-        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
-        vm.stopPrank();
+        uint96 size = 10;
 
         // Fetch the PricePoint from the contract
-        (uint128 totalCompletedOrCanceledOrders, uint128 totalOrdersAtPrice) = orderBook.s_sellPricePoints(price*PRICE_PRECISION);
+        (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_sellPricePoints(price*PRICE_PRECISION);
 
         assertEq(eth.balanceOf(user1), initEth - size*10**18);
         assertEq(eth.balanceOf(address(orderBook)), (size)*10**18);
@@ -98,7 +110,7 @@ contract OrderBookTest is Test {
 
     function testAddSellOrderInsufficientAllowanceFail() public {
         uint96 price = 1800;
-        uint128 size = 10;
+        uint96 size = 10;
 
         vm.startPrank(user1);
         vm.expectRevert("ERC20: insufficient allowance");
@@ -108,7 +120,7 @@ contract OrderBookTest is Test {
 
     function testAddSellOrderExceedsBalanceFail() public {
         uint96 price = 1800;
-        uint128 size = 10;
+        uint96 size = 10;
 
         vm.startPrank(user3);
         eth.approve(address(orderBook), initEth);
@@ -118,19 +130,19 @@ contract OrderBookTest is Test {
     }
 
     function testCancelOrder() public {
-        testAddBuyOrder();
+        _addBuyOrder();
 
         uint256[] memory _orderIds = new uint256[](1);
         _orderIds[0] = 1;
 
         uint96 price = 1800*PRICE_PRECISION;
-        uint128 size = 10*SIZE_PRECISION;
+        uint96 size = 10*SIZE_PRECISION;
 
         vm.startPrank(user2);
         orderBook.batchCancelOrders(_orderIds);
         vm.stopPrank();
 
-        (uint128 totalCompletedOrCanceledOrders, uint128 totalOrdersAtPrice) = orderBook.s_buyPricePoints(price);
+        (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(price);
 
         assertEq(usdc.balanceOf(user2), initUsdc);
         assertEq(usdc.balanceOf(address(orderBook)), 0);
@@ -140,7 +152,7 @@ contract OrderBookTest is Test {
     }
 
     function testCancelOrderOnlyOwnerFail() public {
-        testAddBuyOrder();
+        _addBuyOrder();
 
         uint256[] memory _orderIds = new uint256[](1);
         _orderIds[0] = 1;
@@ -157,7 +169,7 @@ contract OrderBookTest is Test {
         prices[1] = 1801*PRICE_PRECISION;
         prices[2] = 1802*PRICE_PRECISION;
 
-        uint128[] memory sizes = new uint128[](3);
+        uint96[] memory sizes = new uint96[](3);
         sizes[0] = 1*SIZE_PRECISION;
         sizes[1] = 2*SIZE_PRECISION;
         sizes[2] = 3*SIZE_PRECISION;
@@ -170,7 +182,7 @@ contract OrderBookTest is Test {
         assertEq(usdc.balanceOf(user2), initUsdc - (prices[0]*sizes[0] + prices[1]*sizes[1] + prices[2]*sizes[2])/PRICE_PRECISION/SIZE_PRECISION*10**18);
         assertEq(usdc.balanceOf(address(orderBook)), (prices[0]*sizes[0] + prices[1]*sizes[1] + prices[2]*sizes[2])/PRICE_PRECISION/SIZE_PRECISION*10**18);
 
-        (uint128 totalCompletedOrCanceledOrders, uint128 totalOrdersAtPrice) = orderBook.s_buyPricePoints(prices[0]);
+        (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(prices[0]);
         assertEq(totalOrdersAtPrice, sizes[0]);
         assertEq(totalCompletedOrCanceledOrders, 0);
 
@@ -189,7 +201,7 @@ contract OrderBookTest is Test {
         prices[1] = 1804*PRICE_PRECISION;
         prices[2] = 1805*PRICE_PRECISION;
 
-        uint128[] memory sizes = new uint128[](3);
+        uint96[] memory sizes = new uint96[](3);
         sizes[0] = 1*SIZE_PRECISION;
         sizes[1] = 2*SIZE_PRECISION;
         sizes[2] = 3*SIZE_PRECISION;
@@ -202,7 +214,7 @@ contract OrderBookTest is Test {
         assertEq(eth.balanceOf(user1), initEth - (sizes[0] + sizes[1] + sizes[2])/SIZE_PRECISION*10**18);
         assertEq(eth.balanceOf(address(orderBook)), (sizes[0] + sizes[1] + sizes[2])/SIZE_PRECISION*10**18);
 
-        (uint128 totalCompletedOrCanceledOrders, uint128 totalOrdersAtPrice) = orderBook.s_sellPricePoints(prices[0]);
+        (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_sellPricePoints(prices[0]);
         assertEq(totalOrdersAtPrice, sizes[0]);
         assertEq(totalCompletedOrCanceledOrders, 0);
 
@@ -216,10 +228,10 @@ contract OrderBookTest is Test {
     }
 
     function testReplaceOrders() public {
-        testAddBuyOrder();
+        _addBuyOrder();
 
         uint96 oldPrice = 1800*PRICE_PRECISION;
-        uint128 size = 10*SIZE_PRECISION;
+        uint96 size = 10*SIZE_PRECISION;
 
         uint256[] memory orderIds = new uint256[](1);
         orderIds[0] = 1;
@@ -231,7 +243,7 @@ contract OrderBookTest is Test {
         orderBook.replaceOrders(orderIds, prices);
         vm.stopPrank();
 
-        (uint128 totalCompletedOrCanceledOrders, uint128 totalOrdersAtPrice) = orderBook.s_buyPricePoints(oldPrice);
+        (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(oldPrice);
         assertEq(totalOrdersAtPrice, size);
         assertEq(totalCompletedOrCanceledOrders, size);
 
@@ -241,7 +253,7 @@ contract OrderBookTest is Test {
     }
 
     function testReplaceOrdersOnlyOwnerFail() public {
-        testAddBuyOrder();
+        _addBuyOrder();
 
         uint256[] memory orderIds = new uint256[](1);
         orderIds[0] = 1;
@@ -255,18 +267,146 @@ contract OrderBookTest is Test {
         vm.stopPrank();
     }
 
-    function testPlaceMarketBuy() public {
-        testAddSellOrder();
+    function testMarketSell() public {
+        _addBuyOrder();
+
+        uint96 size = 10;
+        uint96 price = 1800;
 
         uint256[] memory orderIds = new uint256[](1);
         orderIds[0] = 1;
 
-        uint96[] memory prices = new uint96[](1);
-        prices[0] = 1801*PRICE_PRECISION;
+        vm.startPrank(user1);
+        eth.approve(address(orderBook), initEth);
+        orderBook.placeAndExecuteMarketSell(orderIds, size*SIZE_PRECISION, false);
+        vm.stopPrank();
+
+        (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(price*PRICE_PRECISION);
+
+        assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
+        assertEq(usdc.balanceOf(address(orderBook)), 0);
+        assertEq(usdc.balanceOf(user1), (price*size)*10**18);
+        assertEq(eth.balanceOf(user2), size*10**18);
+
+        assertEq(totalOrdersAtPrice, size*SIZE_PRECISION);
+        assertEq(totalCompletedOrCanceledOrders, size*SIZE_PRECISION);        
+    }
+
+    function testMarketSellTimePriorityFail() public {
+        _addBuyOrder();
+        _addBuyOrder();
+
+        uint96 size = 10;
+
+        uint256[] memory orderIds = new uint256[](1);
+        orderIds[0] = 2;
 
         vm.startPrank(user1);
-        vm.expectRevert("OrderBook: Only order owner can update order");
-        orderBook.replaceOrders(orderIds, prices);
+        eth.approve(address(orderBook), initEth);
+        vm.expectRevert("OrderBook: order not executable");
+        orderBook.placeAndExecuteMarketSell(orderIds, size*SIZE_PRECISION, false);
+        vm.stopPrank();
+    }
+
+    function testMarketSellWrongOrderTypeFail() public {
+        _addSellOrder();
+
+        uint96 size = 10;
+
+        uint256[] memory orderIds = new uint256[](1);
+        orderIds[0] = 1;
+
+        vm.startPrank(user1);
+        eth.approve(address(orderBook), initEth);
+        vm.expectRevert("OrderBook: executing against a sell order");
+        orderBook.placeAndExecuteMarketSell(orderIds, size*SIZE_PRECISION, false);
+        vm.stopPrank();
+    }
+
+    function testMarketSellInsifficientAllowance() public {
+        _addBuyOrder();
+
+        uint96 size = 10;
+
+        uint256[] memory orderIds = new uint256[](1);
+        orderIds[0] = 1;
+
+        vm.startPrank(user1);
+        vm.expectRevert("ERC20: insufficient allowance");
+        orderBook.placeAndExecuteMarketSell(orderIds, size*SIZE_PRECISION, false);
+        vm.stopPrank();
+    }
+
+    function testMarketBuy() public {
+        _addSellOrder();
+
+        uint96 size = 10;
+        uint96 price = 1800;
+
+        uint256[] memory orderIds = new uint256[](1);
+        orderIds[0] = 1;
+
+        vm.startPrank(user2);
+        usdc.approve(address(orderBook), initUsdc);
+        orderBook.placeAndExecuteMarketBuy(orderIds, size*price*PRICE_PRECISION, false);
+        vm.stopPrank();
+
+        (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_sellPricePoints(price*PRICE_PRECISION);
+
+        assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
+        assertEq(eth.balanceOf(address(orderBook)), 0);
+        assertEq(usdc.balanceOf(user1), (price*size)*10**18);
+        assertEq(eth.balanceOf(user2), size*10**18);
+
+        assertEq(totalOrdersAtPrice, size*SIZE_PRECISION);
+        assertEq(totalCompletedOrCanceledOrders, size*SIZE_PRECISION);        
+    }
+
+    function testMarketBuyTimePriorityFail() public {
+        _addSellOrder();
+        _addSellOrder();
+
+        uint96 size = 10;
+        uint96 price = 1800;
+
+        uint256[] memory orderIds = new uint256[](1);
+        orderIds[0] = 2;
+
+        vm.startPrank(user2);
+        usdc.approve(address(orderBook), initUsdc);
+        vm.expectRevert("OrderBook: order not executable");
+        orderBook.placeAndExecuteMarketBuy(orderIds, size*price*PRICE_PRECISION, false);
+        vm.stopPrank();     
+    }
+
+    function testMarketBuyWrongOrderTypeFail() public {
+        _addBuyOrder();
+
+        uint96 size = 10;
+        uint96 price = 1800;
+
+        uint256[] memory orderIds = new uint256[](1);
+        orderIds[0] = 1;
+
+        vm.startPrank(user2);
+        usdc.approve(address(orderBook), initUsdc);
+        vm.expectRevert("OrderBook: executing against a buy order");
+        orderBook.placeAndExecuteMarketBuy(orderIds, size*price*PRICE_PRECISION, false);
+        vm.stopPrank();
+    }
+
+    function testMarketBuyInsifficientAllowance() public {
+        _addSellOrder();
+
+        uint96 size = 10;
+        uint96 price = 1800;
+
+        uint256[] memory orderIds = new uint256[](1);
+        orderIds[0] = 1;
+
+        vm.startPrank(user2);
+        vm.expectRevert("ERC20: insufficient allowance");
+        orderBook.placeAndExecuteMarketBuy(orderIds, size*price*PRICE_PRECISION, false);
         vm.stopPrank();
     }
 }
