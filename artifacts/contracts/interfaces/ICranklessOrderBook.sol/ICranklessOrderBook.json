@@ -6,14 +6,14 @@
     {
       "inputs": [
         {
-          "internalType": "uint96[]",
+          "internalType": "uint256[]",
           "name": "c_order_ids",
-          "type": "uint96[]"
+          "type": "uint256[]"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "_size",
-          "type": "uint128"
+          "type": "uint96"
         },
         {
           "internalType": "uint96",
@@ -29,14 +29,14 @@
     {
       "inputs": [
         {
-          "internalType": "uint96[]",
+          "internalType": "uint256[]",
           "name": "c_order_ids",
-          "type": "uint96[]"
+          "type": "uint256[]"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "_size",
-          "type": "uint128"
+          "type": "uint96"
         },
         {
           "internalType": "uint96",
@@ -52,14 +52,14 @@
     {
       "inputs": [
         {
-          "internalType": "uint96[]",
-          "name": "c_prices",
-          "type": "uint96[]"
+          "internalType": "uint256[]",
+          "name": "c_order_ids",
+          "type": "uint256[]"
         },
         {
-          "internalType": "uint128",
-          "name": "_size",
-          "type": "uint128"
+          "internalType": "uint96",
+          "name": "_quoteAmount",
+          "type": "uint96"
         },
         {
           "internalType": "bool",
@@ -70,9 +70,9 @@
       "name": "placeAndExecuteMarketBuy",
       "outputs": [
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "",
-          "type": "uint128"
+          "type": "uint96"
         }
       ],
       "stateMutability": "nonpayable",
@@ -81,14 +81,14 @@
     {
       "inputs": [
         {
-          "internalType": "uint96[]",
+          "internalType": "uint256[]",
           "name": "c_prices",
-          "type": "uint96[]"
+          "type": "uint256[]"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "_size",
-          "type": "uint128"
+          "type": "uint96"
         },
         {
           "internalType": "bool",
@@ -99,9 +99,9 @@
       "name": "placeAndExecuteMarketSell",
       "outputs": [
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "",
-          "type": "uint128"
+          "type": "uint96"
         }
       ],
       "stateMutability": "nonpayable",

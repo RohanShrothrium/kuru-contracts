@@ -32,14 +32,14 @@
     {
       "inputs": [
         {
-          "internalType": "uint96[]",
+          "internalType": "uint256[]",
           "name": "c_prices",
-          "type": "uint96[]"
+          "type": "uint256[]"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "_size",
-          "type": "uint128"
+          "type": "uint96"
         }
       ],
       "name": "placeAndExecuteMarketBuy",
@@ -50,14 +50,14 @@
     {
       "inputs": [
         {
-          "internalType": "uint96[]",
+          "internalType": "uint256[]",
           "name": "c_prices",
-          "type": "uint96[]"
+          "type": "uint256[]"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "_size",
-          "type": "uint128"
+          "type": "uint96"
         }
       ],
       "name": "placeAndExecuteMarketSell",

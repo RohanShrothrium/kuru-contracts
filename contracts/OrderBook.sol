@@ -10,7 +10,7 @@ import {AbstractOrderBook} from "./AbstractOrderBookCranked.sol";
 // size is 10**10
 // price is 10**2
 contract OrderBook is AbstractOrderBook, IOrderBook {
-    using SafeMath for uint128;
+    using SafeMath for uint96;
     using SafeMath for uint256;
 
     constructor(
@@ -32,8 +32,8 @@ contract OrderBook is AbstractOrderBook, IOrderBook {
      * @param _size Size of the market buy order.
      */
     function placeAndExecuteMarketBuy(
-        uint96[] calldata c_min_asks,
-        uint128 _size
+        uint256[] calldata c_min_asks,
+        uint96 _size
     ) external {
         require(_size > 0, "OrderBook: size must be greater than 0");
 
@@ -42,7 +42,7 @@ contract OrderBook is AbstractOrderBook, IOrderBook {
         uint256 _minAsk = c_min_asks[_price_counter];
 
         PricePoint memory m_pricePoint = s_sellPricePoints[_minAsk];
-        uint128 _volumeAtPricePoint = m_pricePoint.totalOrdersAtPrice -
+        uint96 _volumeAtPricePoint = m_pricePoint.totalOrdersAtPrice -
             m_pricePoint.totalCompletedOrCanceledOrders -
             m_pricePoint.executableSize;
 
@@ -104,8 +104,8 @@ contract OrderBook is AbstractOrderBook, IOrderBook {
      * @param _size Size of the market sell order.
      */
     function placeAndExecuteMarketSell(
-        uint96[] calldata c_max_bids,
-        uint128 _size
+        uint256[] calldata c_max_bids,
+        uint96 _size
     ) external {
         require(_size > 0, "OrderBook: size must be greater than 0");
 
@@ -114,7 +114,7 @@ contract OrderBook is AbstractOrderBook, IOrderBook {
         uint256 _maxBid = c_max_bids[_price_counter];
 
         PricePoint memory m_pricePoint = s_buyPricePoints[_maxBid];
-        uint128 _volumeAtPricePoint = m_pricePoint.totalOrdersAtPrice -
+        uint96 _volumeAtPricePoint = m_pricePoint.totalOrdersAtPrice -
             m_pricePoint.totalCompletedOrCanceledOrders -
             m_pricePoint.executableSize;
 
@@ -194,11 +194,11 @@ contract OrderBook is AbstractOrderBook, IOrderBook {
             "OrderBook: order not executable"
         );
 
-        uint128 _executableSize = _pricePoint.executableSize +
+        uint96 _executableSize = _pricePoint.executableSize +
             _pricePoint.totalCompletedOrCanceledOrders -
             _order.acceptableRange;
 
-        uint128 _sizeToExecute = _executableSize > _order.size
+        uint96 _sizeToExecute = _executableSize > _order.size
             ? _order.size
             : _executableSize;
 
@@ -243,11 +243,11 @@ contract OrderBook is AbstractOrderBook, IOrderBook {
             "OrderBook: order not executable"
         );
 
-        uint128 _executableSize = _pricePoint.executableSize +
+        uint96 _executableSize = _pricePoint.executableSize +
             _pricePoint.totalCompletedOrCanceledOrders -
             _order.acceptableRange;
 
-        uint128 _sizeToExecute = _executableSize > _order.size
+        uint96 _sizeToExecute = _executableSize > _order.size
             ? _order.size
             : _executableSize;
 

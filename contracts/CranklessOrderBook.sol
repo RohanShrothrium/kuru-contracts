@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 import {ICranklessOrderBook} from "./interfaces/ICranklessOrderBook.sol";
 
 import {AbstractOrderBook} from "./AbstractOrderBook.sol";
@@ -27,83 +25,73 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
     /**
      * @dev Places and executes a market buy order.
-     * @param _size Size of the market buy order.
+     * @param _quoteSize amount of quote asset user is ready to pay.
+     * @param _isFillOrKill bool representing if function should revert if full qty is not recieved.
      */
     function placeAndExecuteMarketBuy(
-        uint96[] calldata c_order_ids,
-        uint128 _size,
+        uint256[] calldata c_order_ids,
+        uint96 _quoteSize,
         bool _isFillOrKill
-    ) public override returns (uint128) {
-        uint256 _orderIndex = 0;
-        Order memory _order = s_orders[c_order_ids[_orderIndex]];
-        PricePoint memory m_pricePoint = s_buyPricePoints[_order.price];
-
-        uint256 _executedSize = 0;
+    ) public override returns (uint96) {
+        uint256 _spentTokens = 0;
+        uint96 _sizeToGet = 0;
+        uint256 _quoteTokens = uint256(_quoteSize * 10 ** tokenBDecimals / pricePrecision);
         uint256[] memory _filledOrders = new uint256[](c_order_ids.length);
 
-        while (_size > _order.size && _orderIndex < c_order_ids.length) {
+        // Transfer the total quote asset amount to the contract
+        tokenB.transferFrom(msg.sender, address(this), _quoteTokens);
+
+        for (uint256 _orderIndex = 0; _orderIndex < c_order_ids.length && _spentTokens < _quoteTokens; _orderIndex++) {
+            Order storage _order = s_orders[c_order_ids[_orderIndex]];
+            PricePoint storage s_pricePoint = s_sellPricePoints[_order.price];
+
             require(!_order.isBuy, "OrderBook: executing against a buy order");
-            require(_order.acceptableRange <= m_pricePoint.totalCompletedOrCanceledOrders, "OrderBook: order not executable");
+            require(_order.acceptableRange <= s_pricePoint.totalCompletedOrCanceledOrders, "OrderBook: order not executable");
 
-            _filledOrders[_orderIndex] = c_order_ids[_orderIndex];
+            uint256 orderValue = _amountPayable(_order.size, _order.price);
+            uint256 spendable = _quoteTokens - _spentTokens;
+            uint256 spendOnOrder = (orderValue > spendable) ? spendable : orderValue;
 
-            _executedSize += _order.size;
-            _size -= _order.size;
-            m_pricePoint.totalCompletedOrCanceledOrders += _order.size;
+            _spentTokens += spendOnOrder;
 
-            uint256 _existinPrice = _order.price;
+            if (spendOnOrder == orderValue) {
+                _sizeToGet += _order.size;
 
-            // TODO: Improve this.
-            tokenB.transferFrom(
-                msg.sender,
-                address(this),
-                _amountPayable(_order.size, _order.price)
-            );
-            tokenB.transfer(_order.ownerAddress, _amountPayable(_order.size, _order.price));
+                _filledOrders[_orderIndex] = c_order_ids[_orderIndex];
 
-            _order.size = 0;
-            s_orders[c_order_ids[_orderIndex]] = _order;
+                // Transfer funds and update order book
+                tokenB.transfer(_order.ownerAddress, _amountPayable(_order.size, _order.price));
 
-            _orderIndex += 1;
-            _order = s_orders[c_order_ids[_orderIndex]];
-            if (_existinPrice != _order.price) {
-                s_buyPricePoints[_existinPrice] = m_pricePoint;
-                m_pricePoint = s_buyPricePoints[_order.price];
+                s_pricePoint.totalCompletedOrCanceledOrders += _order.size;
+                _order.size = 0;
+            } else {
+                uint96 sizeToFill = uint96(spendOnOrder * sizePrecision / (_order.price * 10 ** tokenBDecimals));
+                _sizeToGet += sizeToFill;
+
+                // Transfer funds and update order book
+                tokenB.transfer(_order.ownerAddress, _amountPayable(sizeToFill, _order.price));
+
+                s_pricePoint.totalCompletedOrCanceledOrders += sizeToFill;
+                _order.size -= sizeToFill;
+            }
+
+            if (_spentTokens == _quoteTokens) {
+                break;
             }
         }
-        
-        if (_size > 0 && _orderIndex < c_order_ids.length) {
-            require(!_order.isBuy, "OrderBook: executing against a buy order");
-            require(_order.acceptableRange <= m_pricePoint.totalCompletedOrCanceledOrders, "OrderBook: order not executable");
 
-            m_pricePoint.totalCompletedOrCanceledOrders += _size;
-            _executedSize += _size;
-
-            // TODO: Improve this.
-            tokenB.transferFrom(
-                msg.sender,
-                address(this),
-                _amountPayable(_order.size, _order.price)
-            );
-            tokenB.transfer(_order.ownerAddress, _amountPayable(_order.size, _order.price));
-
-            _order.size -= _size;
-            s_orders[c_order_ids[_orderIndex]] = _order;
-            s_buyPricePoints[_order.price] = m_pricePoint;
+        // Refund any unspent amount
+        if (_spentTokens < _quoteTokens) {
+            require(!_isFillOrKill, "OrderBook: insufficient volume on book");
+            tokenB.transfer(msg.sender, _quoteTokens - _spentTokens);
         }
 
-        if (_isFillOrKill) {
-            require(_size == 0, "insufficient volume on book");
-        }
-
-        tokenA.transfer(
-            msg.sender,
-            ((_executedSize * 10 ** tokenADecimals) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER))
-        );
+        tokenA.transfer(msg.sender, _sizeToGet * 10 ** tokenBDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER));
 
         emit OrdersCompletedOrCanceled(_filledOrders);
 
-        return _size;
+        // Return the unspent amount
+        return uint96((_quoteTokens - _spentTokens) * pricePrecision / 10 ** tokenBDecimals);
     }
 
     /**
@@ -111,81 +99,64 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
      * @param _size size of token
      * @param _price conversion price from A to B
      */
-    function _amountPayable(uint256 _size, uint256 _price) internal view returns (uint256) {
-        return ((((_size * _price) * 10 ** tokenBDecimals) / pricePrecision) / sizePrecision);
+    function _amountPayable(uint96 _size, uint96 _price) internal view returns (uint256) {
+        return (_size * _price  * 10 ** tokenBDecimals / (pricePrecision * sizePrecision));
     }
 
     /**
      * @dev Places and executes a market sell order.
      * @param _size Size of the market sell order.
+     * @param _isFillOrKill bool representing if function should revert if full qty is not recieved.
      */
     function placeAndExecuteMarketSell(
-        uint96[] calldata c_order_ids,
-        uint128 _size,
+        uint256[] calldata c_order_ids,
+        uint96 _size,
         bool _isFillOrKill
-    ) public returns (uint128) {
+    ) public returns (uint96 remainingSize) {
         uint256 _orderIndex = 0;
-        Order memory _order = s_orders[c_order_ids[_orderIndex]];
-        PricePoint memory m_pricePoint = s_sellPricePoints[_order.price];
-
         uint256 _priceToGet = 0;
         uint256[] memory _filledOrders = new uint256[](c_order_ids.length);
 
-        while (_size > _order.size && _orderIndex < c_order_ids.length) {
+        // Transfer the base asset from the user to the contract
+        tokenA.transferFrom(
+            msg.sender,
+            address(this),
+            (_size * 10 ** tokenADecimals) / sizePrecision
+        );
+
+        for (_orderIndex = 0; _orderIndex < c_order_ids.length && _size > 0; _orderIndex++) {
+            Order storage _order = s_orders[c_order_ids[_orderIndex]];
+            PricePoint storage s_pricePoint = s_buyPricePoints[_order.price];
+
             require(_order.isBuy, "OrderBook: executing against a sell order");
-            require(_order.acceptableRange <= m_pricePoint.totalCompletedOrCanceledOrders, "OrderBook: order not executable");
+            require(_order.acceptableRange <= s_pricePoint.totalCompletedOrCanceledOrders, "OrderBook: order not executable");
 
-            _filledOrders[_orderIndex] = c_order_ids[_orderIndex];
+            uint96 executableSize = _order.size > _size ? _size : _order.size;
 
-            _priceToGet += _order.size * _order.price;
-            _size -= _order.size;
-            m_pricePoint.totalCompletedOrCanceledOrders += _order.size;
+            _priceToGet += executableSize * _order.price;
+            _size -= executableSize;
+            s_pricePoint.totalCompletedOrCanceledOrders += executableSize;
 
-            uint256 _existinPrice = _order.price;
+            tokenA.transfer(_order.ownerAddress, (executableSize * 10 ** tokenADecimals) / sizePrecision);
 
-            // TODO: Improve this.
-            tokenA.transferFrom(
-                msg.sender,
-                address(this),
-                (_order.size * 10 ** tokenADecimals) / sizePrecision
-            );
-            tokenA.transfer(_order.ownerAddress, (_order.size * 10 ** tokenADecimals) / sizePrecision);
+            if (executableSize == _order.size) {
+                _order.size = 0;
+                _filledOrders[_orderIndex] = c_order_ids[_orderIndex];
+            } else {
+                _order.size -= executableSize;
+            }
 
-            _order.size = 0;
-            s_orders[c_order_ids[_orderIndex]] = _order;
-
-            _orderIndex += 1;
-            _order = s_orders[c_order_ids[_orderIndex]];
-            if (_existinPrice != _order.price) {
-                s_sellPricePoints[_existinPrice] = m_pricePoint;
-                m_pricePoint = s_sellPricePoints[_order.price];
+            if(_size == 0) {
+                break;
             }
         }
-        
-        if (_size > 0 && _orderIndex < c_order_ids.length) {
-            require(_order.isBuy, "OrderBook: executing against a sell order");
-            require(_order.acceptableRange <= m_pricePoint.totalCompletedOrCanceledOrders, "OrderBook: order not executable");
 
-            m_pricePoint.totalCompletedOrCanceledOrders += _size;
-            _priceToGet += _size * _order.price;
-
-            // TODO: Improve this.
-            tokenA.transferFrom(
-                msg.sender,
-                address(this),
-                (_order.size * 10 ** tokenADecimals) / sizePrecision
-            );
-            tokenA.transfer(_order.ownerAddress, (_order.size * 10 ** tokenADecimals) / sizePrecision);
-
-            _order.size -= _size;
-            s_orders[c_order_ids[_orderIndex]] = _order;
-            s_sellPricePoints[_order.price] = m_pricePoint;
+        if (_size > 0) {
+            require(!_isFillOrKill, "OrderBook: insufficient volume on book");
+            tokenA.transfer(msg.sender, (_size * 10 ** tokenADecimals) / sizePrecision);
         }
 
-        if (_isFillOrKill) {
-            require(_size == 0, "insufficient volume on book");
-        }
-
+        // Transfer the quote asset (proceeds from the sale) to the user
         tokenB.transfer(
             msg.sender,
             (((_priceToGet * 10 ** tokenBDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER))
@@ -193,8 +164,9 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
         emit OrdersCompletedOrCanceled(_filledOrders);
 
-        return _size;
+        remainingSize = _size;
     }
+
 
      /**
      * Places and executes an aggressive limit sell order
@@ -203,11 +175,11 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
      * @param _price conversion price from A to B
      */
     function placeAggressivelimitSell(
-        uint96[] calldata c_order_ids,
-        uint128 _size,
+        uint256[] calldata c_order_ids,
+        uint96 _size,
         uint96 _price
     ) external {
-        uint128 _remainingSize = placeAndExecuteMarketSell(
+        uint96 _remainingSize = placeAndExecuteMarketSell(
             c_order_ids,
             _size,
             false
@@ -219,20 +191,20 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
     /**
      * Places and executes an aggressive limit buy order
      * @param c_order_ids order ids for execution of aggressive order
-     * @param _size Size of the aggressive buy order
+     * @param _quoteSize amount of quote asset user is ready to pay
      * @param _price conversion price from A to B
      */
     function placeAggressivelimitBuy(
-        uint96[] calldata c_order_ids,
-        uint128 _size,
+        uint256[] calldata c_order_ids,
+        uint96 _quoteSize,
         uint96 _price
     ) external {
-        uint128 _remainingSize = placeAndExecuteMarketBuy(
+        uint96 _remainingSize = placeAndExecuteMarketBuy(
             c_order_ids,
-            _size,
+            _quoteSize,
             false
         );
 
-        addBuyOrder(_price, _remainingSize);
+        addBuyOrder(_price, (_remainingSize * sizePrecision / _price));
     }
 }

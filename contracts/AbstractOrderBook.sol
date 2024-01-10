@@ -9,22 +9,22 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
     struct Order {
         address ownerAddress;
         uint96 price;
-        uint128 size;
-        uint128 acceptableRange;
+        uint96 size;
+        uint96 acceptableRange;
         bool isBuy;
     }
 
     struct PricePoint {
-        uint128 totalCompletedOrCanceledOrders;
-        uint128 totalOrdersAtPrice; // sum of size of all orders placed at the price point
+        uint96 totalCompletedOrCanceledOrders;
+        uint96 totalOrdersAtPrice; // sum of size of all orders placed at the price point
     }
 
     event OrderCreated(
         uint256 orderId,
         address owner,
         uint96 price,
-        uint128 size,
-        uint128 acceptableRange,
+        uint96 size,
+        uint96 acceptableRange,
         bool isBuy
     );
 
@@ -32,8 +32,8 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
         uint256 orderId,
         address owner,
         uint96 price,
-        uint128 size,
-        uint128 acceptableRange,
+        uint96 size,
+        uint96 acceptableRange,
         bool isBuy
     );
 
@@ -53,9 +53,9 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
     uint256 immutable tokenADecimals;
     uint256 immutable tokenBDecimals;
 
-    uint256 constant sizePrecision = 10**10;
-    uint256 constant pricePrecision = 10**2;
-    uint256 constant takerFeeBps = 2;
+    uint96 constant sizePrecision = 10**10;
+    uint96 constant pricePrecision = 10**2;
+    uint256 constant takerFeeBps = 0;
 
     uint256 constant BPS_MULTIPLIER = 10000;
 
@@ -79,13 +79,13 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _price Price of the buy order.
      * @param size Size of the buy order.
      */
-    function addBuyOrder(uint96 _price, uint128 size) public {
+    function addBuyOrder(uint96 _price, uint96 size) public {
         uint256 _orderId = s_orderIdCounter;
         s_orderIdCounter = _orderId + 1;
 
         PricePoint storage _pricePoint = s_buyPricePoints[_price];
 
-        uint128 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, true);
+        uint96 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, true);
 
         tokenB.transferFrom(msg.sender, address(this), ((((size * _price) * 10**tokenBDecimals) / pricePrecision) / sizePrecision));
 
@@ -97,13 +97,13 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _price Price of the sell order.
      * @param size Size of the sell order.
      */
-    function addSellOrder(uint96 _price, uint128 size) public {
+    function addSellOrder(uint96 _price, uint96 size) public {
         uint256 _orderId = s_orderIdCounter;
         s_orderIdCounter = _orderId + 1;
 
         PricePoint storage _pricePoint = s_sellPricePoints[_price];
 
-        uint128 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, false);
+        uint96 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, false);
 
         tokenA.transferFrom(msg.sender, address(this), ((size * 10**tokenADecimals) / sizePrecision));
 
@@ -116,8 +116,8 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _price Price of the order.
      * @param _size Size of the order.
      */
-    function _addOrder(PricePoint storage _pricePoint, uint96 _price, uint128 _size, uint256 _orderId, bool _isBuy) internal returns(uint128) {
-        uint128 acceptableRange = _pricePoint.totalOrdersAtPrice;
+    function _addOrder(PricePoint storage _pricePoint, uint96 _price, uint96 _size, uint256 _orderId, bool _isBuy) internal returns(uint96) {
+        uint96 acceptableRange = _pricePoint.totalOrdersAtPrice;
         s_orders[_orderId] = Order(msg.sender, _price, _size, acceptableRange, _isBuy);
 
         _pricePoint.totalOrdersAtPrice += _size;
@@ -164,7 +164,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _prices Array of prices for the buy orders.
      * @param _sizes Array of sizes for the buy orders.
      */
-    function placeMultipleBuyOrders(uint96[] memory _prices, uint128[] memory _sizes) external {
+    function placeMultipleBuyOrders(uint96[] memory _prices, uint96[] memory _sizes) external {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {
@@ -177,7 +177,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _prices Array of prices for the sell orders.
      * @param _sizes Array of sizes for the sell orders.
      */
-    function placeMultipleSellOrders(uint96[] memory _prices, uint128[] memory _sizes) external {
+    function placeMultipleSellOrders(uint96[] memory _prices, uint96[] memory _sizes) external {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {

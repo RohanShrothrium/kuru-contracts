@@ -26,15 +26,15 @@
         },
         {
           "indexed": false,
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "size",
-          "type": "uint128"
+          "type": "uint96"
         },
         {
           "indexed": false,
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "acceptableRange",
-          "type": "uint128"
+          "type": "uint96"
         },
         {
           "indexed": false,
@@ -69,15 +69,15 @@
         },
         {
           "indexed": false,
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "size",
-          "type": "uint128"
+          "type": "uint96"
         },
         {
           "indexed": false,
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "acceptableRange",
-          "type": "uint128"
+          "type": "uint96"
         },
         {
           "indexed": false,
@@ -110,9 +110,9 @@
           "type": "uint96"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "size",
-          "type": "uint128"
+          "type": "uint96"
         }
       ],
       "name": "addBuyOrder",
@@ -128,9 +128,9 @@
           "type": "uint96"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "size",
-          "type": "uint128"
+          "type": "uint96"
         }
       ],
       "name": "addSellOrder",
@@ -159,9 +159,9 @@
           "type": "uint96[]"
         },
         {
-          "internalType": "uint128[]",
+          "internalType": "uint96[]",
           "name": "_sizes",
-          "type": "uint128[]"
+          "type": "uint96[]"
         }
       ],
       "name": "placeMultipleBuyOrders",
@@ -177,9 +177,9 @@
           "type": "uint96[]"
         },
         {
-          "internalType": "uint128[]",
+          "internalType": "uint96[]",
           "name": "_sizes",
-          "type": "uint128[]"
+          "type": "uint96[]"
         }
       ],
       "name": "placeMultipleSellOrders",
@@ -216,14 +216,14 @@
       "name": "s_buyPricePoints",
       "outputs": [
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "totalCompletedOrCanceledOrders",
-          "type": "uint128"
+          "type": "uint96"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "totalOrdersAtPrice",
-          "type": "uint128"
+          "type": "uint96"
         }
       ],
       "stateMutability": "view",
@@ -263,14 +263,14 @@
           "type": "uint96"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "size",
-          "type": "uint128"
+          "type": "uint96"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "acceptableRange",
-          "type": "uint128"
+          "type": "uint96"
         },
         {
           "internalType": "bool",
@@ -292,14 +292,14 @@
       "name": "s_sellPricePoints",
       "outputs": [
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "totalCompletedOrCanceledOrders",
-          "type": "uint128"
+          "type": "uint96"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "totalOrdersAtPrice",
-          "type": "uint128"
+          "type": "uint96"
         }
       ],
       "stateMutability": "view",

@@ -3,9 +3,9 @@
 pragma solidity ^0.8.0;
 
 interface IAbstractOrderBook {
-    function addBuyOrder(uint96 _price, uint128 size) external;
+    function addBuyOrder(uint96 _price, uint96 size) external;
 
-    function addSellOrder(uint96 _price, uint128 size) external;
+    function addSellOrder(uint96 _price, uint96 size) external;
 
     function batchCancelOrders(
         uint256[] memory _orderIds
@@ -13,12 +13,12 @@ interface IAbstractOrderBook {
 
     function placeMultipleBuyOrders(
         uint96[] memory _prices,
-        uint128[] memory _sizes
+        uint96[] memory _sizes
     ) external;
 
     function placeMultipleSellOrders(
         uint96[] memory _prices,
-        uint128[] memory _sizes
+        uint96[] memory _sizes
     ) external;
 
     function replaceOrders(

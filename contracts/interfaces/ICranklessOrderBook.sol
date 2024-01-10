@@ -4,26 +4,26 @@ pragma solidity ^0.8.0;
 
 interface ICranklessOrderBook {
     function placeAndExecuteMarketBuy(
-        uint96[] calldata c_prices,
-        uint128 _size,
+        uint256[] calldata c_order_ids,
+        uint96 _quoteAmount,
         bool _isFillOrKill
-    ) external returns (uint128);
+    ) external returns (uint96);
 
     function placeAndExecuteMarketSell(
-        uint96[] calldata c_prices,
-        uint128 _size,
+        uint256[] calldata c_prices,
+        uint96 _size,
         bool _isFillOrKill
-    ) external returns (uint128);
+    ) external returns (uint96);
 
     function placeAggressivelimitSell(
-        uint96[] calldata c_order_ids,
-        uint128 _size,
+        uint256[] calldata c_order_ids,
+        uint96 _size,
         uint96 _price
     ) external;
 
     function placeAggressivelimitBuy(
-        uint96[] calldata c_order_ids,
-        uint128 _size,
+        uint256[] calldata c_order_ids,
+        uint96 _size,
         uint96 _price
     ) external;
 }

@@ -11,9 +11,9 @@
           "type": "uint96"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "size",
-          "type": "uint128"
+          "type": "uint96"
         }
       ],
       "name": "addBuyOrder",
@@ -29,9 +29,9 @@
           "type": "uint96"
         },
         {
-          "internalType": "uint128",
+          "internalType": "uint96",
           "name": "size",
-          "type": "uint128"
+          "type": "uint96"
         }
       ],
       "name": "addSellOrder",
@@ -60,9 +60,9 @@
           "type": "uint96[]"
         },
         {
-          "internalType": "uint128[]",
+          "internalType": "uint96[]",
           "name": "_sizes",
-          "type": "uint128[]"
+          "type": "uint96[]"
         }
       ],
       "name": "placeMultipleBuyOrders",
@@ -78,9 +78,9 @@
           "type": "uint96[]"
         },
         {
-          "internalType": "uint128[]",
+          "internalType": "uint96[]",
           "name": "_sizes",
-          "type": "uint128[]"
+          "type": "uint96[]"
         }
       ],
       "name": "placeMultipleSellOrders",
