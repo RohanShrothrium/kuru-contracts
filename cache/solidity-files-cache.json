@@ -110,8 +110,8 @@
       ]
     },
     "/Users/rohanshrothrium/Documents/orderbook/contracts/CranklessOrderBook.sol": {
-      "lastModificationDate": 1704911232624,
-      "contentHash": "8da4f5e79eae9d748805a3db6943386e",
+      "lastModificationDate": 1704916979905,
+      "contentHash": "3496dd1427e2097864ac7c6e1c89e1d8",
       "sourceName": "contracts/CranklessOrderBook.sol",
       "solcConfig": {
         "version": "0.8.17",

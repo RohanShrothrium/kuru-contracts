@@ -289,7 +289,7 @@ contract OrderBookTest is Test {
         assertEq(eth.balanceOf(user2), size*10**18);
 
         assertEq(totalOrdersAtPrice, size*SIZE_PRECISION);
-        assertEq(totalCompletedOrCanceledOrders, size*SIZE_PRECISION);        
+        assertEq(totalCompletedOrCanceledOrders, size*SIZE_PRECISION);
     }
 
     function testMarketSellTimePriorityFail() public {
@@ -359,7 +359,7 @@ contract OrderBookTest is Test {
         assertEq(eth.balanceOf(user2), size*10**18);
 
         assertEq(totalOrdersAtPrice, size*SIZE_PRECISION);
-        assertEq(totalCompletedOrCanceledOrders, size*SIZE_PRECISION);        
+        assertEq(totalCompletedOrCanceledOrders, size*SIZE_PRECISION);
     }
 
     function testMarketBuyTimePriorityFail() public {
@@ -376,7 +376,7 @@ contract OrderBookTest is Test {
         usdc.approve(address(orderBook), initUsdc);
         vm.expectRevert("OrderBook: order not executable");
         orderBook.placeAndExecuteMarketBuy(orderIds, size*price*PRICE_PRECISION, false);
-        vm.stopPrank();     
+        vm.stopPrank();
     }
 
     function testMarketBuyWrongOrderTypeFail() public {
@@ -408,5 +408,69 @@ contract OrderBookTest is Test {
         vm.expectRevert("ERC20: insufficient allowance");
         orderBook.placeAndExecuteMarketBuy(orderIds, size*price*PRICE_PRECISION, false);
         vm.stopPrank();
+    }
+
+    function testAggressiveLimitSell() public {
+        _addBuyOrder();
+        _addBuyOrder();
+
+        uint96 size = 30;
+        uint96 oldSize = 10;
+        uint96 price = 1799;
+        uint96 oldPrice = 1800;
+
+        uint256[] memory orderIds = new uint256[](2);
+        orderIds[0] = 1;
+        orderIds[1] = 2;
+
+        vm.startPrank(user1);
+        eth.approve(address(orderBook), initEth);
+        orderBook.placeAggressivelimitSell(orderIds, size * SIZE_PRECISION, price * PRICE_PRECISION);
+        vm.stopPrank();
+
+        (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(oldPrice*PRICE_PRECISION);
+        assertEq(totalOrdersAtPrice, (2*oldSize)*SIZE_PRECISION);
+        assertEq(totalCompletedOrCanceledOrders, (2*oldSize)*SIZE_PRECISION);
+
+        (totalCompletedOrCanceledOrders, totalOrdersAtPrice) = orderBook.s_sellPricePoints(price*PRICE_PRECISION);
+        assertEq(totalOrdersAtPrice, (size - 2*oldSize)*SIZE_PRECISION);
+        assertEq(totalCompletedOrCanceledOrders, 0);
+
+        assertEq(usdc.balanceOf(user2), initUsdc - 2*(oldPrice*oldSize)*10**18);
+        assertEq(eth.balanceOf(address(orderBook)), (size - 2*oldSize)*10**18);
+        assertEq(usdc.balanceOf(user1), 2*(oldPrice*oldSize)*10**18);
+        assertEq(eth.balanceOf(user2), 2*oldSize*10**18);
+    }
+
+    function testAggressiveLimitBuy() public {
+        _addSellOrder();
+        _addSellOrder();
+
+        uint96 size = 30;
+        uint96 oldSize = 10;
+        uint96 price = 1801;
+        uint96 oldPrice = 1800;
+
+        uint256[] memory orderIds = new uint256[](2);
+        orderIds[0] = 1;
+        orderIds[1] = 2;
+
+        vm.startPrank(user2);
+        usdc.approve(address(orderBook), initUsdc);
+        orderBook.placeAggressivelimitBuy(orderIds, (2*oldPrice*oldSize + price*oldSize) * PRICE_PRECISION, price * PRICE_PRECISION);
+        vm.stopPrank();
+
+        (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_sellPricePoints(oldPrice*PRICE_PRECISION);
+        assertEq(totalOrdersAtPrice, (2*oldSize)*SIZE_PRECISION);
+        assertEq(totalCompletedOrCanceledOrders, (2*oldSize)*SIZE_PRECISION);
+
+        (totalCompletedOrCanceledOrders, totalOrdersAtPrice) = orderBook.s_buyPricePoints(price*PRICE_PRECISION);
+        assertEq(totalOrdersAtPrice, (size - 2*oldSize)*SIZE_PRECISION);
+        assertEq(totalCompletedOrCanceledOrders, 0);
+
+        assertEq(usdc.balanceOf(user2), initUsdc - (2*oldPrice*oldSize + price*oldSize)*10**18);
+        assertEq(usdc.balanceOf(address(orderBook)), (price*oldSize)*10**18);
+        assertEq(usdc.balanceOf(user1), (2*oldPrice*oldSize)*10**18);
+        assertEq(eth.balanceOf(user2), 2*oldSize*10**18);
     }
 }

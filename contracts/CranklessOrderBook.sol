@@ -112,7 +112,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint256[] calldata c_order_ids,
         uint96 _size,
         bool _isFillOrKill
-    ) public returns (uint96 remainingSize) {
+    ) public returns (uint96) {
         uint256 _orderIndex = 0;
         uint256 _priceToGet = 0;
         uint256[] memory _filledOrders = new uint256[](c_order_ids.length);
@@ -164,7 +164,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
         emit OrdersCompletedOrCanceled(_filledOrders);
 
-        remainingSize = _size;
+        return _size;
     }
 
 
