@@ -239,8 +239,11 @@ contract OrderBookTest is Test {
         uint96[] memory prices = new uint96[](1);
         prices[0] = 1801*PRICE_PRECISION;
 
+        uint96[] memory sizes = new uint96[](1);
+        sizes[0] = 9*SIZE_PRECISION;
+
         vm.startPrank(user2);
-        orderBook.replaceOrders(orderIds, prices);
+        orderBook.replaceOrders(orderIds, prices, sizes);
         vm.stopPrank();
 
         (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(oldPrice);
@@ -248,7 +251,7 @@ contract OrderBookTest is Test {
         assertEq(totalCompletedOrCanceledOrders, size);
 
         (totalCompletedOrCanceledOrders, totalOrdersAtPrice) = orderBook.s_buyPricePoints(prices[0]);
-        assertEq(totalOrdersAtPrice, size);
+        assertEq(totalOrdersAtPrice, sizes[0]);
         assertEq(totalCompletedOrCanceledOrders, 0);
     }
 
@@ -261,9 +264,12 @@ contract OrderBookTest is Test {
         uint96[] memory prices = new uint96[](1);
         prices[0] = 1801*PRICE_PRECISION;
 
+        uint96[] memory sizes = new uint96[](1);
+        sizes[0] = 9*SIZE_PRECISION;
+
         vm.startPrank(user1);
-        vm.expectRevert("OrderBook: Only order owner can update order");
-        orderBook.replaceOrders(orderIds, prices);
+        vm.expectRevert("OrderBook: Only order owner can cancel order");
+        orderBook.replaceOrders(orderIds, prices, sizes);
         vm.stopPrank();
     }
 

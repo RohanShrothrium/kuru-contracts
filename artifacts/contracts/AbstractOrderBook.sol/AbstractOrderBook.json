@@ -51,42 +51,12 @@
       "inputs": [
         {
           "indexed": false,
-          "internalType": "uint256",
+          "internalType": "uint256[]",
           "name": "orderId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint96",
-          "name": "price",
-          "type": "uint96"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint96",
-          "name": "size",
-          "type": "uint96"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint96",
-          "name": "acceptableRange",
-          "type": "uint96"
-        },
-        {
-          "indexed": false,
-          "internalType": "bool",
-          "name": "isBuy",
-          "type": "bool"
+          "type": "uint256[]"
         }
       ],
-      "name": "OrderUpdated",
+      "name": "OrdersCompletedOrCanceled",
       "type": "event"
     },
     {
@@ -95,11 +65,17 @@
         {
           "indexed": false,
           "internalType": "uint256[]",
-          "name": "orderId",
+          "name": "orderIds",
           "type": "uint256[]"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint96[]",
+          "name": "updatedSizes",
+          "type": "uint96[]"
         }
       ],
-      "name": "OrdersCompletedOrCanceled",
+      "name": "OrdersUpdated",
       "type": "event"
     },
     {
@@ -154,6 +130,24 @@
     {
       "inputs": [
         {
+          "internalType": "uint256[]",
+          "name": "_orderIds",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint96[]",
+          "name": "_updatedSizes",
+          "type": "uint96[]"
+        }
+      ],
+      "name": "decreaseOrders",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "uint96[]",
           "name": "_prices",
           "type": "uint96[]"
@@ -196,7 +190,12 @@
         },
         {
           "internalType": "uint96[]",
-          "name": "_price",
+          "name": "_prices",
+          "type": "uint96[]"
+        },
+        {
+          "internalType": "uint96[]",
+          "name": "_sizes",
           "type": "uint96[]"
         }
       ],

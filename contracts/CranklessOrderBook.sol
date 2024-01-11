@@ -25,6 +25,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
     /**
      * @dev Places and executes a market buy order.
+     * @param c_order_ids order ids for execution of market order.
      * @param _quoteSize amount of quote asset user is ready to pay.
      * @param _isFillOrKill bool representing if function should revert if full qty is not recieved.
      */
@@ -36,7 +37,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint256 _spentTokens = 0;
         uint96 _sizeToGet = 0;
         uint256 _quoteTokens = uint256(_quoteSize * 10 ** tokenBDecimals / pricePrecision);
-        uint256[] memory _filledOrders = new uint256[](c_order_ids.length);
+        uint96[] memory _filledOrders = new uint96[](c_order_ids.length);
 
         // Transfer the total quote asset amount to the contract
         tokenB.transferFrom(msg.sender, address(this), _quoteTokens);
@@ -57,7 +58,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             if (spendOnOrder == orderValue) {
                 _sizeToGet += _order.size;
 
-                _filledOrders[_orderIndex] = c_order_ids[_orderIndex];
+                _filledOrders[_orderIndex] = 0;
 
                 // Transfer funds and update order book
                 tokenB.transfer(_order.ownerAddress, _amountPayable(_order.size, _order.price));
@@ -67,6 +68,8 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             } else {
                 uint96 sizeToFill = uint96(spendOnOrder * sizePrecision / (_order.price * 10 ** tokenBDecimals));
                 _sizeToGet += sizeToFill;
+
+                _filledOrders[_orderIndex] = _order.price - sizeToFill;
 
                 // Transfer funds and update order book
                 tokenB.transfer(_order.ownerAddress, _amountPayable(sizeToFill, _order.price));
@@ -88,23 +91,15 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
         tokenA.transfer(msg.sender, _sizeToGet * 10 ** tokenBDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER));
 
-        emit OrdersCompletedOrCanceled(_filledOrders);
+        emit OrdersUpdated(c_order_ids, _filledOrders);
 
         // Return the unspent amount
         return uint96((_quoteTokens - _spentTokens) * pricePrecision / 10 ** tokenBDecimals);
     }
 
     /**
-     * internal helper function to get payable amount
-     * @param _size size of token
-     * @param _price conversion price from A to B
-     */
-    function _amountPayable(uint96 _size, uint96 _price) internal view returns (uint256) {
-        return (_size * _price  * 10 ** tokenBDecimals / (pricePrecision * sizePrecision));
-    }
-
-    /**
      * @dev Places and executes a market sell order.
+     * @param c_order_ids order ids for execution of market order.
      * @param _size Size of the market sell order.
      * @param _isFillOrKill bool representing if function should revert if full qty is not recieved.
      */
@@ -115,7 +110,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
     ) public returns (uint96) {
         uint256 _orderIndex = 0;
         uint256 _priceToGet = 0;
-        uint256[] memory _filledOrders = new uint256[](c_order_ids.length);
+        uint96[] memory _filledOrders = new uint96[](c_order_ids.length);
 
         // Transfer the base asset from the user to the contract
         tokenA.transferFrom(
@@ -141,9 +136,10 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
             if (executableSize == _order.size) {
                 _order.size = 0;
-                _filledOrders[_orderIndex] = c_order_ids[_orderIndex];
+                _filledOrders[_orderIndex] = 0;
             } else {
                 _order.size -= executableSize;
+                _filledOrders[_orderIndex] = _order.size;
             }
 
             if(_size == 0) {
@@ -162,7 +158,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             (((_priceToGet * 10 ** tokenBDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER))
         );
 
-        emit OrdersCompletedOrCanceled(_filledOrders);
+        emit OrdersUpdated(c_order_ids, _filledOrders);
 
         return _size;
     }
@@ -206,5 +202,14 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         );
 
         addBuyOrder(_price, (_remainingSize * sizePrecision / _price));
+    }
+
+    /**
+     * internal helper function to get payable amount
+     * @param _size size of token
+     * @param _price conversion price from A to B
+     */
+    function _amountPayable(uint96 _size, uint96 _price) internal view returns (uint256) {
+        return (_size * _price  * 10 ** tokenBDecimals / (pricePrecision * sizePrecision));
     }
 }

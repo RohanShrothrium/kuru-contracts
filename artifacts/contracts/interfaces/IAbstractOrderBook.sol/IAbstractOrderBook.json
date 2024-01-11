@@ -97,7 +97,12 @@
         },
         {
           "internalType": "uint96[]",
-          "name": "_price",
+          "name": "_prices",
+          "type": "uint96[]"
+        },
+        {
+          "internalType": "uint96[]",
+          "name": "_sizes",
           "type": "uint96[]"
         }
       ],

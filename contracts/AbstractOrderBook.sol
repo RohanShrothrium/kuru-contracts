@@ -28,13 +28,9 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
         bool isBuy
     );
 
-    event OrderUpdated(
-        uint256 orderId,
-        address owner,
-        uint96 price,
-        uint96 size,
-        uint96 acceptableRange,
-        bool isBuy
+    event OrdersUpdated(
+        uint256[] orderIds,
+        uint96[] updatedSizes
     );
 
     event OrdersCompletedOrCanceled(
@@ -129,7 +125,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @dev Cancels multiple orders in a batch.
      * @param _orderIds Array of order IDs to cancel.
      */
-    function batchCancelOrders(uint256[] memory _orderIds) external {
+    function batchCancelOrders(uint256[] calldata _orderIds) external {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _cancelOrder(_orderIds[i]);
         }
@@ -141,7 +137,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @dev Internal helper function to cancel a single order.
      * @param _orderId ID of the order to cancel.
      */
-    function _cancelOrder(uint256 _orderId) internal {
+    function _cancelOrder(uint256 _orderId) internal returns (bool) {
         Order memory _order = s_orders[_orderId];
 
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can cancel order");
@@ -157,6 +153,51 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
         }
 
         delete s_orders[_orderId];
+
+        return _order.isBuy;
+    }
+
+    /**
+     * @dev Decreases the size of multiple orders.
+     * This function allows a user to decrease the size of multiple orders they own.
+     * It iterates over the provided order IDs and updates their sizes accordingly.
+     * @param _orderIds Array of order IDs to be decreased in size.
+     * @param _updatedSizes Array of new sizes for the orders. Each size corresponds to the order ID at the same index in the _orderIds array.
+     */
+    function decreaseOrders(uint256[] calldata _orderIds, uint96[] calldata _updatedSizes) external {
+        for (uint256 i = 0; i < _orderIds.length; i++) {
+            _decreaseOrder(_orderIds[i], _updatedSizes[i]);
+        }
+
+        emit OrdersUpdated(_orderIds, _updatedSizes);
+    }
+
+    /**
+     * @dev Internal function to decrease the size of a single order.
+     * This function updates the size of an order and manages the refund process.
+     * It is called by decreaseOrders for each order that needs to be updated.
+     * @param _orderId ID of the order to be decreased in size.
+     * @param _updatedSize New size for the order. Must be less than the current size.
+     */
+    function _decreaseOrder(uint256 _orderId, uint96 _updatedSize) internal {
+        Order memory _order = s_orders[_orderId];
+
+        require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can update order");
+        require(_order.size > _updatedSize, "OrderBook: can't increase order size");
+
+        uint96 _decreasedSize = _order.size - _updatedSize;
+
+        if (_order.isBuy) {
+            s_buyPricePoints[_order.price].totalCompletedOrCanceledOrders += _decreasedSize;
+
+            tokenB.transfer(_order.ownerAddress, ((((_decreasedSize * _order.price) * 10**tokenBDecimals) / pricePrecision) / sizePrecision));
+        } else {
+            s_sellPricePoints[_order.price].totalCompletedOrCanceledOrders += _decreasedSize;
+
+            tokenA.transfer(_order.ownerAddress, (_decreasedSize * 10**tokenADecimals) / sizePrecision);
+        }
+
+        s_orders[_orderId].size = _updatedSize;
     }
 
     /**
@@ -164,7 +205,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _prices Array of prices for the buy orders.
      * @param _sizes Array of sizes for the buy orders.
      */
-    function placeMultipleBuyOrders(uint96[] memory _prices, uint96[] memory _sizes) external {
+    function placeMultipleBuyOrders(uint96[] calldata _prices, uint96[] calldata _sizes) external {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {
@@ -177,7 +218,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _prices Array of prices for the sell orders.
      * @param _sizes Array of sizes for the sell orders.
      */
-    function placeMultipleSellOrders(uint96[] memory _prices, uint96[] memory _sizes) external {
+    function placeMultipleSellOrders(uint96[] calldata _prices, uint96[] calldata _sizes) external {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {
@@ -188,31 +229,21 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
     /**
      * @dev Replaces prices of existing orders
      * @param _orderIds list of orderIds that has to be updated
-     * @param _price new price that has to be set
+     * @param _prices new price that has to be set
      */
     function replaceOrders(
         uint256[] calldata _orderIds,
-        uint96[] calldata _price
+        uint96[] calldata _prices,
+        uint96[] calldata _sizes
     ) external {
         for (uint256 i = 0; i < _orderIds.length; i++) {
-            Order storage order = s_orders[_orderIds[i]];
+            // first cancel order
+            bool _isBuy = _cancelOrder(_orderIds[i]);
 
-            require(msg.sender == order.ownerAddress, "OrderBook: Only order owner can update order");
-
-            PricePoint storage newPricePoint = order.isBuy ? s_buyPricePoints[_price[i]] : s_sellPricePoints[_price[i]];
-            PricePoint storage oldPricePoint = order.isBuy ? s_buyPricePoints[order.price] : s_sellPricePoints[order.price];
-
-            // update new price point
-            oldPricePoint.totalCompletedOrCanceledOrders += order.size;
-
-            // update existing order variables
-            order.acceptableRange = newPricePoint.totalOrdersAtPrice;
-            order.price = _price[i];
-
-            // update new price point
-            newPricePoint.totalOrdersAtPrice += order.size;
-
-            emit OrderUpdated(_orderIds[i], msg.sender, _price[i], order.size, order.acceptableRange, order.isBuy);
+            // add new order
+            _isBuy ? addBuyOrder(_prices[i], _sizes[i]) : addSellOrder(_prices[i], _sizes[i]);
         }
+
+        emit OrdersCompletedOrCanceled(_orderIds);
     }
 }

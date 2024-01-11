@@ -77,7 +77,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _price Price of the buy order.
      * @param size Size of the buy order.
      */
-    function addBuyOrder(uint96 _price, uint96 size) external {
+    function addBuyOrder(uint96 _price, uint96 size) public {
         uint256 _orderId = s_orderIdCounter;
         s_orderIdCounter = _orderId + 1;
 
@@ -95,7 +95,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _price Price of the sell order.
      * @param size Size of the sell order.
      */
-    function addSellOrder(uint96 _price, uint96 size) external {
+    function addSellOrder(uint96 _price, uint96 size) public {
         uint256 _orderId = s_orderIdCounter;
         s_orderIdCounter = _orderId + 1;
 
@@ -139,7 +139,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @dev Internal helper function to cancel a single order.
      * @param _orderId ID of the order to cancel.
      */
-    function _cancelOrder(uint256 _orderId) internal {
+    function _cancelOrder(uint256 _orderId) internal returns (bool) {
         Order memory _order = s_orders[_orderId];
 
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can cancel order");
@@ -155,6 +155,8 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
         }
 
         delete s_orders[_orderId];
+
+        return _order.isBuy;
     }
 
     /**
@@ -186,31 +188,19 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
     /**
      * @dev Replaces prices of existing orders
      * @param _orderIds list of orderIds that has to be updated
-     * @param _price new price that has to be set
+     * @param _prices new price that has to be set
      */
     function replaceOrders(
         uint256[] calldata _orderIds,
-        uint96[] calldata _price
+        uint96[] calldata _prices,
+        uint96[] calldata _sizes
     ) external {
         for (uint256 i = 0; i < _orderIds.length; i++) {
-            Order storage order = s_orders[_orderIds[i]];
+            // first cancel order
+            bool _isBuy = _cancelOrder(_orderIds[i]);
 
-            require(msg.sender == order.ownerAddress, "OrderBook: Only order owner can update order");
-
-            PricePoint storage newPricePoint = order.isBuy ? s_buyPricePoints[_price[i]] : s_sellPricePoints[_price[i]];
-            PricePoint storage oldPricePoint = order.isBuy ? s_buyPricePoints[order.price] : s_sellPricePoints[order.price];
-
-            // update new price point
-            oldPricePoint.totalCompletedOrCanceledOrders += order.size;
-
-            // update existing order variables
-            order.acceptableRange = newPricePoint.totalOrdersAtPrice;
-            order.price = _price[i];
-
-            // update new price point
-            newPricePoint.totalOrdersAtPrice += order.size;
-
-            emit OrderUpdated(_orderIds[i], msg.sender, _price[i], order.size, order.acceptableRange, order.isBuy);
+            // add new order
+            _isBuy ? addBuyOrder(_prices[i], _sizes[i]) : addSellOrder(_prices[i], _sizes[i]);
         }
     }
 }
