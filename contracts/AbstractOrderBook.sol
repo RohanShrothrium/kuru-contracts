@@ -51,6 +51,11 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
 
     uint96 constant sizePrecision = 10**10;
     uint96 constant pricePrecision = 10**2;
+
+    uint96 constant tickSize = pricePrecision/2;
+    uint96 constant minSize = 10**5;
+    uint96 constant maxSize = 10**12;
+
     uint256 constant takerFeeBps = 0;
 
     uint256 constant BPS_MULTIPLIER = 10000;
@@ -76,6 +81,10 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param size Size of the buy order.
      */
     function addBuyOrder(uint96 _price, uint96 size) public {
+        require(size > minSize, "OrderBook: Size too low");
+        require(size < maxSize, "OrderBook: Size too large");
+        require(_price % tickSize == 0, "OrderBook: Tick Size");
+
         uint256 _orderId = s_orderIdCounter;
         s_orderIdCounter = _orderId + 1;
 
@@ -94,6 +103,10 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param size Size of the sell order.
      */
     function addSellOrder(uint96 _price, uint96 size) public {
+        require(size > minSize, "OrderBook: Size too low");
+        require(size < maxSize, "OrderBook: Size too large");
+        require(_price % tickSize == 0, "OrderBook: Tick Size");
+
         uint256 _orderId = s_orderIdCounter;
         s_orderIdCounter = _orderId + 1;
 
