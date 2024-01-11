@@ -72,6 +72,36 @@ contract OrderBookTest is Test {
         assertEq(totalCompletedOrCanceledOrders, 0);
     }
 
+    function testAddBuyOrderMinSizeError() public {
+        uint96 price = 1800;
+        uint96 size = 10;
+
+        vm.startPrank(user2);
+        vm.expectRevert("OrderBook: Size too low");
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size);
+        vm.stopPrank();
+    }
+
+    function testAddBuyOrderMaxSizeError() public {
+        uint96 price = 1800;
+        uint96 size = 10;
+
+        vm.startPrank(user2);
+        vm.expectRevert("OrderBook: Size too large");
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size*10**20);
+        vm.stopPrank();
+    }
+
+    function testAddBuyOrderTickSizeError() public {
+        uint96 price = 180040;
+        uint96 size = 10;
+
+        vm.startPrank(user2);
+        vm.expectRevert("OrderBook: Tick Size");
+        orderBook.addBuyOrder(price, size*SIZE_PRECISION);
+        vm.stopPrank();
+    }
+
     function testAddBuyOrderInsufficientAllowanceFail() public {
         uint96 price = 1800;
         uint96 size = 10;
@@ -106,6 +136,36 @@ contract OrderBookTest is Test {
 
         assertEq(totalOrdersAtPrice, size*SIZE_PRECISION);
         assertEq(totalCompletedOrCanceledOrders, 0);
+    }
+
+    function testAddSellOrderMinSizeError() public {
+        uint96 price = 1800;
+        uint96 size = 10;
+
+        vm.startPrank(user1);
+        vm.expectRevert("OrderBook: Size too low");
+        orderBook.addSellOrder(price*PRICE_PRECISION, size);
+        vm.stopPrank();
+    }
+
+    function testAddSellOrderMaxSizeError() public {
+        uint96 price = 1800;
+        uint96 size = 10;
+
+        vm.startPrank(user1);
+        vm.expectRevert("OrderBook: Size too large");
+        orderBook.addSellOrder(price*PRICE_PRECISION, size*10**20);
+        vm.stopPrank();
+    }
+
+    function testAddSellOrderTickSizeError() public {
+        uint96 price = 180040;
+        uint96 size = 10;
+
+        vm.startPrank(user1);
+        vm.expectRevert("OrderBook: Tick Size");
+        orderBook.addSellOrder(price, size*SIZE_PRECISION);
+        vm.stopPrank();
     }
 
     function testAddSellOrderInsufficientAllowanceFail() public {
