@@ -48,28 +48,28 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
 
     uint256 public s_orderIdCounter;
 
-    IERC20 immutable tokenA;
-    IERC20 immutable tokenB;
+    IERC20 immutable baseAsset;
+    IERC20 immutable quoteAsset;
 
-    uint256 immutable tokenADecimals;
-    uint256 immutable tokenBDecimals;
+    uint256 immutable baseAssetDecimals;
+    uint256 immutable quoteAssetDecimals;
 
     uint256 constant sizePrecision = 10**10;
     uint256 constant pricePrecision = 10**2;
 
     /**
      * @dev Constructor.
-     * @param _tokenAAddress Address of the first token used for trading.
-     * @param _tokenADecimals Deciimal pricicsion of the first swap token.
-     * @param _tokenBAddress Address of the second token used for trading.
-     * @param _tokenBDecimals Deciimal pricicsion of the first swap token.
+     * @param _baseAssetAddress Address of the first token used for trading.
+     * @param _baseAssetDecimals Deciimal pricicsion of the first swap token.
+     * @param _quoteAssetAddress Address of the second token used for trading.
+     * @param _quoteAssetDecimals Deciimal pricicsion of the first swap token.
      */
-    constructor (address _tokenAAddress, uint256 _tokenADecimals, address _tokenBAddress, uint256 _tokenBDecimals) {
-        tokenA = IERC20(_tokenAAddress);
-        tokenB = IERC20(_tokenBAddress);
+    constructor (address _baseAssetAddress, uint256 _baseAssetDecimals, address _quoteAssetAddress, uint256 _quoteAssetDecimals) {
+        baseAsset = IERC20(_baseAssetAddress);
+        quoteAsset = IERC20(_quoteAssetAddress);
 
-        tokenADecimals = _tokenADecimals;
-        tokenBDecimals = _tokenBDecimals;
+        baseAssetDecimals = _baseAssetDecimals;
+        quoteAssetDecimals = _quoteAssetDecimals;
     }
 
     /**
@@ -85,7 +85,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
 
         uint96 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, true);
 
-        tokenB.transferFrom(msg.sender, address(this), ((((size * _price) * 10**tokenBDecimals) / pricePrecision) / sizePrecision));
+        quoteAsset.transferFrom(msg.sender, address(this), ((((size * _price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision));
 
         emit OrderCreated(_orderId, msg.sender, _price, size, _acceptableRange, true);
     }
@@ -103,7 +103,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
 
         uint96 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, false);
 
-        tokenA.transferFrom(msg.sender, address(this), ((size * 10**tokenADecimals) / sizePrecision));
+        baseAsset.transferFrom(msg.sender, address(this), ((size * 10**baseAssetDecimals) / sizePrecision));
 
         emit OrderCreated(_orderId, msg.sender, _price, size, _acceptableRange, false);
     }
@@ -147,11 +147,11 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
         if (_order.isBuy) {
             s_buyPricePoints[_order.price].totalCompletedOrCanceledOrders += _order.size;
 
-            tokenB.transfer(_order.ownerAddress, ((((_order.size * _order.price) * 10**tokenBDecimals) / pricePrecision) / sizePrecision));
+            quoteAsset.transfer(_order.ownerAddress, ((((_order.size * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision));
         } else {
             s_sellPricePoints[_order.price].totalCompletedOrCanceledOrders += _order.size;
 
-            tokenA.transfer(_order.ownerAddress, (_order.size * 10**tokenADecimals) / sizePrecision);
+            baseAsset.transfer(_order.ownerAddress, (_order.size * 10**baseAssetDecimals) / sizePrecision);
         }
 
         delete s_orders[_orderId];

@@ -11,6 +11,13 @@ async function main() {
     const usdcDecimals = 6;
     const usdcShark = "0x3dd1d15b3c78d6acfd75a254e857cbe5b9ff0af2";
 
+    const _sizePrecision = 10**10;
+    const _pricePrecision = 10**2;
+    const _tickSize = _pricePrecision/2;
+    const _minSize = 10**5;
+    const _maxSize = 10**12;
+    const _takerFeeBps = 0;
+
     const [deployer] = await hre.ethers.getSigners();
     const userAddress = deployer.address;
 
@@ -24,7 +31,7 @@ async function main() {
 
     // deploy CranklessOrderBook contract
     const CranklessOrderBook = await hre.ethers.getContractFactory("CranklessOrderBook");
-    const cranklessOrderBook = await CranklessOrderBook.deploy(wbtcAddress, wbtcDecimals, usdcAddress, usdcDecimals);
+    const cranklessOrderBook = await CranklessOrderBook.deploy(wbtcAddress, wbtcDecimals, usdcAddress, usdcDecimals, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
     await cranklessOrderBook.deployed();
 
     const cranklessOrderBookAddress = cranklessOrderBook.address;

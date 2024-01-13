@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// ============ Internal Interfaces Imports ============
 import {ICranklessOrderBook} from "./interfaces/ICranklessOrderBook.sol";
 
+// ============ Internal Contracts Imports ============
 import {AbstractOrderBook} from "./AbstractOrderBook.sol";
 
 // size is 10**10
@@ -10,16 +12,28 @@ import {AbstractOrderBook} from "./AbstractOrderBook.sol";
 contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
     constructor(
-        address _tokenAAddress,
-        uint256 _tokenADecimals,
-        address _tokenBAddress,
-        uint256 _tokenBDecimals
+        address _baseAssetAddress,
+        uint256 _baseAssetDecimals,
+        address _quoteAssetAddress,
+        uint256 _quoteAssetDecimals,
+        uint96 _sizePrecision,
+        uint96 _pricePrecision,
+        uint96 _tickSize,
+        uint96 _minSize,
+        uint96 _maxSize,
+        uint256 _takerFeeBps
     )
         AbstractOrderBook(
-            _tokenAAddress,
-            _tokenADecimals,
-            _tokenBAddress,
-            _tokenBDecimals
+            _baseAssetAddress,
+            _baseAssetDecimals,
+            _quoteAssetAddress,
+            _quoteAssetDecimals,
+            _sizePrecision,
+            _pricePrecision,
+            _tickSize,
+            _minSize,
+            _maxSize,
+            _takerFeeBps
         )
     {}
 
@@ -33,14 +47,14 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint256[] calldata c_order_ids,
         uint96 _quoteSize,
         bool _isFillOrKill
-    ) public override returns (uint96) {
+    ) public override marketActive returns (uint96) {
         uint256 _spentTokens = 0;
         uint96 _sizeToGet = 0;
-        uint256 _quoteTokens = uint256(_quoteSize * 10 ** tokenBDecimals / pricePrecision);
+        uint256 _quoteTokens = uint256(_quoteSize * 10 ** quoteAssetDecimals / pricePrecision);
         uint96[] memory _filledOrders = new uint96[](c_order_ids.length);
 
         // Transfer the total quote asset amount to the contract
-        tokenB.transferFrom(msg.sender, address(this), _quoteTokens);
+        quoteAsset.transferFrom(msg.sender, address(this), _quoteTokens);
 
         for (uint256 _orderIndex = 0; _orderIndex < c_order_ids.length && _spentTokens < _quoteTokens; _orderIndex++) {
             Order storage _order = s_orders[c_order_ids[_orderIndex]];
@@ -61,18 +75,18 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
                 _filledOrders[_orderIndex] = 0;
 
                 // Transfer funds and update order book
-                tokenB.transfer(_order.ownerAddress, _amountPayable(_order.size, _order.price));
+                quoteAsset.transfer(_order.ownerAddress, _amountPayable(_order.size, _order.price));
 
                 s_pricePoint.totalCompletedOrCanceledOrders += _order.size;
                 _order.size = 0;
             } else {
-                uint96 sizeToFill = uint96(spendOnOrder * sizePrecision / (_order.price * 10 ** tokenBDecimals));
+                uint96 sizeToFill = uint96(spendOnOrder * sizePrecision / (_order.price * 10 ** quoteAssetDecimals));
                 _sizeToGet += sizeToFill;
 
                 _filledOrders[_orderIndex] = _order.price - sizeToFill;
 
                 // Transfer funds and update order book
-                tokenB.transfer(_order.ownerAddress, _amountPayable(sizeToFill, _order.price));
+                quoteAsset.transfer(_order.ownerAddress, _amountPayable(sizeToFill, _order.price));
 
                 s_pricePoint.totalCompletedOrCanceledOrders += sizeToFill;
                 _order.size -= sizeToFill;
@@ -86,15 +100,15 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         // Refund any unspent amount
         if (_spentTokens < _quoteTokens) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
-            tokenB.transfer(msg.sender, _quoteTokens - _spentTokens);
+            quoteAsset.transfer(msg.sender, _quoteTokens - _spentTokens);
         }
 
-        tokenA.transfer(msg.sender, _sizeToGet * 10 ** tokenBDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER));
+        baseAsset.transfer(msg.sender, _sizeToGet * 10 ** quoteAssetDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER));
 
         emit OrdersUpdated(c_order_ids, _filledOrders);
 
         // Return the unspent amount
-        return uint96((_quoteTokens - _spentTokens) * pricePrecision / 10 ** tokenBDecimals);
+        return uint96((_quoteTokens - _spentTokens) * pricePrecision / 10 ** quoteAssetDecimals);
     }
 
     /**
@@ -107,16 +121,16 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint256[] calldata c_order_ids,
         uint96 _size,
         bool _isFillOrKill
-    ) public returns (uint96) {
+    ) public marketActive returns (uint96) {
         uint256 _orderIndex = 0;
         uint256 _priceToGet = 0;
         uint96[] memory _filledOrders = new uint96[](c_order_ids.length);
 
         // Transfer the base asset from the user to the contract
-        tokenA.transferFrom(
+        baseAsset.transferFrom(
             msg.sender,
             address(this),
-            (_size * 10 ** tokenADecimals) / sizePrecision
+            (_size * 10 ** baseAssetDecimals) / sizePrecision
         );
 
         for (_orderIndex = 0; _orderIndex < c_order_ids.length && _size > 0; _orderIndex++) {
@@ -132,7 +146,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             _size -= executableSize;
             s_pricePoint.totalCompletedOrCanceledOrders += executableSize;
 
-            tokenA.transfer(_order.ownerAddress, (executableSize * 10 ** tokenADecimals) / sizePrecision);
+            baseAsset.transfer(_order.ownerAddress, (executableSize * 10 ** baseAssetDecimals) / sizePrecision);
 
             if (executableSize == _order.size) {
                 _order.size = 0;
@@ -149,13 +163,13 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
         if (_size > 0) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
-            tokenA.transfer(msg.sender, (_size * 10 ** tokenADecimals) / sizePrecision);
+            baseAsset.transfer(msg.sender, (_size * 10 ** baseAssetDecimals) / sizePrecision);
         }
 
         // Transfer the quote asset (proceeds from the sale) to the user
-        tokenB.transfer(
+        quoteAsset.transfer(
             msg.sender,
-            (((_priceToGet * 10 ** tokenBDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER))
+            (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER))
         );
 
         emit OrdersUpdated(c_order_ids, _filledOrders);
@@ -174,7 +188,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint256[] calldata c_order_ids,
         uint96 _size,
         uint96 _price
-    ) external {
+    ) external marketActive {
         uint96 _remainingSize = placeAndExecuteMarketSell(
             c_order_ids,
             _size,
@@ -194,7 +208,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint256[] calldata c_order_ids,
         uint96 _quoteSize,
         uint96 _price
-    ) external {
+    ) external marketActive {
         uint96 _remainingSize = placeAndExecuteMarketBuy(
             c_order_ids,
             _quoteSize,
@@ -210,6 +224,6 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
      * @param _price conversion price from A to B
      */
     function _amountPayable(uint96 _size, uint96 _price) internal view returns (uint256) {
-        return (_size * _price  * 10 ** tokenBDecimals / (pricePrecision * sizePrecision));
+        return (_size * _price  * 10 ** quoteAssetDecimals / (pricePrecision * sizePrecision));
     }
 }

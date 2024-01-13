@@ -2,10 +2,16 @@
 
 pragma solidity ^0.8.0;
 
-import {IERC20} from "./libraries/IERC20.sol";
+// ============ Internal Interface Imports ============
 import {IAbstractOrderBook} from "./interfaces/IAbstractOrderBook.sol";
 
-abstract contract AbstractOrderBook is IAbstractOrderBook {
+// ============ Internal Library Imports ============
+import {IERC20} from "./libraries/IERC20.sol";
+
+// ============ External Imports ============
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
+abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
     struct Order {
         address ownerAddress;
         uint96 price;
@@ -19,6 +25,15 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
         uint96 totalOrdersAtPrice; // sum of size of all orders placed at the price point
     }
 
+    /**
+     * @dev Emitted when a new order is created.
+     * @param orderId Unique identifier for the newly created order.
+     * @param owner Address of the user who created the order.
+     * @param price Price point of the order in the specified precision.
+     * @param size Size of the order in the specified precision.
+     * @param acceptableRange The range within which the order is valid.
+     * @param isBuy Boolean indicating if the order is a buy (true) or sell (false) order.
+     */
     event OrderCreated(
         uint256 orderId,
         address owner,
@@ -28,11 +43,21 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
         bool isBuy
     );
 
+    /**
+     * @dev Emitted when one or more orders are updated.
+     * @param orderIds Array of order identifiers that were updated.
+     * @param updatedSizes Array of new sizes for the corresponding orders. Each size
+     * corresponds to the order ID at the same index in the `orderIds` array.
+     */
     event OrdersUpdated(
         uint256[] orderIds,
         uint96[] updatedSizes
     );
 
+    /**
+     * @dev Emitted when one or more orders are completed or canceled.
+     * @param orderId Array of order identifiers that were completed or canceled.
+     */
     event OrdersCompletedOrCanceled(
         uint256[] orderId
     );
@@ -43,36 +68,79 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
 
     uint256 public s_orderIdCounter;
 
-    IERC20 immutable tokenA;
-    IERC20 immutable tokenB;
+    bool marketPaused;
 
-    uint256 immutable tokenADecimals;
-    uint256 immutable tokenBDecimals;
+    uint96 immutable sizePrecision;
+    uint96 immutable pricePrecision;
 
-    uint96 constant sizePrecision = 10**10;
-    uint96 constant pricePrecision = 10**2;
+    uint96 immutable tickSize;
+    uint96 immutable minSize;
+    uint96 immutable maxSize;
 
-    uint96 constant tickSize = pricePrecision/2;
-    uint96 constant minSize = 10**5;
-    uint96 constant maxSize = 10**12;
+    // TODO: might have to be public
+    uint256 immutable takerFeeBps;
+    // TODO: add maker fee
 
-    uint256 constant takerFeeBps = 0;
+    IERC20 immutable baseAsset;
+    IERC20 immutable quoteAsset;
+
+    uint256 immutable baseAssetDecimals;
+    uint256 immutable quoteAssetDecimals;
 
     uint256 constant BPS_MULTIPLIER = 10000;
 
     /**
      * @dev Constructor.
-     * @param _tokenAAddress Address of the first token used for trading.
-     * @param _tokenADecimals Deciimal pricicsion of the first swap token.
-     * @param _tokenBAddress Address of the second token used for trading.
-     * @param _tokenBDecimals Deciimal pricicsion of the first swap token.
+     * @param _baseAssetAddress Address of the first token used for trading.
+     * @param _baseAssetDecimals Deciimal pricicsion of the first swap token.
+     * @param _quoteAssetAddress Address of the second token used for trading.
+     * @param _quoteAssetDecimals Deciimal pricicsion of the first swap token.
      */
-    constructor (address _tokenAAddress, uint256 _tokenADecimals, address _tokenBAddress, uint256 _tokenBDecimals) {
-        tokenA = IERC20(_tokenAAddress);
-        tokenB = IERC20(_tokenBAddress);
+    constructor (
+        address _baseAssetAddress,
+        uint256 _baseAssetDecimals,
+        address _quoteAssetAddress,
+        uint256 _quoteAssetDecimals,
+        uint96 _sizePrecision,
+        uint96 _pricePrecision,
+        uint96 _tickSize,
+        uint96 _minSize,
+        uint96 _maxSize,
+        uint256 _takerFeeBps
+    ) {
+        baseAsset = IERC20(_baseAssetAddress);
+        quoteAsset = IERC20(_quoteAssetAddress);
 
-        tokenADecimals = _tokenADecimals;
-        tokenBDecimals = _tokenBDecimals;
+        baseAssetDecimals = _baseAssetDecimals;
+        quoteAssetDecimals = _quoteAssetDecimals;
+
+        // initialize contract parameters
+        sizePrecision = _sizePrecision;
+        pricePrecision = _pricePrecision;
+        tickSize = _tickSize;
+        minSize = _minSize;
+        maxSize = _maxSize;
+        takerFeeBps = _takerFeeBps;
+    }
+
+    modifier marketActive() {
+        require(!marketPaused, "OrderBook: market is paused");
+        _;
+    }
+
+    /**
+     * @param _owner The owner of the contract.
+     */
+    function initialize(address _owner) public initializer {
+        __Ownable_init();
+        _transferOwnership(_owner);
+    }
+
+    /**
+     * @dev Allows admin to pause the market.
+     */
+    function pauseMarkets() external onlyOwner {
+        marketPaused = true;
     }
 
     /**
@@ -80,7 +148,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _price Price of the buy order.
      * @param size Size of the buy order.
      */
-    function addBuyOrder(uint96 _price, uint96 size) public {
+    function addBuyOrder(uint96 _price, uint96 size) public marketActive {
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
@@ -92,7 +160,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
 
         uint96 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, true);
 
-        tokenB.transferFrom(msg.sender, address(this), ((((size * _price) * 10**tokenBDecimals) / pricePrecision) / sizePrecision));
+        quoteAsset.transferFrom(msg.sender, address(this), ((((size * _price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision));
 
         emit OrderCreated(_orderId, msg.sender, _price, size, _acceptableRange, true);
     }
@@ -102,7 +170,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _price Price of the sell order.
      * @param size Size of the sell order.
      */
-    function addSellOrder(uint96 _price, uint96 size) public {
+    function addSellOrder(uint96 _price, uint96 size) public marketActive {
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
@@ -114,7 +182,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
 
         uint96 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, false);
 
-        tokenA.transferFrom(msg.sender, address(this), ((size * 10**tokenADecimals) / sizePrecision));
+        baseAsset.transferFrom(msg.sender, address(this), ((size * 10**baseAssetDecimals) / sizePrecision));
 
         emit OrderCreated(_orderId, msg.sender, _price, size, _acceptableRange, false);
     }
@@ -158,11 +226,11 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
         if (_order.isBuy) {
             s_buyPricePoints[_order.price].totalCompletedOrCanceledOrders += _order.size;
 
-            tokenB.transfer(_order.ownerAddress, ((((_order.size * _order.price) * 10**tokenBDecimals) / pricePrecision) / sizePrecision));
+            quoteAsset.transfer(_order.ownerAddress, ((((_order.size * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision));
         } else {
             s_sellPricePoints[_order.price].totalCompletedOrCanceledOrders += _order.size;
 
-            tokenA.transfer(_order.ownerAddress, (_order.size * 10**tokenADecimals) / sizePrecision);
+            baseAsset.transfer(_order.ownerAddress, (_order.size * 10**baseAssetDecimals) / sizePrecision);
         }
 
         delete s_orders[_orderId];
@@ -177,7 +245,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _orderIds Array of order IDs to be decreased in size.
      * @param _updatedSizes Array of new sizes for the orders. Each size corresponds to the order ID at the same index in the _orderIds array.
      */
-    function decreaseOrders(uint256[] calldata _orderIds, uint96[] calldata _updatedSizes) external {
+    function decreaseOrders(uint256[] calldata _orderIds, uint96[] calldata _updatedSizes) external marketActive {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _decreaseOrder(_orderIds[i], _updatedSizes[i]);
         }
@@ -203,11 +271,11 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
         if (_order.isBuy) {
             s_buyPricePoints[_order.price].totalCompletedOrCanceledOrders += _decreasedSize;
 
-            tokenB.transfer(_order.ownerAddress, ((((_decreasedSize * _order.price) * 10**tokenBDecimals) / pricePrecision) / sizePrecision));
+            quoteAsset.transfer(_order.ownerAddress, ((((_decreasedSize * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision));
         } else {
             s_sellPricePoints[_order.price].totalCompletedOrCanceledOrders += _decreasedSize;
 
-            tokenA.transfer(_order.ownerAddress, (_decreasedSize * 10**tokenADecimals) / sizePrecision);
+            baseAsset.transfer(_order.ownerAddress, (_decreasedSize * 10**baseAssetDecimals) / sizePrecision);
         }
 
         s_orders[_orderId].size = _updatedSize;
@@ -218,7 +286,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _prices Array of prices for the buy orders.
      * @param _sizes Array of sizes for the buy orders.
      */
-    function placeMultipleBuyOrders(uint96[] calldata _prices, uint96[] calldata _sizes) external {
+    function placeMultipleBuyOrders(uint96[] calldata _prices, uint96[] calldata _sizes) external marketActive {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {
@@ -231,7 +299,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
      * @param _prices Array of prices for the sell orders.
      * @param _sizes Array of sizes for the sell orders.
      */
-    function placeMultipleSellOrders(uint96[] calldata _prices, uint96[] calldata _sizes) external {
+    function placeMultipleSellOrders(uint96[] calldata _prices, uint96[] calldata _sizes) external marketActive {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {
@@ -248,7 +316,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook {
         uint256[] calldata _orderIds,
         uint96[] calldata _prices,
         uint96[] calldata _sizes
-    ) external {
+    ) external marketActive {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             // first cancel order
             bool _isBuy = _cancelOrder(_orderIds[i]);

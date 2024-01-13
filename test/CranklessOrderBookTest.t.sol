@@ -31,7 +31,14 @@ contract OrderBookTest is Test {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USD", "USDC");
 
-        orderBook = new CranklessOrderBook(address(eth), 18, address(usdc), 18);
+        uint96 _sizePrecision = 10**10;
+        uint96 _pricePrecision = 10**2;
+        uint96 _tickSize = _pricePrecision/2;
+        uint96 _minSize = 10**5;
+        uint96 _maxSize = 10**12;
+        uint256 _takerFeeBps = 0;
+
+        orderBook = new CranklessOrderBook(address(eth), 18, address(usdc), 18, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
 
         eth.mint(user1, initEth);
         usdc.mint(user2, initUsdc);

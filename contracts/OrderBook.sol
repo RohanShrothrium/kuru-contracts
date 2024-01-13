@@ -14,16 +14,16 @@ contract OrderBook is AbstractOrderBook, IOrderBook {
     using SafeMath for uint256;
 
     constructor(
-        address _tokenAAddress,
-        uint256 _tokenADecimals,
-        address _tokenBAddress,
-        uint256 _tokenBDecimals
+        address _baseAssetAddress,
+        uint256 _baseAssetDecimals,
+        address _quoteAssetAddress,
+        uint256 _quoteAssetDecimals
     )
         AbstractOrderBook(
-            _tokenAAddress,
-            _tokenADecimals,
-            _tokenBAddress,
-            _tokenBDecimals
+            _baseAssetAddress,
+            _baseAssetDecimals,
+            _quoteAssetAddress,
+            _quoteAssetDecimals
         )
     {}
 
@@ -86,16 +86,16 @@ contract OrderBook is AbstractOrderBook, IOrderBook {
         }
 
         // transfer the tokens
-        tokenB.transferFrom(
+        quoteAsset.transferFrom(
             msg.sender,
             address(this),
-            _priceToPay.mul(10 ** tokenBDecimals).div(pricePrecision).div(
+            _priceToPay.mul(10 ** quoteAssetDecimals).div(pricePrecision).div(
                 sizePrecision
             )
         );
-        tokenA.transfer(
+        baseAsset.transfer(
             msg.sender,
-            _executedSize.mul(10 ** tokenADecimals).div(sizePrecision)
+            _executedSize.mul(10 ** baseAssetDecimals).div(sizePrecision)
         );
     }
 
@@ -158,14 +158,14 @@ contract OrderBook is AbstractOrderBook, IOrderBook {
         }
 
         // transfer the tokens
-        tokenA.transferFrom(
+        baseAsset.transferFrom(
             msg.sender,
             address(this),
-            _executedSize.mul(10 ** tokenADecimals).div(sizePrecision)
+            _executedSize.mul(10 ** baseAssetDecimals).div(sizePrecision)
         );
-        tokenB.transfer(
+        quoteAsset.transfer(
             msg.sender,
-            _priceToGet.mul(10 ** tokenBDecimals).div(pricePrecision).div(
+            _priceToGet.mul(10 ** quoteAssetDecimals).div(pricePrecision).div(
                 sizePrecision
             )
         );
@@ -206,11 +206,11 @@ contract OrderBook is AbstractOrderBook, IOrderBook {
         _pricePoint.totalCompletedOrCanceledOrders += _sizeToExecute;
         _pricePoint.executableSize -= _sizeToExecute;
 
-        tokenB.transfer(
+        quoteAsset.transfer(
             _order.ownerAddress,
             _sizeToExecute
                 .mul(_order.price)
-                .mul(10 ** tokenBDecimals)
+                .mul(10 ** quoteAssetDecimals)
                 .div(pricePrecision)
                 .div(sizePrecision)
         );
@@ -255,9 +255,9 @@ contract OrderBook is AbstractOrderBook, IOrderBook {
         _pricePoint.totalCompletedOrCanceledOrders += _sizeToExecute;
         _pricePoint.executableSize -= _sizeToExecute;
 
-        tokenA.transfer(
+        baseAsset.transfer(
             _order.ownerAddress,
-            _sizeToExecute.mul(10 ** tokenADecimals).div(sizePrecision)
+            _sizeToExecute.mul(10 ** baseAssetDecimals).div(sizePrecision)
         );
 
         if (_order.size == 0) {
