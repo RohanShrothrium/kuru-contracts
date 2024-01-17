@@ -44,6 +44,34 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
     );
 
     /**
+     * @dev Emitted when one or more orders are executed partially/completely by buy taker orders.
+     * @param takerAddress Address of the taker.
+     * @param orderIds Array of order identifiers that were partially/completely executed.
+     * @param updatedSizes Array of new sizes for the corresponding orders. Each size
+     * corresponds to the order ID at the same index in the `orderIds` array.
+     */
+    event BuyIOC(
+        address takerAddress,
+        uint96 orderSize,
+        uint256[] orderIds,
+        uint96[] updatedSizes
+    );
+
+    /**
+     * @dev Emitted when one or more orders are executed partially/completely by sell taker orders.
+     * @param takerAddress Address of the taker.
+     * @param orderIds Array of order identifiers that were partially/completely executed.
+     * @param updatedSizes Array of new sizes for the corresponding orders. Each size
+     * corresponds to the order ID at the same index in the `orderIds` array.
+     */
+    event SellIOC(
+        address takerAddress,
+        uint96 orderSize,
+        uint256[] orderIds,
+        uint96[] updatedSizes
+    );
+
+    /**
      * @dev Emitted when one or more orders are updated.
      * @param orderIds Array of order identifiers that were updated.
      * @param updatedSizes Array of new sizes for the corresponding orders. Each size
@@ -58,7 +86,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
      * @dev Emitted when one or more orders are completed or canceled.
      * @param orderId Array of order identifiers that were completed or canceled.
      */
-    event OrdersCompletedOrCanceled(
+    event OrdersCanceled(
         uint256[] orderId
     );
 
@@ -162,7 +190,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
 
         quoteAsset.transferFrom(msg.sender, address(this), ((((size * _price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision));
 
-        emit OrderCreated(_orderId, msg.sender, _price, size, _acceptableRange, true);
+        emit OrderCreated(_orderId + 1, msg.sender, _price, size, _acceptableRange, true);
     }
 
     /**
@@ -184,7 +212,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
 
         baseAsset.transferFrom(msg.sender, address(this), ((size * 10**baseAssetDecimals) / sizePrecision));
 
-        emit OrderCreated(_orderId, msg.sender, _price, size, _acceptableRange, false);
+        emit OrderCreated(_orderId + 1, msg.sender, _price, size, _acceptableRange, false);
     }
 
     /**
@@ -211,7 +239,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
             _cancelOrder(_orderIds[i]);
         }
 
-        emit OrdersCompletedOrCanceled(_orderIds);
+        emit OrdersCanceled(_orderIds);
     }
 
     /**
@@ -325,6 +353,6 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
             _isBuy ? addBuyOrder(_prices[i], _sizes[i]) : addSellOrder(_prices[i], _sizes[i]);
         }
 
-        emit OrdersCompletedOrCanceled(_orderIds);
+        emit OrdersCanceled(_orderIds);
     }
 }

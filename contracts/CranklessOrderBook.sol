@@ -105,7 +105,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
         baseAsset.transfer(msg.sender, _sizeToGet * 10 ** quoteAssetDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER));
 
-        emit OrdersUpdated(c_order_ids, _filledOrders);
+        emit BuyIOC(msg.sender, _sizeToGet, c_order_ids, _filledOrders);
 
         // Return the unspent amount
         return uint96((_quoteTokens - _spentTokens) * pricePrecision / 10 ** quoteAssetDecimals);
@@ -122,6 +122,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint96 _size,
         bool _isFillOrKill
     ) public marketActive returns (uint96) {
+        uint96 _initSize = _size;
         uint256 _orderIndex = 0;
         uint256 _priceToGet = 0;
         uint96[] memory _filledOrders = new uint96[](c_order_ids.length);
@@ -172,7 +173,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER))
         );
 
-        emit OrdersUpdated(c_order_ids, _filledOrders);
+        emit SellIOC(msg.sender, _initSize - _size, c_order_ids, _filledOrders);
 
         return _size;
     }
