@@ -3,10 +3,10 @@
 pragma solidity ^0.8.0;
 
 // ============ Internal Interface Imports ============
-import {IAbstractOrderBook} from "./interfaces/IAbstractOrderBook.sol";
+import {IAbstractOrderBook} from "../interfaces/IAbstractOrderBook.sol";
 
 // ============ Internal Library Imports ============
-import {IERC20} from "./libraries/IERC20.sol";
+import {IERC20} from "../libraries/IERC20.sol";
 
 // ============ External Imports ============
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";

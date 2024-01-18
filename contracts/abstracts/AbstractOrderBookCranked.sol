@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import {IERC20} from "./libraries/IERC20.sol";
-import {IAbstractOrderBook} from "./interfaces/IAbstractOrderBook.sol";
+import {IERC20} from "../libraries/IERC20.sol";
+import {IAbstractOrderBook} from "../interfaces/IAbstractOrderBook.sol";
 
 abstract contract AbstractOrderBook is IAbstractOrderBook {
     struct Order {

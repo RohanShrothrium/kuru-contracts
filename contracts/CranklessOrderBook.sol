@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import {ICranklessOrderBook} from "./interfaces/ICranklessOrderBook.sol";
 
 // ============ Internal Contracts Imports ============
-import {AbstractOrderBook} from "./AbstractOrderBook.sol";
+import {AbstractOrderBook} from "./abstracts/AbstractOrderBook.sol";
 
 // size is 10**10
 // price is 10**2
@@ -226,5 +226,33 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
      */
     function _amountPayable(uint96 _size, uint96 _price) internal view returns (uint256) {
         return (_size * _price  * 10 ** quoteAssetDecimals / (pricePrecision * sizePrecision));
+    }
+
+    /**
+     * @dev Getter function to fetch size precision.
+     */
+    function getSizePrecision() external view returns (uint96) {
+        return sizePrecision;
+    }
+
+    /**
+     * @dev Getter function to fetch price precision.
+     */
+    function getPricePrecision() external view returns (uint96) {
+        return pricePrecision;
+    }
+
+    /**
+     * @dev Getter function to fetch decimals of base asset.
+     */
+    function getBaseAssetDecimals() external view returns (uint256) {
+        return baseAssetDecimals;
+    }
+
+    /**
+     * @dev Getter function to fetch decimals of quote asset.
+     */
+    function getQuoteAssetDecimals() external view returns (uint256) {
+        return quoteAssetDecimals;
     }
 }

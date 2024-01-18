@@ -5,7 +5,7 @@ import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
-import {AbstractOrderBook} from "./AbstractOrderBookCranked.sol";
+import {AbstractOrderBook} from "./abstracts/AbstractOrderBookCranked.sol";
 
 // size is 10**10
 // price is 10**2

@@ -26,4 +26,12 @@ interface ICranklessOrderBook {
         uint96 _size,
         uint96 _price
     ) external;
+
+    function getSizePrecision() external view returns (uint96);
+
+    function getPricePrecision() external view returns (uint96);
+
+    function getBaseAssetDecimals() external view returns (uint256);
+
+    function getQuoteAssetDecimals() external view returns (uint256);
 }
