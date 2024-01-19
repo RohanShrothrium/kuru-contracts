@@ -31,6 +31,7 @@ async function main() {
         var tx = await orderBook.addBuyOrder(
             180000 + (i * 100),
             10**8,
+            false
         );
         const receipt = await tx.wait();
 
@@ -47,7 +48,8 @@ async function main() {
     const cancelLimitGas = {};
     for (let i = 0; i < 10; i++) {
         var tx = await orderBook.batchCancelOrders(
-            [i+1]
+            [i+1],
+            false
         );
         const receipt = await tx.wait();
 
@@ -66,6 +68,7 @@ async function main() {
         var tx = await orderBook.addBuyOrder(
             181100,
             10**8,
+            false,
         );
         const receipt = await tx.wait();
 
@@ -135,6 +138,7 @@ async function main() {
         var tx = await orderBook.addBuyOrder(
             190000,
             10**8,
+            false,
         );
         const receipt = await tx.wait();
 

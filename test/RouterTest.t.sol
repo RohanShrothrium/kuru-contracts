@@ -5,17 +5,7 @@ import "forge-std/Test.sol";
 import {CranklessOrderBook} from "../contracts/CranklessOrderBook.sol";
 import {Router} from "../contracts/Router.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-contract MintableERC20 is ERC20 {
-    constructor(
-        string memory name_,
-        string memory symbol_
-    ) ERC20(name_, symbol_) {}
-
-    function mint(address account, uint256 amount) external {
-        _mint(account, amount);
-    }
-}
+import {MintableERC20} from "./lib/MintableERC20.sol";
 
 contract OrderBookTest is Test {
     uint96 constant SIZE_PRECISION = 10 ** 10;

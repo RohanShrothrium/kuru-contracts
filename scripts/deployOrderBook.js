@@ -21,21 +21,39 @@ async function main() {
     const [deployer] = await hre.ethers.getSigners();
     const userAddress = deployer.address;
 
-    // deploy OrderBook contract
-    const OrderBook = await hre.ethers.getContractFactory("OrderBook");
-    const orderBook = await OrderBook.deploy(wbtcAddress, wbtcDecimals, usdcAddress, usdcDecimals);
-    await orderBook.deployed();
+    // deploy Router Contract
+    const Router = await hre.ethers.getContractFactory("Router");
+    const router = await Router.deploy();
+    await router.deployed();
 
-    const orderBookAddress = orderBook.address;
-    console.log("OrderBook deployed to:", orderBookAddress);
+    const routerAddress = router.address;
+    console.log("Router deployed to:", routerAddress);
+
+    // initialize router contract
+    const routerInitTx = await router.initialize(userAddress);
+    await routerInitTx.wait();
+    console.log("Router Initialized with owner:", userAddress);
+
+    // deploy Margin Account Contract
+    const MarginAccount = await hre.ethers.getContractFactory("MarginAccount");
+    const marginAccount = await MarginAccount.deploy(routerAddress);
+    await marginAccount.deployed();
+
+    const marginAccountAddress = marginAccount.address;
+    console.log("MarginAccountAddress deployed to:", marginAccountAddress);
 
     // deploy CranklessOrderBook contract
     const CranklessOrderBook = await hre.ethers.getContractFactory("CranklessOrderBook");
-    const cranklessOrderBook = await CranklessOrderBook.deploy(wbtcAddress, wbtcDecimals, usdcAddress, usdcDecimals, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    const cranklessOrderBook = await CranklessOrderBook.deploy(wbtcAddress, wbtcDecimals, usdcAddress, usdcDecimals, marginAccountAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
     await cranklessOrderBook.deployed();
 
     const cranklessOrderBookAddress = cranklessOrderBook.address;
     console.log("CranklessOrderBook deployed to:", cranklessOrderBookAddress);
+
+    // register wbtc-usdc market
+    const marketRegisterTx = await router.registerMarket(wbtcAddress, usdcAddress, cranklessOrderBookAddress);
+    await marketRegisterTx.wait();
+    console.log("wbtc-usdc market registered");
 
     // imporsonate sharkAddress for wbtc
     await hre.network.provider.request({
@@ -76,7 +94,8 @@ async function main() {
     const config = {
         "usdcAddress": usdcAddress,
         "wbtcAddress": wbtcAddress,
-        "orderBookAddress": orderBookAddress,
+        "routerAddress": routerAddress,
+        "marginAccountAddress": marginAccountAddress,
         "cranklessOrderBookAddress": cranklessOrderBookAddress
     }
     fs.writeFileSync("config.json", JSON.stringify(config));

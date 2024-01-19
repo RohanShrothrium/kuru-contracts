@@ -5,8 +5,9 @@ pragma solidity ^0.8.0;
 // ============ Internal Interface Imports ============
 import {IAbstractOrderBook} from "../interfaces/IAbstractOrderBook.sol";
 
-// ============ Internal Library Imports ============
+// ============ Internal Contracts Imports ============
 import {IERC20} from "../libraries/IERC20.sol";
+import {MarginAccount} from  "../MarginAccount.sol";
 
 // ============ External Imports ============
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -18,6 +19,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
         uint96 size;
         uint96 acceptableRange;
         bool isBuy;
+        bool useMargin;
     }
 
     struct PricePoint {
@@ -111,6 +113,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
 
     IERC20 immutable baseAsset;
     IERC20 immutable quoteAsset;
+    MarginAccount immutable marginAccount;
 
     uint256 immutable baseAssetDecimals;
     uint256 immutable quoteAssetDecimals;
@@ -129,6 +132,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
         uint256 _baseAssetDecimals,
         address _quoteAssetAddress,
         uint256 _quoteAssetDecimals,
+        address _marginAccountAddress,
         uint96 _sizePrecision,
         uint96 _pricePrecision,
         uint96 _tickSize,
@@ -142,6 +146,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
         baseAssetDecimals = _baseAssetDecimals;
         quoteAssetDecimals = _quoteAssetDecimals;
 
+        marginAccount = MarginAccount(_marginAccountAddress);
         // initialize contract parameters
         sizePrecision = _sizePrecision;
         pricePrecision = _pricePrecision;
@@ -175,8 +180,9 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
      * @dev Adds a buy order to the order book.
      * @param _price Price of the buy order.
      * @param size Size of the buy order.
+     * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      */
-    function addBuyOrder(uint96 _price, uint96 size) public marketActive {
+    function addBuyOrder(uint96 _price, uint96 size, bool _useMargin) public marketActive {
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
@@ -186,9 +192,9 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
 
         PricePoint storage _pricePoint = s_buyPricePoints[_price];
 
-        uint96 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, true);
+        uint96 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, true, _useMargin);
 
-        quoteAsset.transferFrom(msg.sender, address(this), ((((size * _price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision));
+        _consumeFunds(quoteAsset, ((((size * _price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision), _useMargin, msg.sender);
 
         emit OrderCreated(_orderId + 1, msg.sender, _price, size, _acceptableRange, true);
     }
@@ -197,8 +203,9 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
      * @dev Adds a sell order to the order book.
      * @param _price Price of the sell order.
      * @param size Size of the sell order.
+     * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      */
-    function addSellOrder(uint96 _price, uint96 size) public marketActive {
+    function addSellOrder(uint96 _price, uint96 size, bool _useMargin) public marketActive {
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
@@ -208,9 +215,9 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
 
         PricePoint storage _pricePoint = s_sellPricePoints[_price];
 
-        uint96 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, false);
+        uint96 _acceptableRange = _addOrder(_pricePoint, _price, size, _orderId + 1, false, _useMargin);
 
-        baseAsset.transferFrom(msg.sender, address(this), ((size * 10**baseAssetDecimals) / sizePrecision));
+        _consumeFunds(baseAsset, ((size * 10**baseAssetDecimals) / sizePrecision), _useMargin, msg.sender);
 
         emit OrderCreated(_orderId + 1, msg.sender, _price, size, _acceptableRange, false);
     }
@@ -221,9 +228,9 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
      * @param _price Price of the order.
      * @param _size Size of the order.
      */
-    function _addOrder(PricePoint storage _pricePoint, uint96 _price, uint96 _size, uint256 _orderId, bool _isBuy) internal returns(uint96) {
+    function _addOrder(PricePoint storage _pricePoint, uint96 _price, uint96 _size, uint256 _orderId, bool _isBuy, bool _useMargin) internal returns(uint96) {
         uint96 acceptableRange = _pricePoint.totalOrdersAtPrice;
-        s_orders[_orderId] = Order(msg.sender, _price, _size, acceptableRange, _isBuy);
+        s_orders[_orderId] = Order(msg.sender, _price, _size, acceptableRange, _isBuy, _useMargin);
 
         _pricePoint.totalOrdersAtPrice += _size;
 
@@ -231,12 +238,31 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
     }
 
     /**
+     * @dev Consumes funds required to create a GTC order.
+     * @param _consumableAsset Address of the asset that is being consumed by the market.
+     * @param _amount Amount of _consumableAssets that should be consumed by the market.
+     * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
+     * @param _makerAddress Address of the the user creating the order.
+     */
+    function _consumeFunds(IERC20 _consumableAsset, uint256 _amount, bool _useMargin, address _makerAddress) internal {
+        _useMargin
+            ? marginAccount.debitUser(
+                _makerAddress,
+                address(_consumableAsset),
+                _amount,
+                address(baseAsset),
+                address(quoteAsset)
+            )
+            : _consumableAsset.transferFrom(_makerAddress, address(marginAccount), _amount);
+    }
+
+    /**
      * @dev Cancels multiple orders in a batch.
      * @param _orderIds Array of order IDs to cancel.
      */
-    function batchCancelOrders(uint256[] calldata _orderIds) external {
+    function batchCancelOrders(uint256[] calldata _orderIds, bool _useMargin) external {
         for (uint256 i = 0; i < _orderIds.length; i++) {
-            _cancelOrder(_orderIds[i]);
+            _cancelOrder(_orderIds[i], _useMargin);
         }
 
         emit OrdersCanceled(_orderIds);
@@ -246,7 +272,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
      * @dev Internal helper function to cancel a single order.
      * @param _orderId ID of the order to cancel.
      */
-    function _cancelOrder(uint256 _orderId) internal returns (bool) {
+    function _cancelOrder(uint256 _orderId, bool _useMargin) internal returns (bool) {
         Order memory _order = s_orders[_orderId];
 
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can cancel order");
@@ -254,11 +280,25 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
         if (_order.isBuy) {
             s_buyPricePoints[_order.price].totalCompletedOrCanceledOrders += _order.size;
 
-            quoteAsset.transfer(_order.ownerAddress, ((((_order.size * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision));
+            marginAccount.creditUser(
+                _order.ownerAddress,
+                address(quoteAsset),
+                ((((_order.size * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision),
+                address(baseAsset),
+                address(quoteAsset),
+                _useMargin
+            );
         } else {
             s_sellPricePoints[_order.price].totalCompletedOrCanceledOrders += _order.size;
 
-            baseAsset.transfer(_order.ownerAddress, (_order.size * 10**baseAssetDecimals) / sizePrecision);
+            marginAccount.creditUser(
+                _order.ownerAddress,
+                address(baseAsset),
+                ((_order.size * 10**baseAssetDecimals) / sizePrecision),
+                address(baseAsset),
+                address(quoteAsset),
+                _useMargin
+            );
         }
 
         delete s_orders[_orderId];
@@ -273,9 +313,9 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
      * @param _orderIds Array of order IDs to be decreased in size.
      * @param _updatedSizes Array of new sizes for the orders. Each size corresponds to the order ID at the same index in the _orderIds array.
      */
-    function decreaseOrders(uint256[] calldata _orderIds, uint96[] calldata _updatedSizes) external marketActive {
+    function decreaseOrders(uint256[] calldata _orderIds, uint96[] calldata _updatedSizes, bool _useMargin) external marketActive {
         for (uint256 i = 0; i < _orderIds.length; i++) {
-            _decreaseOrder(_orderIds[i], _updatedSizes[i]);
+            _decreaseOrder(_orderIds[i], _updatedSizes[i], _useMargin);
         }
 
         emit OrdersUpdated(_orderIds, _updatedSizes);
@@ -288,7 +328,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
      * @param _orderId ID of the order to be decreased in size.
      * @param _updatedSize New size for the order. Must be less than the current size.
      */
-    function _decreaseOrder(uint256 _orderId, uint96 _updatedSize) internal {
+    function _decreaseOrder(uint256 _orderId, uint96 _updatedSize, bool _useMargin) internal {
         Order memory _order = s_orders[_orderId];
 
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can update order");
@@ -299,11 +339,25 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
         if (_order.isBuy) {
             s_buyPricePoints[_order.price].totalCompletedOrCanceledOrders += _decreasedSize;
 
-            quoteAsset.transfer(_order.ownerAddress, ((((_decreasedSize * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision));
+            marginAccount.creditUser(
+                _order.ownerAddress,
+                address(quoteAsset),
+                ((((_decreasedSize * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision),
+                address(baseAsset),
+                address(quoteAsset),
+                _useMargin
+            );
         } else {
             s_sellPricePoints[_order.price].totalCompletedOrCanceledOrders += _decreasedSize;
 
-            baseAsset.transfer(_order.ownerAddress, (_decreasedSize * 10**baseAssetDecimals) / sizePrecision);
+            marginAccount.creditUser(
+                _order.ownerAddress,
+                address(baseAsset),
+                ((_decreasedSize * 10**baseAssetDecimals) / sizePrecision),
+                address(baseAsset),
+                address(quoteAsset),
+                _useMargin
+            );
         }
 
         s_orders[_orderId].size = _updatedSize;
@@ -314,11 +368,11 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
      * @param _prices Array of prices for the buy orders.
      * @param _sizes Array of sizes for the buy orders.
      */
-    function placeMultipleBuyOrders(uint96[] calldata _prices, uint96[] calldata _sizes) external marketActive {
+    function placeMultipleBuyOrders(uint96[] calldata _prices, uint96[] calldata _sizes, bool _useMargin) external marketActive {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {
-            addBuyOrder(_prices[i], _sizes[i]);
+            addBuyOrder(_prices[i], _sizes[i], _useMargin);
         }
     }
 
@@ -327,11 +381,11 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
      * @param _prices Array of prices for the sell orders.
      * @param _sizes Array of sizes for the sell orders.
      */
-    function placeMultipleSellOrders(uint96[] calldata _prices, uint96[] calldata _sizes) external marketActive {
+    function placeMultipleSellOrders(uint96[] calldata _prices, uint96[] calldata _sizes, bool _useMargin) external marketActive {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {
-            addSellOrder(_prices[i], _sizes[i]);
+            addSellOrder(_prices[i], _sizes[i], _useMargin);
         }
     }
 
@@ -343,14 +397,15 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
     function replaceOrders(
         uint256[] calldata _orderIds,
         uint96[] calldata _prices,
-        uint96[] calldata _sizes
+        uint96[] calldata _sizes,
+        bool _useMargin
     ) external marketActive {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             // first cancel order
-            bool _isBuy = _cancelOrder(_orderIds[i]);
+            bool _isBuy = _cancelOrder(_orderIds[i], _useMargin);
 
             // add new order
-            _isBuy ? addBuyOrder(_prices[i], _sizes[i]) : addSellOrder(_prices[i], _sizes[i]);
+            _isBuy ? addBuyOrder(_prices[i], _sizes[i], _useMargin) : addSellOrder(_prices[i], _sizes[i], _useMargin);
         }
 
         emit OrdersCanceled(_orderIds);

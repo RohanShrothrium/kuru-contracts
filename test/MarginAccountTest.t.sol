@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "forge-std/Test.sol";
+import {CranklessOrderBook} from "../contracts/CranklessOrderBook.sol";
+import {Router} from "../contracts/Router.sol";
+import {MarginAccount} from "../contracts/MarginAccount.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {MintableERC20} from "./lib/MintableERC20.sol";
+
+contract OrderBookTest is Test {
+    uint96 constant SIZE_PRECISION = 10 ** 10;
+    uint96 constant PRICE_PRECISION = 10 ** 2;
+
+    CranklessOrderBook eth_usdc;
+    CranklessOrderBook mon_usdc;
+    Router router;
+    MintableERC20 eth;
+    MintableERC20 usdc;
+    MintableERC20 mon;
+    MarginAccount marginAccount;
+
+    address user1 = address(1);
+    address user2 = address(2);
+    address user3 = address(3);
+
+    uint256 initEth = 1000 * 10 ** 18;
+    uint256 initUsdc = 1000000 * 10 ** 18;
+    uint256 initMon = 1000000 * 10 ** 18;
+
+    function setUp() public {
+        mon = new MintableERC20("MON", "MON");
+        eth = new MintableERC20("ETH", "ETH");
+        usdc = new MintableERC20("USD", "USDC");
+
+        router = new Router();
+
+        router.initialize(address(this));
+
+        marginAccount = new MarginAccount(address(marginAccount));
+
+        eth_usdc = _createOrderbook(eth, usdc);
+        mon_usdc = _createOrderbook(mon, usdc);
+
+        router.registerMarket(address(eth), address(usdc), address(eth_usdc));
+        router.registerMarket(address(mon), address(usdc), address(mon_usdc));
+
+        assertEq(router.marketAddress(address(eth), address(usdc)), address(eth_usdc));
+        assertEq(router.marketAddress(address(mon), address(usdc)), address(mon_usdc));
+
+        eth.mint(user1, initEth);
+        usdc.mint(user2, initUsdc);
+        mon.mint(user3, initMon);
+    }
+
+    // TODO: Write tests here lol
+}
