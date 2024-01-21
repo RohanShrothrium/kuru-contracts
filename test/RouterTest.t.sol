@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import {CranklessOrderBook} from "../contracts/CranklessOrderBook.sol";
 import {Router} from "../contracts/Router.sol";
+import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MintableERC20} from "./lib/MintableERC20.sol";
 
@@ -14,6 +15,7 @@ contract OrderBookTest is Test {
     CranklessOrderBook eth_usdc;
     CranklessOrderBook mon_usdc;
     Router router;
+    MarginAccount marginAccount;
     MintableERC20 eth;
     MintableERC20 usdc;
     MintableERC20 mon;
@@ -35,8 +37,10 @@ contract OrderBookTest is Test {
 
         router.initialize(address(this));
 
-        eth_usdc = _createOrderbook(eth, usdc);
-        mon_usdc = _createOrderbook(mon, usdc);
+        marginAccount = new MarginAccount(address(router));
+
+        eth_usdc = _createOrderbook(eth, usdc, marginAccount);
+        mon_usdc = _createOrderbook(mon, usdc, marginAccount);
 
         router.registerMarket(address(eth), address(usdc), address(eth_usdc));
         router.registerMarket(address(mon), address(usdc), address(mon_usdc));
@@ -55,12 +59,12 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user2);
         usdc.approve(address(eth_usdc), initUsdc);
-        eth_usdc.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        eth_usdc.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
 
         vm.startPrank(user3);
         mon.approve(address(mon_usdc), initMon);
-        mon_usdc.addSellOrder(1*PRICE_PRECISION, 1800*SIZE_PRECISION);
+        mon_usdc.addSellOrder(1*PRICE_PRECISION, 1800*SIZE_PRECISION, false);
         vm.stopPrank();
 
         address[] memory _route = new address[](3);
@@ -107,7 +111,7 @@ contract OrderBookTest is Test {
         vm.stopPrank();
     }
 
-    function _createOrderbook(MintableERC20 _baseAsset, MintableERC20 _quoteAsset) internal returns (CranklessOrderBook) {
+    function _createOrderbook(MintableERC20 _baseAsset, MintableERC20 _quoteAsset, MarginAccount _marginAccount) internal returns (CranklessOrderBook) {
         uint96 _sizePrecision = 10 ** 10;
         uint96 _pricePrecision = 10 ** 2;
         uint96 _tickSize = _pricePrecision / 2;
@@ -120,6 +124,7 @@ contract OrderBookTest is Test {
             18,
             address(_quoteAsset),
             18,
+            address(_marginAccount),
             _sizePrecision,
             _pricePrecision,
             _tickSize,

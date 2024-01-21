@@ -37,10 +37,10 @@ contract OrderBookTest is Test {
 
         router.initialize(address(this));
 
-        marginAccount = new MarginAccount(address(marginAccount));
+        marginAccount = new MarginAccount(address(router));
 
-        eth_usdc = _createOrderbook(eth, usdc);
-        mon_usdc = _createOrderbook(mon, usdc);
+        eth_usdc = _createOrderbook(eth, usdc, marginAccount);
+        mon_usdc = _createOrderbook(mon, usdc, marginAccount);
 
         router.registerMarket(address(eth), address(usdc), address(eth_usdc));
         router.registerMarket(address(mon), address(usdc), address(mon_usdc));
@@ -53,5 +53,27 @@ contract OrderBookTest is Test {
         mon.mint(user3, initMon);
     }
 
+    function _createOrderbook(MintableERC20 _baseAsset, MintableERC20 _quoteAsset, MarginAccount _marginAccount) internal returns (CranklessOrderBook) {
+        uint96 _sizePrecision = 10 ** 10;
+        uint96 _pricePrecision = 10 ** 2;
+        uint96 _tickSize = _pricePrecision / 2;
+        uint96 _minSize = 10 ** 5;
+        uint96 _maxSize = 10 ** 15;
+        uint256 _takerFeeBps = 0;
+
+        return new CranklessOrderBook(
+            address(_baseAsset),
+            18,
+            address(_quoteAsset),
+            18,
+            address(_marginAccount),
+            _sizePrecision,
+            _pricePrecision,
+            _tickSize,
+            _minSize,
+            _maxSize,
+            _takerFeeBps
+        );
+    }
     // TODO: Write tests here lol
 }
