@@ -3,20 +3,19 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import {CranklessOrderBook} from "../contracts/CranklessOrderBook.sol";
+import {Router} from "../contracts/Router.sol";
+import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-contract MintableERC20 is ERC20 {
-    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
-    function mint(address account, uint256 amount) external {
-        _mint(account, amount);
-    }
-}
+import {MintableERC20} from "./lib/MintableERC20.sol";
 
 contract OrderBookTest is Test {
     uint96 constant SIZE_PRECISION = 10**10;
     uint96 constant PRICE_PRECISION = 10**2;
 
     CranklessOrderBook orderBook;
+    Router router;
+    MarginAccount marginAccount;
+
     MintableERC20 eth;
     MintableERC20 usdc;
 
@@ -38,7 +37,15 @@ contract OrderBookTest is Test {
         uint96 _maxSize = 10**12;
         uint256 _takerFeeBps = 0;
 
-        orderBook = new CranklessOrderBook(address(eth), 18, address(usdc), 18, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+        router = new Router();
+
+        router.initialize(address(this));
+
+        marginAccount = new MarginAccount(address(router));
+
+        orderBook = new CranklessOrderBook(address(eth), 18, address(usdc), 18, address(marginAccount), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+
+        router.registerMarket(address(eth), address(usdc), address(orderBook));
 
         eth.mint(user1, initEth);
         usdc.mint(user2, initUsdc);
@@ -50,7 +57,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user2);
         usdc.approve(address(orderBook), initUsdc);
-        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -60,7 +67,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         eth.approve(address(orderBook), initEth);
-        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -73,7 +80,7 @@ contract OrderBookTest is Test {
         (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(price*PRICE_PRECISION);
 
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
-        assertEq(usdc.balanceOf(address(orderBook)), (price*size)*10**18);
+        assertEq(usdc.balanceOf(address(marginAccount)), (price*size)*10**18);
 
         assertEq(totalOrdersAtPrice, size*SIZE_PRECISION);
         assertEq(totalCompletedOrCanceledOrders, 0);
@@ -85,7 +92,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user2);
         vm.expectRevert("OrderBook: Size too low");
-        orderBook.addBuyOrder(price*PRICE_PRECISION, size);
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size, false);
         vm.stopPrank();
     }
 
@@ -95,7 +102,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user2);
         vm.expectRevert("OrderBook: Size too large");
-        orderBook.addBuyOrder(price*PRICE_PRECISION, size*10**20);
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size*10**20, false);
         vm.stopPrank();
     }
 
@@ -105,7 +112,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user2);
         vm.expectRevert("OrderBook: Tick Size");
-        orderBook.addBuyOrder(price, size*SIZE_PRECISION);
+        orderBook.addBuyOrder(price, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -115,7 +122,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user2);
         vm.expectRevert("ERC20: insufficient allowance");
-        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -126,7 +133,7 @@ contract OrderBookTest is Test {
         vm.startPrank(user3);
         usdc.approve(address(orderBook), initUsdc);
         vm.expectRevert("ERC20: transfer amount exceeds balance");
-        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -139,7 +146,7 @@ contract OrderBookTest is Test {
         (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_sellPricePoints(price*PRICE_PRECISION);
 
         assertEq(eth.balanceOf(user1), initEth - size*10**18);
-        assertEq(eth.balanceOf(address(orderBook)), (size)*10**18);
+        assertEq(eth.balanceOf(address(marginAccount)), (size)*10**18);
 
         assertEq(totalOrdersAtPrice, size*SIZE_PRECISION);
         assertEq(totalCompletedOrCanceledOrders, 0);
@@ -151,7 +158,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         vm.expectRevert("OrderBook: Size too low");
-        orderBook.addSellOrder(price*PRICE_PRECISION, size);
+        orderBook.addSellOrder(price*PRICE_PRECISION, size, false);
         vm.stopPrank();
     }
 
@@ -161,7 +168,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         vm.expectRevert("OrderBook: Size too large");
-        orderBook.addSellOrder(price*PRICE_PRECISION, size*10**20);
+        orderBook.addSellOrder(price*PRICE_PRECISION, size*10**20, false);
         vm.stopPrank();
     }
 
@@ -171,7 +178,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         vm.expectRevert("OrderBook: Tick Size");
-        orderBook.addSellOrder(price, size*SIZE_PRECISION);
+        orderBook.addSellOrder(price, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -181,7 +188,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         vm.expectRevert("ERC20: insufficient allowance");
-        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -192,7 +199,7 @@ contract OrderBookTest is Test {
         vm.startPrank(user3);
         eth.approve(address(orderBook), initEth);
         vm.expectRevert("ERC20: transfer amount exceeds balance");
-        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -206,13 +213,13 @@ contract OrderBookTest is Test {
         uint96 size = 10*SIZE_PRECISION;
 
         vm.startPrank(user2);
-        orderBook.batchCancelOrders(_orderIds);
+        orderBook.batchCancelOrders(_orderIds, false);
         vm.stopPrank();
 
         (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(price);
 
         assertEq(usdc.balanceOf(user2), initUsdc);
-        assertEq(usdc.balanceOf(address(orderBook)), 0);
+        assertEq(usdc.balanceOf(address(marginAccount)), 0);
 
         assertEq(totalOrdersAtPrice, size);
         assertEq(totalCompletedOrCanceledOrders, size);
@@ -226,7 +233,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         vm.expectRevert("OrderBook: Only order owner can cancel order");
-        orderBook.batchCancelOrders(_orderIds);
+        orderBook.batchCancelOrders(_orderIds, false);
         vm.stopPrank();
     }
 
@@ -243,11 +250,11 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user2);
         usdc.approve(address(orderBook), initUsdc);
-        orderBook.placeMultipleBuyOrders(prices, sizes);
+        orderBook.placeMultipleBuyOrders(prices, sizes, false);
         vm.stopPrank();
 
         assertEq(usdc.balanceOf(user2), initUsdc - (prices[0]*sizes[0] + prices[1]*sizes[1] + prices[2]*sizes[2])/PRICE_PRECISION/SIZE_PRECISION*10**18);
-        assertEq(usdc.balanceOf(address(orderBook)), (prices[0]*sizes[0] + prices[1]*sizes[1] + prices[2]*sizes[2])/PRICE_PRECISION/SIZE_PRECISION*10**18);
+        assertEq(usdc.balanceOf(address(marginAccount)), (prices[0]*sizes[0] + prices[1]*sizes[1] + prices[2]*sizes[2])/PRICE_PRECISION/SIZE_PRECISION*10**18);
 
         (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(prices[0]);
         assertEq(totalOrdersAtPrice, sizes[0]);
@@ -275,11 +282,11 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         eth.approve(address(orderBook), initEth);
-        orderBook.placeMultipleSellOrders(prices, sizes);
+        orderBook.placeMultipleSellOrders(prices, sizes, false);
         vm.stopPrank();
 
         assertEq(eth.balanceOf(user1), initEth - (sizes[0] + sizes[1] + sizes[2])/SIZE_PRECISION*10**18);
-        assertEq(eth.balanceOf(address(orderBook)), (sizes[0] + sizes[1] + sizes[2])/SIZE_PRECISION*10**18);
+        assertEq(eth.balanceOf(address(marginAccount)), (sizes[0] + sizes[1] + sizes[2])/SIZE_PRECISION*10**18);
 
         (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_sellPricePoints(prices[0]);
         assertEq(totalOrdersAtPrice, sizes[0]);
@@ -310,7 +317,7 @@ contract OrderBookTest is Test {
         sizes[0] = 9*SIZE_PRECISION;
 
         vm.startPrank(user2);
-        orderBook.replaceOrders(orderIds, prices, sizes);
+        orderBook.replaceOrders(orderIds, prices, sizes, false);
         vm.stopPrank();
 
         (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(oldPrice);
@@ -336,7 +343,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         vm.expectRevert("OrderBook: Only order owner can cancel order");
-        orderBook.replaceOrders(orderIds, prices, sizes);
+        orderBook.replaceOrders(orderIds, prices, sizes, false);
         vm.stopPrank();
     }
 
@@ -357,7 +364,7 @@ contract OrderBookTest is Test {
         (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(price*PRICE_PRECISION);
 
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
-        assertEq(usdc.balanceOf(address(orderBook)), 0);
+        assertEq(usdc.balanceOf(address(marginAccount)), 0);
         assertEq(usdc.balanceOf(user1), (price*size)*10**18);
         assertEq(eth.balanceOf(user2), size*10**18);
 
@@ -427,7 +434,7 @@ contract OrderBookTest is Test {
         (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_sellPricePoints(price*PRICE_PRECISION);
 
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
-        assertEq(eth.balanceOf(address(orderBook)), 0);
+        assertEq(eth.balanceOf(address(marginAccount)), 0);
         assertEq(usdc.balanceOf(user1), (price*size)*10**18);
         assertEq(eth.balanceOf(user2), size*10**18);
 
@@ -498,7 +505,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         eth.approve(address(orderBook), initEth);
-        orderBook.placeAggressivelimitSell(orderIds, size * SIZE_PRECISION, price * PRICE_PRECISION);
+        orderBook.placeAggressivelimitSell(orderIds, size * SIZE_PRECISION, price * PRICE_PRECISION, false);
         vm.stopPrank();
 
         (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_buyPricePoints(oldPrice*PRICE_PRECISION);
@@ -510,7 +517,7 @@ contract OrderBookTest is Test {
         assertEq(totalCompletedOrCanceledOrders, 0);
 
         assertEq(usdc.balanceOf(user2), initUsdc - 2*(oldPrice*oldSize)*10**18);
-        assertEq(eth.balanceOf(address(orderBook)), (size - 2*oldSize)*10**18);
+        assertEq(eth.balanceOf(address(marginAccount)), (size - 2*oldSize)*10**18);
         assertEq(usdc.balanceOf(user1), 2*(oldPrice*oldSize)*10**18);
         assertEq(eth.balanceOf(user2), 2*oldSize*10**18);
     }
@@ -530,7 +537,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user2);
         usdc.approve(address(orderBook), initUsdc);
-        orderBook.placeAggressivelimitBuy(orderIds, (2*oldPrice*oldSize + price*oldSize) * PRICE_PRECISION, price * PRICE_PRECISION);
+        orderBook.placeAggressivelimitBuy(orderIds, (2*oldPrice*oldSize + price*oldSize) * PRICE_PRECISION, price * PRICE_PRECISION, false);
         vm.stopPrank();
 
         (uint96 totalCompletedOrCanceledOrders, uint96 totalOrdersAtPrice) = orderBook.s_sellPricePoints(oldPrice*PRICE_PRECISION);
@@ -542,7 +549,7 @@ contract OrderBookTest is Test {
         assertEq(totalCompletedOrCanceledOrders, 0);
 
         assertEq(usdc.balanceOf(user2), initUsdc - (2*oldPrice*oldSize + price*oldSize)*10**18);
-        assertEq(usdc.balanceOf(address(orderBook)), (price*oldSize)*10**18);
+        assertEq(usdc.balanceOf(address(marginAccount)), (price*oldSize)*10**18);
         assertEq(usdc.balanceOf(user1), (2*oldPrice*oldSize)*10**18);
         assertEq(eth.balanceOf(user2), 2*oldSize*10**18);
     }

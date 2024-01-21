@@ -16,6 +16,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint256 _baseAssetDecimals,
         address _quoteAssetAddress,
         uint256 _quoteAssetDecimals,
+        address _marginAccountAddress,
         uint96 _sizePrecision,
         uint96 _pricePrecision,
         uint96 _tickSize,
@@ -28,6 +29,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             _baseAssetDecimals,
             _quoteAssetAddress,
             _quoteAssetDecimals,
+            _marginAccountAddress,
             _sizePrecision,
             _pricePrecision,
             _tickSize,
@@ -54,7 +56,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         uint96[] memory _filledOrders = new uint96[](c_order_ids.length);
 
         // Transfer the total quote asset amount to the contract
-        quoteAsset.transferFrom(msg.sender, address(this), _quoteTokens);
+        quoteAsset.transferFrom(msg.sender, address(marginAccount), _quoteTokens);
 
         for (uint256 _orderIndex = 0; _orderIndex < c_order_ids.length && _spentTokens < _quoteTokens; _orderIndex++) {
             Order storage _order = s_orders[c_order_ids[_orderIndex]];
@@ -75,7 +77,14 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
                 _filledOrders[_orderIndex] = 0;
 
                 // Transfer funds and update order book
-                quoteAsset.transfer(_order.ownerAddress, _amountPayable(_order.size, _order.price));
+                marginAccount.creditUser(
+                    _order.ownerAddress,
+                    address(quoteAsset),
+                    _amountPayable(_order.size, _order.price),
+                    address(baseAsset),
+                    address(quoteAsset),
+                    _order.useMargin
+                );
 
                 s_pricePoint.totalCompletedOrCanceledOrders += _order.size;
                 _order.size = 0;
@@ -86,7 +95,14 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
                 _filledOrders[_orderIndex] = _order.price - sizeToFill;
 
                 // Transfer funds and update order book
-                quoteAsset.transfer(_order.ownerAddress, _amountPayable(sizeToFill, _order.price));
+                marginAccount.creditUser(
+                    _order.ownerAddress,
+                    address(quoteAsset),
+                    _amountPayable(sizeToFill, _order.price),
+                    address(baseAsset),
+                    address(quoteAsset),
+                    _order.useMargin
+                );
 
                 s_pricePoint.totalCompletedOrCanceledOrders += sizeToFill;
                 _order.size -= sizeToFill;
@@ -100,10 +116,24 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         // Refund any unspent amount
         if (_spentTokens < _quoteTokens) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
-            quoteAsset.transfer(msg.sender, _quoteTokens - _spentTokens);
+            marginAccount.creditUser(
+                msg.sender,
+                address(quoteAsset),
+                _quoteTokens - _spentTokens,
+                address(baseAsset),
+                address(quoteAsset),
+                false
+            );
         }
 
-        baseAsset.transfer(msg.sender, _sizeToGet * 10 ** quoteAssetDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER));
+        marginAccount.creditUser(
+            msg.sender,
+            address(baseAsset),
+            _sizeToGet * 10 ** quoteAssetDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER),
+            address(baseAsset),
+            address(quoteAsset),
+            false
+        );
 
         emit BuyIOC(msg.sender, _sizeToGet, c_order_ids, _filledOrders);
 
@@ -130,7 +160,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         // Transfer the base asset from the user to the contract
         baseAsset.transferFrom(
             msg.sender,
-            address(this),
+            address(marginAccount),
             (_size * 10 ** baseAssetDecimals) / sizePrecision
         );
 
@@ -147,7 +177,14 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             _size -= executableSize;
             s_pricePoint.totalCompletedOrCanceledOrders += executableSize;
 
-            baseAsset.transfer(_order.ownerAddress, (executableSize * 10 ** baseAssetDecimals) / sizePrecision);
+            marginAccount.creditUser(
+                _order.ownerAddress,
+                address(baseAsset),
+                ((executableSize * 10 ** baseAssetDecimals) / sizePrecision),
+                address(baseAsset),
+                address(quoteAsset),
+                false
+            );
 
             if (executableSize == _order.size) {
                 _order.size = 0;
@@ -164,14 +201,25 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
 
         if (_size > 0) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
-            baseAsset.transfer(msg.sender, (_size * 10 ** baseAssetDecimals) / sizePrecision);
+            marginAccount.creditUser(
+                msg.sender,
+                address(baseAsset),
+                ((_size * 10 ** baseAssetDecimals) / sizePrecision),
+                address(baseAsset),
+                address(quoteAsset),
+                false
+            );
         }
 
         // Transfer the quote asset (proceeds from the sale) to the user
-        quoteAsset.transfer(
-            msg.sender,
-            (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER))
-        );
+        marginAccount.creditUser(
+                msg.sender,
+                address(quoteAsset),
+                (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER)),
+                address(baseAsset),
+                address(quoteAsset),
+                false
+            );
 
         emit SellIOC(msg.sender, _initSize - _size, c_order_ids, _filledOrders);
 
@@ -188,7 +236,8 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
     function placeAggressivelimitSell(
         uint256[] calldata c_order_ids,
         uint96 _size,
-        uint96 _price
+        uint96 _price,
+        bool _useMargin
     ) external marketActive {
         uint96 _remainingSize = placeAndExecuteMarketSell(
             c_order_ids,
@@ -196,7 +245,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             false
         );
 
-        addSellOrder(_price, _remainingSize);
+        addSellOrder(_price, _remainingSize, _useMargin);
     }
 
     /**
@@ -208,7 +257,8 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
     function placeAggressivelimitBuy(
         uint256[] calldata c_order_ids,
         uint96 _quoteSize,
-        uint96 _price
+        uint96 _price,
+        bool _useMargin
     ) external marketActive {
         uint96 _remainingSize = placeAndExecuteMarketBuy(
             c_order_ids,
@@ -216,7 +266,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             false
         );
 
-        addBuyOrder(_price, (_remainingSize * sizePrecision / _price));
+        addBuyOrder(_price, (_remainingSize * sizePrecision / _price), _useMargin);
     }
 
     /**

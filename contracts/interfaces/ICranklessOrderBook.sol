@@ -18,13 +18,15 @@ interface ICranklessOrderBook {
     function placeAggressivelimitSell(
         uint256[] calldata c_order_ids,
         uint96 _size,
-        uint96 _price
+        uint96 _price,
+        bool _useMargin
     ) external;
 
     function placeAggressivelimitBuy(
         uint256[] calldata c_order_ids,
         uint96 _size,
-        uint96 _price
+        uint96 _price,
+        bool _useMargin
     ) external;
 
     function getSizePrecision() external view returns (uint96);

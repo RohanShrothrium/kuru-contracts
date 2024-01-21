@@ -26,7 +26,32 @@ contract MarginAccount {
     }
 
     /**
-     * @dev This function is only callable by a verified market. This is used as the margin account that stores all assets of the user.
+     * @dev This function is only callable by a verified market. Verified markets consume user balances.
+     * @param _user Address of the user whose account should be debited. 
+     * @param _token address of token to be debited.
+     * @param _amount amount to debit. 
+     * @param _marketBaseAsset Address of the first token used for trading
+     * @param _marketQutoeAsset Address of the second token used for trading
+     */
+    function debitUser(
+        address _user,
+        address _token,
+        uint256 _amount,
+        address _marketBaseAsset,
+        address _marketQutoeAsset
+    ) external returns (bool) {
+        _isVerifiedMarket(_marketBaseAsset, _marketQutoeAsset, msg.sender);
+        require(balances[_accountKey(_user, _token)] > _amount, "MarginAccoiunt: Insufficient Balance");
+
+        balances[_accountKey(_user, _token)] -= _amount;
+
+        emit Withdrawn(_user, _token, _amount);
+
+        return true;
+    }
+
+    /**
+     * @dev This function is only callable by a verified market. Verified markets credit user balances.
      * @param _user Address of the user whose account should be credited. 
      * @param _token address of token to be credit.
      * @param _amount amount to credit. 
@@ -38,13 +63,20 @@ contract MarginAccount {
         address _token,
         uint256 _amount,
         address _marketBaseAsset,
-        address _marketQutoeAsset
-    ) external {
+        address _marketQutoeAsset,
+        bool _useMargin
+    ) external returns (bool) {
         _isVerifiedMarket(_marketBaseAsset, _marketQutoeAsset, msg.sender);
 
-        balances[_accountKey(_user, _token)] += _amount;
+        if (_useMargin) {
+            balances[_accountKey(_user, _token)] += _amount;
+        } else {
+            IERC20(_token).transfer(_user, _amount);
+        }
 
         emit Deposited(_user, _token, _amount);
+
+        return true;
     }
 
     /**

@@ -1,0 +1,25 @@
+name: Run Forge Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: 'v16.20.1'
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Run Forge Tests
+      run: forge test
