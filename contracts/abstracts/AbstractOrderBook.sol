@@ -333,7 +333,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
 
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can update order");
         require(_order.size > _updatedSize, "OrderBook: can't increase order size");
-        require(updatedSize > minSize, "Orderbook: size has to be greater than minimum");
+        require(_updatedSize > minSize, "Orderbook: size has to be greater than minimum");
 
         uint96 _decreasedSize = _order.size - _updatedSize;
 
