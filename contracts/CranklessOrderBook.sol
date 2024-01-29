@@ -58,7 +58,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
         // Transfer the total quote asset amount to the contract
         quoteAsset.transferFrom(msg.sender, address(marginAccount), _quoteTokens);
 
-        for (uint256 _orderIndex = 0; _orderIndex < c_order_ids.length && _spentTokens < _quoteTokens; _orderIndex++) {
+        for (uint256 _orderIndex = 0; _orderIndex < c_order_ids.length && _spentTokens < _quoteTokens;) {
             Order storage _order = s_orders[c_order_ids[_orderIndex]];
             PricePoint storage s_pricePoint = s_sellPricePoints[_order.price];
 
@@ -111,6 +111,8 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             if (_spentTokens == _quoteTokens) {
                 break;
             }
+
+            unchecked {++ _orderIndex;}
         }
 
         // Refund any unspent amount
@@ -119,7 +121,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             marginAccount.creditUser(
                 msg.sender,
                 address(quoteAsset),
-                _quoteTokens - _spentTokens,
+                uint256(_quoteTokens - _spentTokens),
                 address(baseAsset),
                 address(quoteAsset),
                 false
@@ -164,7 +166,7 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             (_size * 10 ** baseAssetDecimals) / sizePrecision
         );
 
-        for (_orderIndex = 0; _orderIndex < c_order_ids.length && _size > 0; _orderIndex++) {
+        for (_orderIndex = 0; _orderIndex < c_order_ids.length && _size > 0;) {
             Order storage _order = s_orders[c_order_ids[_orderIndex]];
             PricePoint storage s_pricePoint = s_buyPricePoints[_order.price];
 
@@ -197,6 +199,8 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             if(_size == 0) {
                 break;
             }
+
+            unchecked {++ _orderIndex;}
         }
 
         if (_size > 0) {
