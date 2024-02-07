@@ -39,6 +39,8 @@ contract OrderBookTest is Test {
 
         marginAccount = new MarginAccount(address(router));
 
+        router.setMarginAccount(address(marginAccount));
+
         eth_usdc = _createOrderbook(eth, usdc, marginAccount);
         mon_usdc = _createOrderbook(mon, usdc, marginAccount);
 

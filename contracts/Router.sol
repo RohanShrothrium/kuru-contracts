@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 // ============ Internal Interface Imports ============
 import {ICranklessOrderBook} from "./interfaces/ICranklessOrderBook.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
+import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 // ============ Internal Library Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
@@ -17,6 +18,8 @@ contract Router is IRouter, OwnableUpgradeable {
 
     // used to create base/native and native/quote markets
     address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
+    IMarginAccount marginAccount;
 
     // Event for market registration
     event MarketRegistered(address baseAsset, address quoteAsset, address market);
@@ -32,6 +35,10 @@ contract Router is IRouter, OwnableUpgradeable {
         _transferOwnership(_owner);
     }
 
+    function setMarginAccount(address _marginAccount) public onlyOwner {
+        marginAccount = IMarginAccount(_marginAccount);
+    }
+
     // Register a market for a token pair
     function registerMarket(address _baseAsset, address _quoteAsset, address _marketAddress) onlyOwner external {
         bytes32 pairKey = _marketsKey(_baseAsset, _quoteAsset);
@@ -40,6 +47,8 @@ contract Router is IRouter, OwnableUpgradeable {
 
         IERC20(_baseAsset).approve(_marketAddress, type(uint256).max);
         IERC20(_quoteAsset).approve(_marketAddress, type(uint256).max);
+
+        marginAccount.updateMarkets(_marketAddress);
 
         emit MarketRegistered(_baseAsset, _quoteAsset, _marketAddress);
     }

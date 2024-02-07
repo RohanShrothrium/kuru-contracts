@@ -249,9 +249,7 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
             ? marginAccount.debitUser(
                 _makerAddress,
                 address(_consumableAsset),
-                _amount,
-                address(baseAsset),
-                address(quoteAsset)
+                _amount
             )
             : _consumableAsset.transferFrom(_makerAddress, address(marginAccount), _amount);
     }
@@ -284,8 +282,6 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
                 _order.ownerAddress,
                 address(quoteAsset),
                 ((((_order.size * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision),
-                address(baseAsset),
-                address(quoteAsset),
                 _useMargin
             );
         } else {
@@ -295,8 +291,6 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
                 _order.ownerAddress,
                 address(baseAsset),
                 ((_order.size * 10**baseAssetDecimals) / sizePrecision),
-                address(baseAsset),
-                address(quoteAsset),
                 _useMargin
             );
         }
@@ -344,8 +338,6 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
                 _order.ownerAddress,
                 address(quoteAsset),
                 ((((_decreasedSize * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision),
-                address(baseAsset),
-                address(quoteAsset),
                 _useMargin
             );
         } else {
@@ -355,8 +347,6 @@ abstract contract AbstractOrderBook is IAbstractOrderBook, OwnableUpgradeable {
                 _order.ownerAddress,
                 address(baseAsset),
                 ((_decreasedSize * 10**baseAssetDecimals) / sizePrecision),
-                address(baseAsset),
-                address(quoteAsset),
                 _useMargin
             );
         }

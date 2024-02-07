@@ -23,11 +23,4 @@ interface IAbstractStorageOrderBook {
         uint96[] memory _sizes,
         bool _useMargin
     ) external;
-
-    function replaceOrders(
-        uint256[] calldata _orderIds,
-        uint24[] calldata _prices,
-        uint96[] calldata _sizes,
-        bool _useMargin
-    ) external;
 }

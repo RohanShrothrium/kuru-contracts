@@ -1,51 +1,56 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-// ============ Internal Interface Imports ============
-import {IRouter} from "./interfaces/IRouter.sol";
-
 // ============ Internal Library Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
 
-contract MarginAccount {
+// ============ Internal Interface Imports ============
+import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
+
+contract MarginAccount is IMarginAccount {
     // Mapping from user addresses to their ETH balance
     mapping(bytes32 => uint256) public balances;
-    IRouter immutable routerContract;
+
+    // Mapping of hash of token pairs to their market contract addresses
+    mapping(address => bool) public verifiedMarket;
+
+    address immutable routerContractAddress;
 
     // Native token
     address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
-    // Event for deposit tracking
-    event Deposited(address indexed user, address token, uint256 amount);
-
-    // Event for withdrawal tracking
-    event Withdrawn(address indexed user, address token, uint256 amount);
-
     constructor(address _router) {
-        routerContract = IRouter(_router);
+        routerContractAddress = _router;
+    }
+
+    modifier onlyRouter() {
+        require(msg.sender == routerContractAddress, "MarginAccount: Only router can update markets");
+        _;
+    }
+
+    /**
+     * @dev This function allows the router to register an official verified market.
+     * @param _marketAddress Address of the orderbook of the market.
+     */
+    function updateMarkets(address _marketAddress) external onlyRouter {
+        verifiedMarket[_marketAddress] = true;
     }
 
     /**
      * @dev This function is only callable by a verified market. Verified markets consume user balances.
      * @param _user Address of the user whose account should be debited. 
      * @param _token address of token to be debited.
-     * @param _amount amount to debit. 
-     * @param _marketBaseAsset Address of the first token used for trading
-     * @param _marketQutoeAsset Address of the second token used for trading
+     * @param _amount amount to debit.
      */
     function debitUser(
         address _user,
         address _token,
-        uint256 _amount,
-        address _marketBaseAsset,
-        address _marketQutoeAsset
+        uint256 _amount
     ) external returns (bool) {
-        _isVerifiedMarket(_marketBaseAsset, _marketQutoeAsset, msg.sender);
+        require(verifiedMarket[msg.sender], "MarginAccount: Only verified markets can credit users");
         require(balances[_accountKey(_user, _token)] > _amount, "MarginAccoiunt: Insufficient Balance");
 
         balances[_accountKey(_user, _token)] -= _amount;
-
-        emit Withdrawn(_user, _token, _amount);
 
         return true;
     }
@@ -55,26 +60,20 @@ contract MarginAccount {
      * @param _user Address of the user whose account should be credited. 
      * @param _token address of token to be credit.
      * @param _amount amount to credit. 
-     * @param _marketBaseAsset Address of the first token used for trading
-     * @param _marketQutoeAsset Address of the second token used for trading
      */
     function creditUser(
         address _user,
         address _token,
         uint256 _amount,
-        address _marketBaseAsset,
-        address _marketQutoeAsset,
         bool _useMargin
     ) external returns (bool) {
-        _isVerifiedMarket(_marketBaseAsset, _marketQutoeAsset, msg.sender);
+        require(verifiedMarket[msg.sender], "MarginAccount: Only verified markets can credit users");
 
         if (_useMargin) {
             balances[_accountKey(_user, _token)] += _amount;
         } else {
             IERC20(_token).transfer(_user, _amount);
         }
-
-        emit Deposited(_user, _token, _amount);
 
         return true;
     }
@@ -97,8 +96,6 @@ contract MarginAccount {
             IERC20(_token).transferFrom(msg.sender, address(this), _amount);
             balances[_accountKey(_user, _token)] += _amount;
         }
-
-        emit Deposited(_user, _token, _amount);
     }
 
     /**
@@ -113,7 +110,6 @@ contract MarginAccount {
         );
         balances[_accountKey(msg.sender, _token)] -= _amount;
         payable(msg.sender).transfer(_amount);
-        emit Withdrawn(msg.sender, _token, _amount);
     }
 
     /**
@@ -138,23 +134,5 @@ contract MarginAccount {
         address _token
     ) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(_user, _token));
-    }
-
-    /**
-     * Internal view function to 
-     * @param _baseAsset Address of the first token used for trading.
-     * @param _qutoeAsset Address of the second token used for trading.
-     * @param _callerContract Contract address to be verified.
-     */
-    function _isVerifiedMarket(
-        address _baseAsset,
-        address _qutoeAsset,
-        address _callerContract
-    ) internal view {
-        require(
-            routerContract.marketAddress(_baseAsset, _qutoeAsset) ==
-                _callerContract,
-            "MarginAccount: Margin can be credited only through verified contracts"
-        );
     }
 }

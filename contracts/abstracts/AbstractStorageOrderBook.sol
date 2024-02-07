@@ -18,11 +18,12 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 
 abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, OwnableUpgradeable {
     struct Order {
+        uint256 prev;
+        uint256 next;
         address ownerAddress;
-        uint24 price;
         uint96 size;
+        uint24 price;
         bool isBuy;
-        bool useMargin;
     }
 
     /**
@@ -36,8 +37,8 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
     event OrderCreated(
         uint256 orderId,
         address owner,
-        uint24 price,
         uint96 size,
+        uint24 price,
         bool isBuy
     );
 
@@ -80,6 +81,11 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         uint96[] updatedSizes
     );
 
+    event OrderUpdated(
+        uint256 orderId,
+        uint96 updatedSize
+    );
+
     /**
      * @dev Emitted when one or more orders are completed or canceled.
      * @param orderId Array of order identifiers that were completed or canceled.
@@ -99,7 +105,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
     bool marketPaused;
 
     uint96 immutable sizePrecision;
-    uint96 immutable pricePrecision;
+    uint24 immutable pricePrecision;
 
     uint96 immutable tickSize;
     uint96 immutable minSize;
@@ -132,7 +138,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         uint256 _quoteAssetDecimals,
         address _marginAccountAddress,
         uint96 _sizePrecision,
-        uint96 _pricePrecision,
+        uint24 _pricePrecision,
         uint96 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
@@ -185,18 +191,33 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
 
+        _consumeFunds(quoteAsset, ((((size * _price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision), _useMargin, msg.sender);
+        
+        uint24 _remainingFunds;
+        uint96 _filledSize;
+        (_filledSize, _remainingFunds) = _matchAggressiveBuy(_price, uint24((size * _price) / sizePrecision), _useMargin);
+
+        if (size == _filledSize) {
+            marginAccount.creditUser(
+                msg.sender,
+                address(quoteAsset),
+                uint256(_remainingFunds * 10 ** quoteAssetDecimals / pricePrecision),
+                _useMargin
+            );
+
+            return;
+        }
+
         uint256 _orderId = s_orderIdCounter;
         s_orderIdCounter = _orderId + 1;
 
         // Add price to the tree and update DLL of price poit.
         TreeMath.add(s_buyTree, _price);
-        OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId + 1);
+        uint256 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId + 1);
 
-        _addOrder(_price, size, _orderId + 1, true, _useMargin);
+        _addOrder(_price, size-_filledSize, _orderId + 1, true, _prevOrderId);
 
-        _consumeFunds(quoteAsset, ((((size * _price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision), _useMargin, msg.sender);
-
-        emit OrderCreated(_orderId + 1, msg.sender, _price, size, true);
+        emit OrderCreated(_orderId + 1, msg.sender, size-_filledSize, _price, true);
     }
 
     /**
@@ -210,18 +231,22 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
 
+        _consumeFunds(baseAsset, ((size * 10**baseAssetDecimals) / sizePrecision), _useMargin, msg.sender);
+
+        size = _matchAggressiveSell(_price, size, _useMargin);
+
+        if (size == 0) return;
+
         uint256 _orderId = s_orderIdCounter;
         s_orderIdCounter = _orderId + 1;
 
         // Add price to the tree and update DLL of price poit.
         TreeMath.add(s_sellTree, _price);
-        OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId + 1);
+        uint256 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId + 1);
 
-        _addOrder(_price, size, _orderId + 1, false, _useMargin);
+        _addOrder(_price, size, _orderId + 1, false, _prevOrderId);
 
-        _consumeFunds(baseAsset, ((size * 10**baseAssetDecimals) / sizePrecision), _useMargin, msg.sender);
-
-        emit OrderCreated(_orderId + 1, msg.sender, _price, size, false);
+        emit OrderCreated(_orderId + 1, msg.sender, size, _price, false);
     }
 
     /**
@@ -229,8 +254,9 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @param _price Price of the order.
      * @param _size Size of the order.
      */
-    function _addOrder(uint24 _price, uint96 _size, uint256 _orderId, bool _isBuy, bool _useMargin) internal {
-        s_orders[_orderId] = Order(msg.sender, _price, _size, _isBuy, _useMargin);
+    function _addOrder(uint24 _price, uint96 _size, uint256 _orderId, bool _isBuy, uint256 _prevOrderId) internal {
+        s_orders[_orderId] = Order(_prevOrderId, OrderLinkedList.NULL, msg.sender, _size, _price, _isBuy);
+        s_orders[_prevOrderId].next = _orderId;
     }
 
     /**
@@ -245,9 +271,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
             ? marginAccount.debitUser(
                 _makerAddress,
                 address(_consumableAsset),
-                _amount,
-                address(baseAsset),
-                address(quoteAsset)
+                _amount
             )
             : _consumableAsset.transferFrom(_makerAddress, address(marginAccount), _amount);
     }
@@ -273,9 +297,17 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
 
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can cancel order");
 
+        // update neighbouring orders
+        if (_order.prev != OrderLinkedList.NULL) {
+            s_orders[_order.prev].next = _order.next;
+        }
+        if (_order.next != OrderLinkedList.NULL) {
+            s_orders[_order.next].prev = _order.prev;
+        }
+
         if (_order.isBuy) {
-            bool _isPricePointEmpty = OrderLinkedList.deleteOrder(s_buyPricePoints[_order.price], _orderId);
-            if (_isPricePointEmpty) {
+            OrderLinkedList.deleteOrder(s_buyPricePoints[_order.price], _order.prev, _order.next);
+            if (_order.prev == _order.next) {
                 TreeMath.remove(s_buyTree, _order.price);
             }
 
@@ -283,13 +315,11 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
                 _order.ownerAddress,
                 address(quoteAsset),
                 ((((_order.size * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision),
-                address(baseAsset),
-                address(quoteAsset),
                 _useMargin
             );
         } else {
-            bool _isPricePointEmpty = OrderLinkedList.deleteOrder(s_sellPricePoints[_order.price], _orderId);
-            if (_isPricePointEmpty) {
+            OrderLinkedList.deleteOrder(s_sellPricePoints[_order.price], _order.prev, _order.next);
+            if (_order.prev == _order.next) {
                 TreeMath.remove(s_sellTree, _order.price);
             }
 
@@ -297,8 +327,6 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
                 _order.ownerAddress,
                 address(baseAsset),
                 ((_order.size * 10**baseAssetDecimals) / sizePrecision),
-                address(baseAsset),
-                address(quoteAsset),
                 _useMargin
             );
         }
@@ -344,8 +372,6 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
                 _order.ownerAddress,
                 address(quoteAsset),
                 ((((_decreasedSize * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision),
-                address(baseAsset),
-                address(quoteAsset),
                 _useMargin
             );
         } else {
@@ -353,8 +379,6 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
                 _order.ownerAddress,
                 address(baseAsset),
                 ((_decreasedSize * 10**baseAssetDecimals) / sizePrecision),
-                address(baseAsset),
-                address(quoteAsset),
                 _useMargin
             );
         }
@@ -389,24 +413,140 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
     }
 
     /**
-     * @dev Replaces prices of existing orders
-     * @param _orderIds list of orderIds that has to be updated
-     * @param _prices new price that has to be set
+     * @dev Match limit buy orders if it crosses the book.
+     * @param _limitPrice Price of the buy order.
+     * @param _quoteSize amount of quote asset user is ready to pay.
+     * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      */
-    function replaceOrders(
-        uint256[] calldata _orderIds,
-        uint24[] calldata _prices,
-        uint96[] calldata _sizes,
-        bool _useMargin
-    ) external marketActive {
-        for (uint256 i = 0; i < _orderIds.length; i++) {
-            // first cancel order
-            bool _isBuy = _cancelOrder(_orderIds[i], _useMargin);
+    function _matchAggressiveBuy(uint24 _limitPrice, uint24 _quoteSize, bool _useMargin) internal returns(uint96, uint24) {
+        uint96 _sizeToGet;
+        uint24 _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
 
-            // add new order
-            _isBuy ? addBuyOrder(_prices[i], _sizes[i], _useMargin) : addSellOrder(_prices[i], _sizes[i], _useMargin);
+        while (_quoteSize > 0 && _bestAsk < _limitPrice && _bestAsk != 0) {
+            uint96 _size = _quoteSize * sizePrecision / _bestAsk;
+            
+            _sizeToGet += _size;
+            _size = _fillSizeForPrice(s_sellTree, _bestAsk, s_sellPricePoints[_bestAsk], _size);
+            _sizeToGet -= _size;
+
+            _quoteSize = uint24(_size * _bestAsk / sizePrecision);
+            
+            _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
         }
 
-        emit OrdersCanceled(_orderIds);
+        if (_sizeToGet > 0) {
+            marginAccount.creditUser(
+                msg.sender,
+                address(baseAsset),
+                (_sizeToGet) * 10 ** quoteAssetDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER),
+                _useMargin
+            );
+        }
+
+        return (_sizeToGet, _quoteSize);
+    }
+
+    /**
+     * 
+     * @param _limitPrice Price of the sell order.
+     * @param size Size of the sell order.
+     * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
+     */
+    function _matchAggressiveSell(uint24 _limitPrice, uint96 size, bool _useMargin) internal returns(uint96) {
+        uint96 _priceToGet = 0;
+        uint24 _bestBid = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
+
+        while (size > 0 && _bestBid > _limitPrice && _bestBid != type(uint24).max) {
+            uint96 _tmpSize = size;
+            size = _fillSizeForPrice(s_buyTree, _bestBid, s_buyPricePoints[_bestBid], size);
+            _priceToGet += (_tmpSize - size) * _bestBid;
+
+            _bestBid = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
+        }
+
+        if (_priceToGet > 0) {
+            marginAccount.creditUser(
+                msg.sender,
+                address(quoteAsset),
+                (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER)),
+                _useMargin
+            );
+        }
+
+        return size;
+    }
+
+    /**
+     * @notice Exhaustively fills the required size at a specific price point.
+     * @dev Iterates through orders at `_pricePoint` to fill the order size `_size`.
+     * @param _pricePoint The price point to fill orders against.
+     * @param _size The size of the order to be filled.
+     * @return remainingSize The size remaining unfilled.
+     */
+    function _fillSizeForPrice(TreeMath.TreeUint24 storage _tree, uint24 _price, OrderLinkedList.PricePoint storage _pricePoint, uint96 _size) internal returns (uint96 remainingSize) {
+        remainingSize = _size;
+        uint256 _orderId = _pricePoint.head;
+        while (remainingSize > 0 && _orderId != OrderLinkedList.NULL) {
+            (remainingSize, _orderId) = _fillOrder(_orderId, remainingSize);
+        }
+
+        OrderLinkedList.updateHead(_pricePoint, _orderId);
+
+        if (_orderId == OrderLinkedList.NULL) {
+            TreeMath.remove(_tree, _price);
+        }
+    }
+
+    /**
+     * @notice Fills an order and credits the maker, possibly removing the order if fully filled.
+     * @dev Attempts to fill order `_orderId` with size `_size`. Credits maker and removes order if fully filled.
+     * @param _orderId The ID of the order to fill.
+     * @param _size The size to fill.
+     * @return remainingSize The remaining size after attempting to fill this order.
+     * @return _nextHead next head of the price point.
+     */
+    function _fillOrder(uint256 _orderId, uint96 _size) internal returns (uint96 remainingSize, uint256 _nextHead) {
+        Order memory m_order = s_orders[_orderId];
+        _nextHead = m_order.next;
+        remainingSize = (_size > m_order.size) ? (_size - m_order.size) : 0;
+        
+        _creditMaker(!m_order.isBuy, m_order.ownerAddress, (remainingSize == 0) ? _size : m_order.size, m_order.price);
+
+        if (remainingSize > 0) {
+            delete s_orders[_orderId];
+        } else {
+            s_orders[_orderId].prev = OrderLinkedList.NULL;
+        }
+
+        emit OrderUpdated(_orderId, remainingSize);
+    }
+
+    /**
+     * @notice Credits the maker of an order.
+     * @dev Credits the maker's account based on the order details. Optimized by consolidating repetitive logic.
+     * @param _isMarketBuy Whether the order is a market buy.
+     * @param _ownerAddress The address of the order's maker.
+     * @param _size The size of the order being credited.
+     * @param _price The price of the order.
+     */
+    function _creditMaker(bool _isMarketBuy, address _ownerAddress, uint96 _size, uint24 _price) internal {
+        address creditAsset = _isMarketBuy ? address(quoteAsset) : address(baseAsset);
+        uint256 amount = _isMarketBuy ? _amountPayable(_size, _price) : ((_size * 10 ** baseAssetDecimals) / sizePrecision);
+
+        marginAccount.creditUser(
+            _ownerAddress,
+            creditAsset,
+            amount,
+            false
+        );
+    }
+
+    /**
+     * internal helper function to get payable amount
+     * @param _size size of token
+     * @param _price conversion price from A to B
+     */
+    function _amountPayable(uint96 _size, uint96 _price) internal view returns (uint256) {
+        return (_size * _price  * 10 ** quoteAssetDecimals / (pricePrecision * sizePrecision));
     }
 }

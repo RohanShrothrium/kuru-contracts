@@ -43,6 +43,8 @@ contract OrderBookTest is Test {
 
         marginAccount = new MarginAccount(address(router));
 
+        router.setMarginAccount(address(marginAccount));
+
         orderBook = new CranklessOrderBook(address(eth), 18, address(usdc), 18, address(marginAccount), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
 
         router.registerMarket(address(eth), address(usdc), address(orderBook));

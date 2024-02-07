@@ -81,8 +81,6 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
                     _order.ownerAddress,
                     address(quoteAsset),
                     _amountPayable(_order.size, _order.price),
-                    address(baseAsset),
-                    address(quoteAsset),
                     _order.useMargin
                 );
 
@@ -99,8 +97,6 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
                     _order.ownerAddress,
                     address(quoteAsset),
                     _amountPayable(sizeToFill, _order.price),
-                    address(baseAsset),
-                    address(quoteAsset),
                     _order.useMargin
                 );
 
@@ -122,8 +118,6 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
                 msg.sender,
                 address(quoteAsset),
                 uint256(_quoteTokens - _spentTokens),
-                address(baseAsset),
-                address(quoteAsset),
                 false
             );
         }
@@ -132,8 +126,6 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
             msg.sender,
             address(baseAsset),
             _sizeToGet * 10 ** quoteAssetDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER),
-            address(baseAsset),
-            address(quoteAsset),
             false
         );
 
@@ -183,8 +175,6 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
                 _order.ownerAddress,
                 address(baseAsset),
                 ((executableSize * 10 ** baseAssetDecimals) / sizePrecision),
-                address(baseAsset),
-                address(quoteAsset),
                 false
             );
 
@@ -209,8 +199,6 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
                 msg.sender,
                 address(baseAsset),
                 ((_size * 10 ** baseAssetDecimals) / sizePrecision),
-                address(baseAsset),
-                address(quoteAsset),
                 false
             );
         }
@@ -220,8 +208,6 @@ contract CranklessOrderBook is AbstractOrderBook, ICranklessOrderBook {
                 msg.sender,
                 address(quoteAsset),
                 (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER)),
-                address(baseAsset),
-                address(quoteAsset),
                 false
             );
 

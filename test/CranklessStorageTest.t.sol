@@ -31,7 +31,7 @@ contract OrderBookTest is Test {
         usdc = new MintableERC20("USD", "USDC");
 
         uint96 _sizePrecision = 10**10;
-        uint96 _pricePrecision = 10**2;
+        uint24 _pricePrecision = 10**2;
         uint96 _tickSize = _pricePrecision/2;
         uint96 _minSize = 10**5;
         uint96 _maxSize = 10**12;
@@ -42,6 +42,8 @@ contract OrderBookTest is Test {
         router.initialize(address(this));
 
         marginAccount = new MarginAccount(address(router));
+
+        router.setMarginAccount(address(marginAccount));
 
         orderBook = new CranklessStorageOrderBook(address(eth), 18, address(usdc), 18, address(marginAccount), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
 
@@ -362,14 +364,36 @@ contract OrderBookTest is Test {
         orderBook.placeAndExecuteMarketBuy(uint24(size*price*PRICE_PRECISION), false);
         vm.stopPrank();
 
-        // (uint256 head, uint256 tail) = orderBook.s_sellPricePoints(price*PRICE_PRECISION);
+        (uint256 head, uint256 tail) = orderBook.s_sellPricePoints(price*PRICE_PRECISION);
 
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
         assertEq(eth.balanceOf(address(marginAccount)), 0);
         assertEq(usdc.balanceOf(user1), (price*size)*10**18);
         assertEq(eth.balanceOf(user2), size*10**18);
 
-        // assertEq(head, 0);
-        // assertEq(tail, 0);
+        assertEq(head, 0);
+        assertEq(tail, 0);
+    }
+
+    function testAggressiveBuy() public {
+        _addSellOrder();
+
+        uint96 size = 10;
+        uint24 price = 1801;
+
+        vm.startPrank(user2);
+        usdc.approve(address(orderBook), initUsdc);
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
+        vm.stopPrank();
+
+        (uint256 head, uint256 tail) = orderBook.s_sellPricePoints(1800*PRICE_PRECISION);
+
+        // assertEq(usdc.balanceOf(user2), initUsdc - (1800*size*1801/1800)*10**18);
+        assertEq(eth.balanceOf(address(marginAccount)), 0);
+        assertEq(usdc.balanceOf(user1), (1800*size)*10**18);
+        assertEq(eth.balanceOf(user2), size*10**18);
+
+        assertEq(head, 0);
+        assertEq(tail, 0);
     }
 }
