@@ -45,29 +45,21 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
     /**
      * @dev Emitted when one or more orders are executed partially/completely by buy taker orders.
      * @param takerAddress Address of the taker.
-     * @param orderIds Array of order identifiers that were partially/completely executed.
-     * @param updatedSizes Array of new sizes for the corresponding orders. Each size
      * corresponds to the order ID at the same index in the `orderIds` array.
      */
     event BuyIOC(
         address takerAddress,
-        uint96 orderSize,
-        uint256[] orderIds,
-        uint96[] updatedSizes
+        uint96 orderSize
     );
 
     /**
      * @dev Emitted when one or more orders are executed partially/completely by sell taker orders.
      * @param takerAddress Address of the taker.
-     * @param orderIds Array of order identifiers that were partially/completely executed.
-     * @param updatedSizes Array of new sizes for the corresponding orders. Each size
      * corresponds to the order ID at the same index in the `orderIds` array.
      */
     event SellIOC(
         address takerAddress,
-        uint96 orderSize,
-        uint256[] orderIds,
-        uint96[] updatedSizes
+        uint96 orderSize
     );
 
     /**
@@ -184,25 +176,24 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @dev Adds a buy order to the order book.
      * @param _price Price of the buy order.
      * @param size Size of the buy order.
-     * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      */
-    function addBuyOrder(uint24 _price, uint96 size, bool _useMargin) public marketActive {
+    function addBuyOrder(uint24 _price, uint96 size) public marketActive {
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
 
-        _consumeFunds(quoteAsset, ((((size * _price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision), _useMargin, msg.sender);
+        _consumeFunds(quoteAsset, ((((size * _price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision), msg.sender);
         
         uint24 _remainingFunds;
         uint96 _filledSize;
-        (_filledSize, _remainingFunds) = _matchAggressiveBuy(_price, uint24((size * _price) / sizePrecision), _useMargin);
+        (_filledSize, _remainingFunds) = _matchAggressiveBuy(_price, uint24((size * _price) / sizePrecision), true);
 
         if (size == _filledSize) {
             marginAccount.creditUser(
                 msg.sender,
                 address(quoteAsset),
                 uint256(_remainingFunds * 10 ** quoteAssetDecimals / pricePrecision),
-                _useMargin
+                true
             );
 
             return;
@@ -224,16 +215,15 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @dev Adds a sell order to the order book.
      * @param _price Price of the sell order.
      * @param size Size of the sell order.
-     * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      */
-    function addSellOrder(uint24 _price, uint96 size, bool _useMargin) public marketActive {
+    function addSellOrder(uint24 _price, uint96 size) public marketActive {
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
 
-        _consumeFunds(baseAsset, ((size * 10**baseAssetDecimals) / sizePrecision), _useMargin, msg.sender);
+        _consumeFunds(baseAsset, ((size * 10**baseAssetDecimals) / sizePrecision), msg.sender);
 
-        size = _matchAggressiveSell(_price, size, _useMargin);
+        size = _matchAggressiveSell(_price, size, true);
 
         if (size == 0) return;
 
@@ -263,26 +253,23 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @dev Consumes funds required to create a GTC order.
      * @param _consumableAsset Address of the asset that is being consumed by the market.
      * @param _amount Amount of _consumableAssets that should be consumed by the market.
-     * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      * @param _makerAddress Address of the the user creating the order.
      */
-    function _consumeFunds(IERC20 _consumableAsset, uint256 _amount, bool _useMargin, address _makerAddress) internal {
-        _useMargin
-            ? marginAccount.debitUser(
-                _makerAddress,
-                address(_consumableAsset),
-                _amount
-            )
-            : _consumableAsset.transferFrom(_makerAddress, address(marginAccount), _amount);
+    function _consumeFunds(IERC20 _consumableAsset, uint256 _amount, address _makerAddress) internal {
+        marginAccount.debitUser(
+            _makerAddress,
+            address(_consumableAsset),
+            _amount
+        );
     }
 
     /**
      * @dev Cancels multiple orders in a batch.
      * @param _orderIds Array of order IDs to cancel.
      */
-    function batchCancelOrders(uint256[] calldata _orderIds, bool _useMargin) external {
+    function batchCancelOrders(uint256[] calldata _orderIds) external {
         for (uint256 i = 0; i < _orderIds.length; i++) {
-            _cancelOrder(_orderIds[i], _useMargin);
+            _cancelOrder(_orderIds[i]);
         }
 
         emit OrdersCanceled(_orderIds);
@@ -292,7 +279,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @dev Internal helper function to cancel a single order.
      * @param _orderId ID of the order to cancel.
      */
-    function _cancelOrder(uint256 _orderId, bool _useMargin) internal returns (bool) {
+    function _cancelOrder(uint256 _orderId) internal returns (bool) {
         Order memory _order = s_orders[_orderId];
 
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can cancel order");
@@ -315,7 +302,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
                 _order.ownerAddress,
                 address(quoteAsset),
                 ((((_order.size * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision),
-                _useMargin
+                true
             );
         } else {
             OrderLinkedList.deleteOrder(s_sellPricePoints[_order.price], _order.prev, _order.next);
@@ -327,11 +314,11 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
                 _order.ownerAddress,
                 address(baseAsset),
                 ((_order.size * 10**baseAssetDecimals) / sizePrecision),
-                _useMargin
+                true
             );
         }
 
-        delete s_orders[_orderId];
+        // delete s_orders[_orderId];
 
         return _order.isBuy;
     }
@@ -391,11 +378,11 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @param _prices Array of prices for the buy orders.
      * @param _sizes Array of sizes for the buy orders.
      */
-    function placeMultipleBuyOrders(uint24[] calldata _prices, uint96[] calldata _sizes, bool _useMargin) external marketActive {
+    function placeMultipleBuyOrders(uint24[] calldata _prices, uint96[] calldata _sizes) external marketActive {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {
-            addBuyOrder(_prices[i], _sizes[i], _useMargin);
+            addBuyOrder(_prices[i], _sizes[i]);
         }
     }
 
@@ -404,11 +391,11 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @param _prices Array of prices for the sell orders.
      * @param _sizes Array of sizes for the sell orders.
      */
-    function placeMultipleSellOrders(uint24[] calldata _prices, uint96[] calldata _sizes, bool _useMargin) external marketActive {
+    function placeMultipleSellOrders(uint24[] calldata _prices, uint96[] calldata _sizes) external marketActive {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {
-            addSellOrder(_prices[i], _sizes[i], _useMargin);
+            addSellOrder(_prices[i], _sizes[i]);
         }
     }
 
@@ -512,9 +499,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         
         _creditMaker(!m_order.isBuy, m_order.ownerAddress, (remainingSize == 0) ? _size : m_order.size, m_order.price);
 
-        if (remainingSize > 0) {
-            delete s_orders[_orderId];
-        } else {
+        if (remainingSize == 0) {
             s_orders[_orderId].prev = OrderLinkedList.NULL;
         }
 

@@ -48,7 +48,7 @@ contract MarginAccount is IMarginAccount {
         uint256 _amount
     ) external returns (bool) {
         require(verifiedMarket[msg.sender], "MarginAccount: Only verified markets can credit users");
-        require(balances[_accountKey(_user, _token)] > _amount, "MarginAccoiunt: Insufficient Balance");
+        require(balances[_accountKey(_user, _token)] >= _amount, "MarginAccoiunt: Insufficient Balance");
 
         balances[_accountKey(_user, _token)] -= _amount;
 

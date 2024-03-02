@@ -5,7 +5,7 @@ async function main() {
     // contract addresses
     const wbtcAddress = "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f";
     const wbtcDecimals = 8;
-    const wbtcShark = "0x7546966122e636a601a3ea4497d3509f160771d8";
+    const wbtcShark = "0x4bb7f4c3d47c4b431cb0658f44287d52006fb506";
 
     const usdcAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
     const usdcDecimals = 6;
@@ -72,7 +72,7 @@ async function main() {
 
     var receipt = await wbtcContractShark.transfer(
         userAddress,
-        2*10**10,
+        17*10**9,
     );
 
     console.log("wbtc balance: ", (await wbtcContractShark.balanceOf(userAddress)).toString())

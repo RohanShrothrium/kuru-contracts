@@ -53,6 +53,7 @@ contract CranklessStorageOrderBook is AbstractStorageOrderBook, ICranklessStorag
         uint24 _quoteSize,
         bool _isFillOrKill
     ) public override marketActive {
+        uint24 _initQuoteSize = _quoteSize;
         quoteAsset.transferFrom(msg.sender, address(marginAccount), uint256(_quoteSize * 10 ** quoteAssetDecimals / pricePrecision));
         (, _quoteSize) = _matchAggressiveBuy(type(uint24).max, _quoteSize, false);
         if (_quoteSize >= 0) {
@@ -64,6 +65,8 @@ contract CranklessStorageOrderBook is AbstractStorageOrderBook, ICranklessStorag
                 false
             );
         }
+
+        emit BuyIOC(msg.sender, _initQuoteSize - _quoteSize);
     }
 
     /**
@@ -76,6 +79,7 @@ contract CranklessStorageOrderBook is AbstractStorageOrderBook, ICranklessStorag
         bool _isFillOrKill
     ) public marketActive{
         // Transfer the base asset from the user to the contract
+        uint96 _initSize = _size;
         baseAsset.transferFrom(
             msg.sender,
             address(marginAccount),
@@ -94,5 +98,7 @@ contract CranklessStorageOrderBook is AbstractStorageOrderBook, ICranklessStorag
                 false
             );
         }
+
+        emit SellIOC(msg.sender, _initSize - _size);
     }
 }

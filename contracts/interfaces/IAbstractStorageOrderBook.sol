@@ -3,24 +3,21 @@
 pragma solidity ^0.8.0;
 
 interface IAbstractStorageOrderBook {
-    function addBuyOrder(uint24 _price, uint96 size, bool _useMargin) external;
+    function addBuyOrder(uint24 _price, uint96 size) external;
 
-    function addSellOrder(uint24 _price, uint96 size, bool _useMargin) external;
+    function addSellOrder(uint24 _price, uint96 size) external;
 
     function batchCancelOrders(
-        uint256[] calldata _orderIds,
-        bool _useMargin
+        uint256[] calldata _orderIds
     ) external;
 
     function placeMultipleBuyOrders(
         uint24[] memory _prices,
-        uint96[] memory _sizes,
-        bool _useMargin
+        uint96[] memory _sizes
     ) external;
 
     function placeMultipleSellOrders(
         uint24[] memory _prices,
-        uint96[] memory _sizes,
-        bool _useMargin
+        uint96[] memory _sizes
     ) external;
 }
