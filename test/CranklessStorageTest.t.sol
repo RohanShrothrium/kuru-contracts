@@ -401,4 +401,43 @@ contract OrderBookTest is Test {
         assertEq(head, 0);
         assertEq(tail, 0);
     }
+
+    function _addCustomSellOrder(uint24 _price, uint96 _size, address _user) internal {
+        // vm.startPrank(deployer);
+        eth.mint(_user, initEth);
+        // vm.stopPrank();
+        vm.startPrank(_user);
+        eth.approve(address(marginAccount), initEth);
+        marginAccount.deposit(_user, address(eth), _size*10**18);
+        orderBook.addSellOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+        vm.stopPrank();
+    }
+
+    function test_brutalizedBuyOrderFill() public {
+        // uint times = bound(_someValue, 1, 30);
+        uint times = 5;
+        // emit TImes(times);
+        for(uint i; i<times; i++) {
+            _addCustomSellOrder(1800, 10, address(uint160(i+50)));
+        }
+        address _filler = makeAddr("FILLER");
+        // vm.startPrank(deployer);
+        usdc.mint(_filler, initUsdc*times);
+        // vm.stopPrank();
+        vm.startPrank(_filler);
+        usdc.approve(address(marginAccount), initUsdc*times);
+        marginAccount.deposit(_filler, address(usdc), times*initUsdc);
+        orderBook.addBuyOrder(1801*PRICE_PRECISION, 40*SIZE_PRECISION);
+        vm.stopPrank();
+    }
+    function makeAddrAndKey(string memory name) internal virtual returns (address addr, uint256 privateKey) {
+        privateKey = uint256(keccak256(abi.encodePacked(name)));
+        addr = vm.addr(privateKey);
+        vm.label(addr, name);
+    }
+
+    // creates a labeled address
+    function makeAddr(string memory name) internal virtual returns (address addr) {
+        (addr,) = makeAddrAndKey(name);
+    }
 }

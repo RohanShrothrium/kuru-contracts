@@ -185,30 +185,21 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         _consumeFunds(quoteAsset, ((((size * _price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision), msg.sender);
         
         uint24 _remainingFunds;
-        uint96 _filledSize;
-        (_filledSize, _remainingFunds) = _matchAggressiveBuy(_price, uint24((size * _price) / sizePrecision), true);
+        _remainingFunds = _matchAggressiveBuy(_price, uint24((size * _price) / sizePrecision), true);
 
-        if (size == _filledSize) {
-            marginAccount.creditUser(
-                msg.sender,
-                address(quoteAsset),
-                uint256(_remainingFunds * 10 ** quoteAssetDecimals / pricePrecision),
-                true
-            );
+        if (_remainingFunds > 0) {
+            uint96 _orderSize = _remainingFunds*sizePrecision/_price;
+            uint256 _orderId = s_orderIdCounter;
+            s_orderIdCounter = _orderId + 1;
 
-            return;
+            // Add price to the tree and update DLL of price poit.
+            TreeMath.add(s_buyTree, _price);
+            uint256 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId + 1);
+
+            _addOrder(_price, _orderSize, _orderId + 1, true, _prevOrderId);
+
+            emit OrderCreated(_orderId + 1, msg.sender, _orderSize, _price, true);
         }
-
-        uint256 _orderId = s_orderIdCounter;
-        s_orderIdCounter = _orderId + 1;
-
-        // Add price to the tree and update DLL of price poit.
-        TreeMath.add(s_buyTree, _price);
-        uint256 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId + 1);
-
-        _addOrder(_price, size-_filledSize, _orderId + 1, true, _prevOrderId);
-
-        emit OrderCreated(_orderId + 1, msg.sender, size-_filledSize, _price, true);
     }
 
     /**
@@ -286,6 +277,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
 
         // update neighbouring orders
         if (_order.prev != OrderLinkedList.NULL) {
+            require(s_orders[_order.prev].next == _orderId, "OrderBook: Order already canceled");
             s_orders[_order.prev].next = _order.next;
         }
         if (_order.next != OrderLinkedList.NULL) {
@@ -293,6 +285,9 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         }
 
         if (_order.isBuy) {
+            if (_order.prev == OrderLinkedList.NULL) {
+                require(s_buyPricePoints[_order.price].head == _orderId, "OrderBook: Order already canceled");
+            }
             OrderLinkedList.deleteOrder(s_buyPricePoints[_order.price], _order.prev, _order.next);
             if (_order.prev == _order.next) {
                 TreeMath.remove(s_buyTree, _order.price);
@@ -305,6 +300,9 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
                 true
             );
         } else {
+            if (_order.prev == OrderLinkedList.NULL) {
+                require(s_sellPricePoints[_order.price].head == _orderId, "OrderBook: Order already canceled");
+            }
             OrderLinkedList.deleteOrder(s_sellPricePoints[_order.price], _order.prev, _order.next);
             if (_order.prev == _order.next) {
                 TreeMath.remove(s_sellTree, _order.price);
@@ -317,8 +315,6 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
                 true
             );
         }
-
-        // delete s_orders[_orderId];
 
         return _order.isBuy;
     }
@@ -405,7 +401,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @param _quoteSize amount of quote asset user is ready to pay.
      * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      */
-    function _matchAggressiveBuy(uint24 _limitPrice, uint24 _quoteSize, bool _useMargin) internal returns(uint96, uint24) {
+    function _matchAggressiveBuy(uint24 _limitPrice, uint24 _quoteSize, bool _useMargin) internal returns(uint24) {
         uint96 _sizeToGet;
         uint24 _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
 
@@ -430,7 +426,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
             );
         }
 
-        return (_sizeToGet, _quoteSize);
+        return _quoteSize;
     }
 
     /**
@@ -501,7 +497,9 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
 
         if (remainingSize == 0) {
             s_orders[_orderId].prev = OrderLinkedList.NULL;
+            s_orders[_orderId].size -= _size;
         }
+        // What if the whole book gets filled or the whole price point gets filled up?
 
         emit OrderUpdated(_orderId, remainingSize);
     }
