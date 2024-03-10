@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.23;
+pragma solidity ^0.8.0;
 
 import {CranklessStorageOrderBook} from "../../contracts/CranklessStorageOrderBook.sol";
 import {MintableERC20} from "../lib/MintableERC20.sol";
