@@ -55,7 +55,7 @@ contract CranklessStorageOrderBook is AbstractStorageOrderBook, ICranklessStorag
     ) public override marketActive {
         uint24 _initQuoteSize = _quoteSize;
         quoteAsset.transferFrom(msg.sender, address(marginAccount), uint256(_quoteSize * 10 ** quoteAssetDecimals / pricePrecision));
-        (, _quoteSize) = _matchAggressiveBuy(type(uint24).max, _quoteSize, false);
+        _quoteSize = _matchAggressiveBuy(type(uint24).max, _quoteSize, false);
         if (_quoteSize >= 0) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
             marginAccount.creditUser(
