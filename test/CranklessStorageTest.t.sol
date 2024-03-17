@@ -340,7 +340,7 @@ contract OrderBookTest is Test {
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
         assertEq(usdc.balanceOf(address(marginAccount)), 0);
         assertEq(usdc.balanceOf(user1), (price*size)*10**18);
-        assertEq(eth.balanceOf(user2), size*10**18);
+        assertEq(eth.balanceOf(address(marginAccount)), size*10**18);
 
         assertEq(head, 0);
         assertEq(tail, 0);
@@ -372,7 +372,7 @@ contract OrderBookTest is Test {
 
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
         assertEq(eth.balanceOf(address(marginAccount)), 0);
-        assertEq(usdc.balanceOf(user1), (price*size)*10**18);
+        assertEq(usdc.balanceOf(address(marginAccount)), (price*size)*10**18);
         assertEq(eth.balanceOf(user2), size*10**18);
 
         assertEq(head, 0);
@@ -395,7 +395,7 @@ contract OrderBookTest is Test {
 
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
         // assertEq(marginAccount.balances(keccak256(abi.encodePacked(user2, address(usdc)))), 10**18);
-        assertEq(usdc.balanceOf(user1), (1800*size)*10**18);
+        assertEq(usdc.balanceOf(address(marginAccount)), (1801*size)*10**18);
         assertEq(marginAccount.balances(keccak256(abi.encodePacked(user2, address(eth)))), size*10**18);
 
         assertEq(head, 0);

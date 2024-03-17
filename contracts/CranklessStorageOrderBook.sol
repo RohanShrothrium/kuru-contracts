@@ -101,4 +101,32 @@ contract CranklessStorageOrderBook is AbstractStorageOrderBook, ICranklessStorag
 
         emit SellIOC(msg.sender, _initSize - _size);
     }
+
+    /**
+     * @dev Getter function to fetch price precision.
+     */
+    function getPricePrecision() external view returns (uint24) {
+        return pricePrecision;
+    }
+
+    /**
+     * @dev Getter function to fetch size precision.
+     */
+    function getSizePrecision() external view returns (uint96) {
+        return sizePrecision;
+    }
+
+    /**
+     * @dev Getter function to fetch decimals of base asset.
+     */
+    function getBaseAssetDecimals() external view returns (uint256) {
+        return baseAssetDecimals;
+    }
+
+    /**
+     * @dev Getter function to fetch decimals of quote asset.
+     */
+    function getQuoteAssetDecimals() external view returns (uint256) {
+        return quoteAssetDecimals;
+    }
 }

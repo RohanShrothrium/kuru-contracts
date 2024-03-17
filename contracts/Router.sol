@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 // ============ Internal Interface Imports ============
-import {ICranklessOrderBook} from "./interfaces/ICranklessOrderBook.sol";
+import {ICranklessStorageOrderBook} from "./interfaces/ICranklessStorageOrderBook.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
@@ -66,12 +66,10 @@ contract Router is IRouter, OwnableUpgradeable {
     function anyToAnySwap(
         address[] calldata _route,
         bool[] calldata _isBuy,
-        uint256 _amount,
-        uint256[][] calldata _orderIds
+        uint256 _amount
     ) external {
         require(_route.length >= 2, "Router: Invalid _route length");
         require(_isBuy.length == _route.length - 1, "Router: Sizes length mismatch");
-        require(_orderIds.length == _route.length - 1, "Router: OrderIds length mismatch");
 
         IERC20(_route[0]).transferFrom(msg.sender, address(this), _amount);
 
@@ -83,15 +81,13 @@ contract Router is IRouter, OwnableUpgradeable {
             address _marketAddress = _isBuy[i] ? marketAddress(_route[i+1], _route[i]) : marketAddress(_route[i], _route[i + 1]);
             require(_marketAddress != address(0), "Router: Market does not exist");
 
-            ICranklessOrderBook market = ICranklessOrderBook(_marketAddress);
+            ICranklessStorageOrderBook market = ICranklessStorageOrderBook(_marketAddress);
             _isBuy[i]
                 ? market.placeAndExecuteMarketBuy(
-                    _orderIds[i],
                     _amountToSize(_amount, _isBuy[i], market),
                     true
                 )
                 : market.placeAndExecuteMarketSell(
-                    _orderIds[i],
                     _amountToSize(_amount, _isBuy[i], market),
                     true
                 );
@@ -114,14 +110,14 @@ contract Router is IRouter, OwnableUpgradeable {
         return IERC20(_token).balanceOf(address(this));
     }
 
-    function _amountToSize(uint256 _amount, bool _isBuy, ICranklessOrderBook market) internal view returns (uint96) {
+    function _amountToSize(uint256 _amount, bool _isBuy, ICranklessStorageOrderBook market) internal view returns (uint24) {
         return
             _isBuy
-                ? uint96(
+                ? uint24(
                     (_amount * market.getPricePrecision()) /
                         10 ** market.getQuoteAssetDecimals()
                 )
-                : uint96(
+                : uint24(
                     (_amount * market.getSizePrecision()) /
                         10 ** market.getBaseAssetDecimals()
                 );
