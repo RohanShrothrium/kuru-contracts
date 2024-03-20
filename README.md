@@ -12,3 +12,5 @@ npx hardhat node
 npx hardhat run scripts/deployOrderBook.js
 ```
 # kuru-orderbook
+
+For tests run : forge test --mt testBenchmark -vv --isolate > output.MD
