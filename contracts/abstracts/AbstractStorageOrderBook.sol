@@ -492,10 +492,6 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         Order memory m_order = s_orders[_orderId];
         _nextHead = m_order.next;
         remainingSize = (_size > m_order.size) ? (_size - m_order.size) : 0;
-        uint96 _updatedOrderSize;
-        if(remainingSize == 0) {
-            _updatedOrderSize = m_order.size - _size;
-        }
         _creditMaker(!m_order.isBuy, m_order.ownerAddress, (remainingSize == 0) ? _size : m_order.size, m_order.price);
         //@audit cancel order vulnerability, check later
         if (remainingSize == 0) {
@@ -503,8 +499,8 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
             s_orders[_orderId].size -= _size;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
-
-        emit OrderUpdated(_orderId, _updatedOrderSize);
+        //@audit remaining size emitted is incorrect
+        emit OrderUpdated(_orderId, remainingSize);
     }
 
     /**
