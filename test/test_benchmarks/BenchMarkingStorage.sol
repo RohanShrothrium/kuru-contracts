@@ -426,7 +426,7 @@ contract BenchMarkTest is Test {
         for(uint24 i; i < 30; i++) {
             _addCustomBuyOrderOnlyPriceSize(_startingPrice + i, _buySize);
         }
-        for(uint24 i; i < 10; i++) {
+        for(uint24 i; i < 10; i++)  {
             address _user = genAddress();
             eth.mint(_user, _sellSize * 10 ** eth.decimals());
             vm.startPrank(_user);
