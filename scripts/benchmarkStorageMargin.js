@@ -8,26 +8,7 @@ async function main() {
     const usdcContract = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", config.usdcAddress);
     var tx = await usdcContract.approve(
         config.marginAccountAddress,
-        10**10,
-    );
-    await tx.wait();
-
-    var tx = await usdcContract.approve(
-        config.cranklessOrderBookAddress,
-        10**10,
-    );
-    await tx.wait();
-
-    const wbtcContract = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", config.wbtcAddress);
-    var tx = await wbtcContract.approve(
-        config.marginAccountAddress,
-        10**10,
-    );
-    await tx.wait();
-
-    var tx = await wbtcContract.approve(
-        config.cranklessOrderBookAddress,
-        10**10,
+        hre.ethers.utils.parseEther("10000"),
     );
     await tx.wait();
 
@@ -35,14 +16,15 @@ async function main() {
     var tx = await marginAccount.deposit(
         user.address,
         config.usdcAddress,
-        10**10,
+        hre.ethers.utils.parseEther("10000"),
     );
     await tx.wait();
 
-    var tx = await marginAccount.deposit(
-        user.address,
-        config.wbtcAddress,
-        10**10,
+    const wbtcContract = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", config.wbtcAddress);
+
+    var tx = await wbtcContract.approve(
+        config.cranklessOrderBookAddress,
+        hre.ethers.utils.parseEther("10000"),
     );
     await tx.wait();
 
