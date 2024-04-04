@@ -7,10 +7,11 @@ import {MintableERC20} from "../lib/MintableERC20.sol";
 import {Router} from "../../contracts/Router.sol";
 import {MarginAccount} from "../../contracts/MarginAccount.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Gas} from "./gas_helpers/Gas.sol";
 import "forge-std/Test.sol";
 
 
-contract BenchMarkTest is Test {
+contract BenchMarkTest is Test, Gas {
 
     CranklessStorageOrderBook orderBook;
     MintableERC20 usdc;
@@ -112,9 +113,9 @@ contract BenchMarkTest is Test {
             vm.startPrank(_user);
             usdc.approve(address(marginAccount), _consumableFunds);
             marginAccount.deposit(_user, address(usdc), _consumableFunds);
-            uint256 gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
-            gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i+1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
@@ -131,9 +132,9 @@ contract BenchMarkTest is Test {
             vm.startPrank(_user);
             usdc.approve(address(marginAccount), _consumableFunds);
             marginAccount.deposit(_user, address(usdc), _consumableFunds);
-            uint256 gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
-            gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i+1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
@@ -150,9 +151,9 @@ contract BenchMarkTest is Test {
             vm.startPrank(_user);
             usdc.approve(address(marginAccount), _consumableFunds);
             marginAccount.deposit(_user, address(usdc), _consumableFunds);
-            uint256 gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
-            gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i+1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
@@ -222,10 +223,10 @@ contract BenchMarkTest is Test {
         eth.approve(address(marginAccount), _iterations * _size *10 ** 18);
         marginAccount.deposit(_user, address(eth), _iterations * _size * 10 ** 18);
         for(uint24 i; i < _iterations; i++){
-            uint256 _gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.addSellOrder(_price*PRICE_PRECISION, _size * SIZE_PRECISION);
-            _gasVar -= gasleft();
-            console.log("ITERATION ", i + 1, "GAS USED: ", _gasVar);
+            uint256 gasVar = stopMeasuringGas();
+            console.log("ITERATION ", i + 1, "GAS USED: ", gasVar);
         }
         vm.stopPrank();
     }
@@ -241,10 +242,10 @@ contract BenchMarkTest is Test {
         eth.approve(address(marginAccount), _iterations * _size * 10 ** eth.decimals());
         marginAccount.deposit(_user, address(eth), _iterations * _size * 10 ** eth.decimals());
         for(uint24 i; i < _iterations; i++){
-            uint256 _gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.addSellOrder((_startingPrice + i) * PRICE_PRECISION, _size * SIZE_PRECISION);
-            _gasVar -= gasleft();
-            console.log("ITERATION ", i + 1, "GAS USED: ", _gasVar);
+            uint256 gasVar = stopMeasuringGas();
+            console.log("ITERATION ", i + 1, "GAS USED: ", gasVar);
         }
         vm.stopPrank();
     }
@@ -263,9 +264,9 @@ contract BenchMarkTest is Test {
             usdc.mint(_user, _consumableFunds);
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
-            uint256 gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds*PRICE_PRECISION/(10**18)), true);
-            gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
@@ -285,9 +286,9 @@ contract BenchMarkTest is Test {
             usdc.mint(_user, _consumableFunds);
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
-            uint256 gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds*PRICE_PRECISION/(10**18)), true);
-            gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
@@ -307,9 +308,9 @@ contract BenchMarkTest is Test {
             usdc.mint(_user, _consumableFunds);
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
-            uint256 gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds*PRICE_PRECISION/(10**18)), true);
-            gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
@@ -333,9 +334,9 @@ contract BenchMarkTest is Test {
             usdc.mint(_user, _consumableFunds);
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
-            uint256 gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds*PRICE_PRECISION/10**18), true);
-            gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
@@ -358,9 +359,9 @@ contract BenchMarkTest is Test {
             eth.mint(_user, uint256(_sellSizeEth));
             vm.startPrank(_user);
             eth.approve(address(orderBook), _sellSizeEth);
-            uint256 gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.placeAndExecuteMarketSell(_size * SIZE_PRECISION, true);
-            gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
@@ -383,9 +384,9 @@ contract BenchMarkTest is Test {
             eth.mint(_user, uint256(_sellSizeEth));
             vm.startPrank(_user);
             eth.approve(address(orderBook), _sellSizeEth);
-            uint256 gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.placeAndExecuteMarketSell(_size * SIZE_PRECISION, true);
-            gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
@@ -408,9 +409,9 @@ contract BenchMarkTest is Test {
             eth.mint(_user, uint256(_sellSizeEth));
             vm.startPrank(_user);
             eth.approve(address(orderBook), _sellSizeEth);
-            uint256 gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.placeAndExecuteMarketSell(_size * SIZE_PRECISION, true);
-            gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
@@ -431,9 +432,9 @@ contract BenchMarkTest is Test {
             eth.mint(_user, _sellSize * 10 ** eth.decimals());
             vm.startPrank(_user);
             eth.approve(address(orderBook), _sellSize * 10 ** eth.decimals());
-            uint256 gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.placeAndExecuteMarketSell(_sellSize * SIZE_PRECISION, true);
-            gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED : ", gasVar);
             vm.stopPrank();
         }
@@ -499,11 +500,11 @@ contract BenchMarkTest is Test {
             uint256[] memory _orderId = new uint256[](1);
             _orderId[0] = i + 1;
             vm.startPrank(_maker);
-            uint256 _gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.batchCancelOrders(_orderId);
-            _gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             vm.stopPrank();
-            console.log("ITERATION ", i + 1, " GAS USED: ", _gasVar);
+            console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
         }
     }
 
@@ -525,11 +526,11 @@ contract BenchMarkTest is Test {
             uint256[] memory _orderId = new uint256[](1);
             _orderId[0] = i + 1;
             vm.startPrank(_maker);
-            uint256 _gasVar = gasleft();
+            startMeasuringGas("");
             orderBook.batchCancelOrders(_orderId);
-            _gasVar -= gasleft();
+            uint256 gasVar = stopMeasuringGas();
             vm.stopPrank();
-            console.log("ITERATION ", i + 1, " GAS USED: ", _gasVar);
+            console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
         }
     }
 
