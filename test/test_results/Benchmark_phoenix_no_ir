@@ -1,0 +1,51 @@
+No files changed, compilation skipped
+
+Ran 1 test for test/test_benchmarks/BenchMarkPhoenix.t.sol:BenchMarkTest
+[32m[PASS][0m testSpecHandler() (gas: 43883131)
+Logs:
+  ************* NO PRICE POINT CHANGE ****************
+  1 FILLS TOTAL =  143626
+  Average 1 FILLS Gas =  143626
+  2 FILLS TOTAL =  162138
+  Average 2 FILLS Gas =  162138
+  3 FILLS TOTAL =  200651
+  Average 3 FILLS Gas =  200651
+  4 FILLS TOTAL =  239451
+  Average 4 FILLS Gas =  239451
+  5 FILLS TOTAL =  278537
+  Average 5 FILLS Gas =  278537
+  6 FILLS TOTAL =  317911
+  Average 6 FILLS Gas =  317911
+  7 FILLS TOTAL =  357576
+  Average 7 FILLS Gas =  357576
+  8 FILLS TOTAL =  397527
+  Average 8 FILLS Gas =  397527
+  9 FILLS TOTAL =  437791
+  Average 9 FILLS Gas =  437791
+  12 FILLS TOTAL =  560356
+  Average 12 FILLS Gas =  560356
+  ************* PRICE POINT CHANGE *******************
+  1 FILLS TOTAL =  129948
+  Average 1 FILLS Gas =  129948
+  2 FILLS TOTAL =  176533
+  Average 2 FILLS Gas =  176533
+  3 FILLS TOTAL =  223349
+  Average 3 FILLS Gas =  223349
+  4 FILLS TOTAL =  270364
+  Average 4 FILLS Gas =  270364
+  5 FILLS TOTAL =  321692
+  Average 5 FILLS Gas =  321692
+  6 FILLS TOTAL =  369225
+  Average 6 FILLS Gas =  369225
+  7 FILLS TOTAL =  416980
+  Average 7 FILLS Gas =  416980
+  8 FILLS TOTAL =  464945
+  Average 8 FILLS Gas =  464945
+  9 FILLS TOTAL =  513156
+  Average 9 FILLS Gas =  513156
+  12 FILLS TOTAL =  659192
+  Average 12 FILLS Gas =  659192
+
+Suite result: [32mok[0m. [32m1[0m passed; [31m0[0m failed; [33m0[0m skipped; finished in 82.33ms (79.12ms CPU time)
+
+Ran 1 test suite in 660.65ms (82.33ms CPU time): [32m1[0m tests passed, [31m0[0m failed, [33m0[0m skipped (1 total tests)

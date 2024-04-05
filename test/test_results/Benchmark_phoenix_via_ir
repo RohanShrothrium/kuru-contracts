@@ -1,0 +1,59 @@
+Compiling 44 files with 0.8.23
+Solc 0.8.23 finished in 83.55s
+Compiler run [33msuccessful with warnings:[0m
+[1;33mWarning (2018)[0m[1;37m: Function state mutability can be restricted to view[0m
+ [34m-->[0m test/TestEncoding.t.sol:8:5:
+[34m  |[0m
+[34m8 |[0m     [33mfunction testEncodeDecode() public {[0m
+[34m  |[0m     [1;33m^ (Relevant source part starts here and spans across multiple lines).[0m
+
+
+Ran 1 test for test/test_benchmarks/BenchMarkPhoenix.t.sol:BenchMarkTest
+[32m[PASS][0m testSpecHandler() (gas: 43304551)
+Logs:
+  ************* NO PRICE POINT CHANGE ****************
+  1 FILLS TOTAL =  145076
+  Average 1 FILLS Gas =  145076
+  2 FILLS TOTAL =  156413
+  Average 2 FILLS Gas =  156413
+  3 FILLS TOTAL =  193514
+  Average 3 FILLS Gas =  193514
+  4 FILLS TOTAL =  230892
+  Average 4 FILLS Gas =  230892
+  5 FILLS TOTAL =  268549
+  Average 5 FILLS Gas =  268549
+  6 FILLS TOTAL =  306488
+  Average 6 FILLS Gas =  306488
+  7 FILLS TOTAL =  344709
+  Average 7 FILLS Gas =  344709
+  8 FILLS TOTAL =  383203
+  Average 8 FILLS Gas =  383203
+  9 FILLS TOTAL =  422010
+  Average 9 FILLS Gas =  422010
+  12 FILLS TOTAL =  540143
+  Average 12 FILLS Gas =  540143
+  ************* PRICE POINT CHANGE *******************
+  1 FILLS TOTAL =  126499
+  Average 1 FILLS Gas =  126499
+  2 FILLS TOTAL =  171365
+  Average 2 FILLS Gas =  171365
+  3 FILLS TOTAL =  216452
+  Average 3 FILLS Gas =  216452
+  4 FILLS TOTAL =  261698
+  Average 4 FILLS Gas =  261698
+  5 FILLS TOTAL =  311329
+  Average 5 FILLS Gas =  311329
+  6 FILLS TOTAL =  357151
+  Average 6 FILLS Gas =  357151
+  7 FILLS TOTAL =  403170
+  Average 7 FILLS Gas =  403170
+  8 FILLS TOTAL =  449358
+  Average 8 FILLS Gas =  449358
+  9 FILLS TOTAL =  495798
+  Average 9 FILLS Gas =  495798
+  12 FILLS TOTAL =  636461
+  Average 12 FILLS Gas =  636461
+
+Suite result: [32mok[0m. [32m1[0m passed; [31m0[0m failed; [33m0[0m skipped; finished in 69.69ms (65.59ms CPU time)
+
+Ran 1 test suite in 596.30ms (69.69ms CPU time): [32m1[0m tests passed, [31m0[0m failed, [33m0[0m skipped (1 total tests)

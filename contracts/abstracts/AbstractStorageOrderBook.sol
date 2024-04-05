@@ -405,12 +405,16 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         uint96 _sizeToGet;
         uint24 _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
 
+        bytes memory makerCredits;
         while (_quoteSize > 0 && _bestAsk <= _limitPrice && _bestAsk != 0) {
             uint96 _size = _quoteSize * sizePrecision / _bestAsk;
             
+            bytes memory priceUpdate;
             _sizeToGet += _size;
-            _size = _fillSizeForPrice(s_sellTree, _bestAsk, s_sellPricePoints[_bestAsk], _size);
+            (_size, priceUpdate) = _fillSizeForPrice(s_sellTree, _bestAsk, s_sellPricePoints[_bestAsk], _size);
             _sizeToGet -= _size;
+
+            makerCredits = bytes.concat(makerCredits, priceUpdate);
 
             _quoteSize = uint24(_size * _bestAsk / sizePrecision);
             
@@ -418,12 +422,9 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         }
 
         if (_sizeToGet > 0) {
-            marginAccount.creditUser(
-                msg.sender,
-                address(baseAsset),
-                (_sizeToGet) * 10 ** quoteAssetDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER),
-                _useMargin
-            );
+            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), (_sizeToGet) * 10 ** quoteAssetDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER), _useMargin)));
+        } else if (makerCredits.length > 0) {
+            marginAccount.creditUsersEncoded(makerCredits);
         }
 
         return _quoteSize;
@@ -439,21 +440,23 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         uint96 _priceToGet = 0;
         uint24 _bestBid = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
 
+        bytes memory makerCredits;
         while (size > 0 && _bestBid > _limitPrice && _bestBid != type(uint24).max) {
             uint96 _tmpSize = size;
-            size = _fillSizeForPrice(s_buyTree, _bestBid, s_buyPricePoints[_bestBid], size);
+
+            bytes memory priceUpdate;
+            (size, priceUpdate) = _fillSizeForPrice(s_buyTree, _bestBid, s_buyPricePoints[_bestBid], size);
             _priceToGet += (_tmpSize - size) * _bestBid;
+
+            makerCredits = bytes.concat(makerCredits, priceUpdate);
 
             _bestBid = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
         }
 
         if (_priceToGet > 0) {
-            marginAccount.creditUser(
-                msg.sender,
-                address(quoteAsset),
-                (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER)),
-                _useMargin
-            );
+            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(quoteAsset), (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER)), _useMargin)));
+        } else if (makerCredits.length > 0) {
+            marginAccount.creditUsersEncoded(makerCredits);
         }
 
         return size;
@@ -466,11 +469,13 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @param _size The size of the order to be filled.
      * @return remainingSize The size remaining unfilled.
      */
-    function _fillSizeForPrice(TreeMath.TreeUint24 storage _tree, uint24 _price, OrderLinkedList.PricePoint storage _pricePoint, uint96 _size) internal returns (uint96 remainingSize) {
+    function _fillSizeForPrice(TreeMath.TreeUint24 storage _tree, uint24 _price, OrderLinkedList.PricePoint storage _pricePoint, uint96 _size) internal returns (uint96 remainingSize, bytes memory makerCredits) {
         remainingSize = _size;
         uint256 _orderId = _pricePoint.head;
         while (remainingSize > 0 && _orderId != OrderLinkedList.NULL) {
-            (remainingSize, _orderId) = _fillOrder(_orderId, remainingSize);
+            bytes memory orderUpdate;
+            (remainingSize, _orderId, orderUpdate) = _fillOrder(_orderId, remainingSize);
+            makerCredits = bytes.concat(makerCredits, orderUpdate);
         }
 
         OrderLinkedList.updateHead(_pricePoint, _orderId);
@@ -488,15 +493,17 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @return remainingSize The remaining size after attempting to fill this order.
      * @return _nextHead next head of the price point.
      */
-    function _fillOrder(uint256 _orderId, uint96 _size) internal returns (uint96 remainingSize, uint256 _nextHead) {
-        Order memory m_order = s_orders[_orderId];
-        _nextHead = m_order.next;
-        remainingSize = (_size > m_order.size) ? (_size - m_order.size) : 0;
-        _creditMaker(!m_order.isBuy, m_order.ownerAddress, (remainingSize == 0) ? _size : m_order.size, m_order.price);
+    function _fillOrder(uint256 _orderId, uint96 _size) internal returns (uint96 remainingSize, uint256 _nextHead, bytes memory _orderUpdate) {
+        _nextHead = s_orders[_orderId].next;
+        remainingSize = (_size > s_orders[_orderId].size) ? (_size - s_orders[_orderId].size) : 0;
+
+        _orderUpdate = _creditMaker(!s_orders[_orderId].isBuy, s_orders[_orderId].ownerAddress, (remainingSize == 0) ? _size : s_orders[_orderId].size, s_orders[_orderId].price);
+
         //@audit cancel order vulnerability, check later
         if (remainingSize == 0) {
-            s_orders[_orderId].prev = OrderLinkedList.NULL;
             s_orders[_orderId].size -= _size;
+        } else {
+            s_orders[_orderId].size = 0;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
         //@audit remaining size emitted is incorrect
@@ -511,16 +518,11 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @param _size The size of the order being credited.
      * @param _price The price of the order.
      */
-    function _creditMaker(bool _isMarketBuy, address _ownerAddress, uint96 _size, uint24 _price) internal {
+    function _creditMaker(bool _isMarketBuy, address _ownerAddress, uint96 _size, uint24 _price) internal view returns (bytes memory) {
         address creditAsset = _isMarketBuy ? address(quoteAsset) : address(baseAsset);
         uint256 amount = _isMarketBuy ? _amountPayable(_size, _price) : ((_size * 10 ** baseAssetDecimals) / sizePrecision);
 
-        marginAccount.creditUser(
-            _ownerAddress,
-            creditAsset,
-            amount,
-            false
-        );
+        return abi.encode(_ownerAddress, creditAsset, amount, true);
     }
 
     /**

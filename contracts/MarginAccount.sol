@@ -79,6 +79,30 @@ contract MarginAccount is IMarginAccount {
     }
 
     /**
+     * @dev This function is only callable by a verified market. Verified markets credit a bunch of users the tokens.
+     * @param _encodedData Address of the user whose account should be credited. 
+     */
+    function creditUsersEncoded(
+        bytes calldata _encodedData
+    ) external returns (bool) {
+        require(verifiedMarket[msg.sender], "MarginAccount: Only verified markets can credit users");
+
+        uint256 offset = 0;
+        while (offset < _encodedData.length) {
+            (address _user, address _token, uint256 _amount, bool _useMargin) = abi.decode(_encodedData[offset:offset + 128], (address, address, uint256, bool));
+            offset += 128;
+
+            if (_useMargin) {
+                balances[_accountKey(_user, _token)] += _amount;
+            } else {
+                IERC20(_token).transfer(_user, _amount);
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * @dev Function for EOAs to deposit tokens on behalf of a user.
      * @param _user Address of the user whose account should be credited.
      * @param _token address of token to be credit.

@@ -3,13 +3,8 @@ const fs = require('fs');
 
 async function main() {
     // contract addresses
-    const wbtcAddress = "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f";
-    const wbtcDecimals = 8;
-    const wbtcShark = "0x7546966122e636a601a3ea4497d3509f160771d8";
-
-    const usdcAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
-    const usdcDecimals = 6;
-    const usdcShark = "0x3dd1d15b3c78d6acfd75a254e857cbe5b9ff0af2";
+    const wbtcDecimals = 18;
+    const usdcDecimals = 18;
 
     const _sizePrecision = 10**10;
     const _pricePrecision = 10**2;
@@ -18,8 +13,30 @@ async function main() {
     const _maxSize = 10**12;
     const _takerFeeBps = 0;
 
-    const [deployer] = await hre.ethers.getSigners();
+    const [deployer, taker] = await hre.ethers.getSigners();
     const userAddress = deployer.address;
+    const takerAddress = taker.address;
+
+    const ERC20 = await hre.ethers.getContractFactory("MintableERC20");
+    const wbtc = await ERC20.deploy("Wrapped Bitcoin", "WBTC");
+    await wbtc.deployed();
+    console.log("WBTC deployed to:", wbtc.address);
+
+    const usdc = await ERC20.deploy("USD Coin", "USDC");
+    await usdc.deployed();
+    console.log("USDC deployed to:", usdc.address);
+
+    // Fund the shark account with a substantial amount of tokens
+    await wbtc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"));
+    console.log("Shark WBTC balance:", (await wbtc.balanceOf(takerAddress)).toString());
+
+    await usdc.mint(userAddress, hre.ethers.utils.parseEther("1000000"));
+    console.log("Shark USDC balance:", (await usdc.balanceOf(userAddress)).toString());
+
+    // Your existing deployment logic here, modified to use the deployed token addresses
+    // Replace wbtcAddress and usdcAddress with the addresses of the deployed contracts
+    const wbtcAddress = wbtc.address;
+    const usdcAddress = usdc.address;
 
     // deploy Router Contract
     const Router = await hre.ethers.getContractFactory("Router");
@@ -59,42 +76,6 @@ async function main() {
     const marketRegisterTx = await router.registerMarket(wbtcAddress, usdcAddress, cranklessOrderBookAddress);
     await marketRegisterTx.wait();
     console.log("wbtc-usdc market registered");
-
-    // imporsonate sharkAddress for wbtc
-    await hre.network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [wbtcShark],
-    });
-
-    const wbtcSigner = await hre.ethers.getSigner(wbtcShark);
-
-    const wbtcContractShark = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", wbtcAddress, wbtcSigner);
-
-    var receipt = await wbtcContractShark.transfer(
-        userAddress,
-        165*10**8,
-    );
-
-    console.log("wbtc balance: ", (await wbtcContractShark.balanceOf(userAddress)).toString())
-
-    // imporsonate sharkAddress for usdc
-    await hre.network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [usdcShark],
-    });
-
-    const usdcSigner = await hre.ethers.getSigner(usdcShark);
-
-    const usdcContractShark = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", usdcAddress, usdcSigner);
-
-    var receipt = await usdcContractShark.transfer(
-        userAddress,
-        2*10**10,
-    );
-
-    await receipt.wait();
-
-    console.log("usdc balance: ", (await usdcContractShark.balanceOf(userAddress)).toString())
 
     const config = {
         "usdcAddress": usdcAddress,

@@ -3,31 +3,12 @@ const config = require("../config.json");
 const fs = require("fs");
 
 async function main() {
-    const [user] = await hre.ethers.getSigners();
+    const [user, taker] = await hre.ethers.getSigners();
 
     const usdcContract = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", config.usdcAddress);
     var tx = await usdcContract.approve(
         config.marginAccountAddress,
-        10**10,
-    );
-    await tx.wait();
-
-    var tx = await usdcContract.approve(
-        config.cranklessOrderBookAddress,
-        10**10,
-    );
-    await tx.wait();
-
-    const wbtcContract = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", config.wbtcAddress);
-    var tx = await wbtcContract.approve(
-        config.marginAccountAddress,
-        10**10,
-    );
-    await tx.wait();
-
-    var tx = await wbtcContract.approve(
-        config.cranklessOrderBookAddress,
-        10**10,
+        hre.ethers.utils.parseEther("10000"),
     );
     await tx.wait();
 
@@ -35,19 +16,21 @@ async function main() {
     var tx = await marginAccount.deposit(
         user.address,
         config.usdcAddress,
-        10**10,
+        hre.ethers.utils.parseEther("10000"),
     );
     await tx.wait();
 
-    var tx = await marginAccount.deposit(
-        user.address,
-        config.wbtcAddress,
-        10**10,
+    const wbtcContract = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", config.wbtcAddress, taker);
+
+    var tx = await wbtcContract.approve(
+        config.cranklessOrderBookAddress,
+        hre.ethers.utils.parseEther("10000"),
     );
     await tx.wait();
 
     // create contract instance of OrderBook from config address
-    const orderBook = await hre.ethers.getContractAt("CranklessStorageOrderBook", config.cranklessOrderBookAddress);
+    const orderBookMaker = await hre.ethers.getContractAt("CranklessStorageOrderBook", config.cranklessOrderBookAddress);
+    const orderBookTaker = await hre.ethers.getContractAt("CranklessStorageOrderBook", config.cranklessOrderBookAddress, taker);
 
     // loop over 100 and place limit orders
     // prices: 1800, 1801, 1802, ... ,1899
@@ -57,7 +40,7 @@ async function main() {
     console.log("=============================================")
     const placeLimitGas = {};
     for (let i = 0; i < 100; i++) {
-        var tx = await orderBook.addBuyOrder(
+        var tx = await orderBookMaker.addBuyOrder(
             180000 + (i * 100),
             10**8
         );
@@ -75,7 +58,7 @@ async function main() {
     console.log("=============================================")
     const cancelLimitGas = {};
     for (let i = 0; i < 10; i++) {
-        var tx = await orderBook.batchCancelOrders(
+        var tx = await orderBookMaker.batchCancelOrders(
             [i+1],
         );
         const receipt = await tx.wait();
@@ -92,7 +75,7 @@ async function main() {
     console.log("=============================================")
     const placeLimitExistingGas = {};
     for (let i = 0; i < 10; i++) {
-        var tx = await orderBook.addBuyOrder(
+        var tx = await orderBookMaker.addBuyOrder(
             181100,
             10**8,
         );
@@ -109,7 +92,7 @@ async function main() {
     console.log("=============================================")
     const placeMarketSingleGas = {};
     for (let i = 0; i < 10; i++) {
-        var tx = await orderBook.placeAndExecuteMarketSell(
+        var tx = await orderBookTaker.placeAndExecuteMarketSell(
             10**8,
             false
         );
@@ -126,7 +109,7 @@ async function main() {
     console.log("=============================================")
     const placeMarketTwoGas = {};
     for (let i = 0; i < 20; i = i + 2) {
-        var tx = await orderBook.placeAndExecuteMarketSell(
+        var tx = await orderBookTaker.placeAndExecuteMarketSell(
             2*10**8,
             false
         );
@@ -143,7 +126,7 @@ async function main() {
     console.log("=============================================")
     const placeMarketThreeGas = {};
     for (let i = 0; i < 30; i = i + 3) {
-        var tx = await orderBook.placeAndExecuteMarketSell(
+        var tx = await orderBookTaker.placeAndExecuteMarketSell(
             3*10**8,
             false
         );
@@ -158,7 +141,7 @@ async function main() {
     console.log("               EXISTING LIMIT                ")
     console.log("=============================================")
     for (let i = 0; i < 60; i++) {
-        var tx = await orderBook.addBuyOrder(
+        var tx = await orderBookMaker.addBuyOrder(
             190000,
             10**8,
         );
@@ -174,7 +157,7 @@ async function main() {
     console.log("=============================================")
     const placeMarketSingle1PPGas = {};
     for (let i = 0; i < 10; i++) {
-        var tx = await orderBook.placeAndExecuteMarketSell(
+        var tx = await orderBookTaker.placeAndExecuteMarketSell(
             10**8,
             false
         );
@@ -191,7 +174,7 @@ async function main() {
     console.log("=============================================")
     const placeMarketTwo1PPGas = {};
     for (let i = 0; i < 20; i = i + 2) {
-        var tx = await orderBook.placeAndExecuteMarketSell(
+        var tx = await orderBookTaker.placeAndExecuteMarketSell(
             2*10**8,
             false
         );
@@ -208,7 +191,7 @@ async function main() {
     console.log("=============================================")
     const placeMarketThree1PPGas = {};
     for (let i = 0; i < 30; i = i + 3) {
-        var tx = await orderBook.placeAndExecuteMarketSell(
+        var tx = await orderBookTaker.placeAndExecuteMarketSell(
             3*10**8,
             false
         );
