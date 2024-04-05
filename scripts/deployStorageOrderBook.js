@@ -13,8 +13,9 @@ async function main() {
     const _maxSize = 10**12;
     const _takerFeeBps = 0;
 
-    const [deployer] = await hre.ethers.getSigners();
+    const [deployer, taker] = await hre.ethers.getSigners();
     const userAddress = deployer.address;
+    const takerAddress = taker.address;
 
     const ERC20 = await hre.ethers.getContractFactory("MintableERC20");
     const wbtc = await ERC20.deploy("Wrapped Bitcoin", "WBTC");
@@ -26,8 +27,8 @@ async function main() {
     console.log("USDC deployed to:", usdc.address);
 
     // Fund the shark account with a substantial amount of tokens
-    await wbtc.mint(userAddress, hre.ethers.utils.parseEther("1000000"));
-    console.log("Shark WBTC balance:", (await wbtc.balanceOf(userAddress)).toString());
+    await wbtc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"));
+    console.log("Shark WBTC balance:", (await wbtc.balanceOf(takerAddress)).toString());
 
     await usdc.mint(userAddress, hre.ethers.utils.parseEther("1000000"));
     console.log("Shark USDC balance:", (await usdc.balanceOf(userAddress)).toString());
