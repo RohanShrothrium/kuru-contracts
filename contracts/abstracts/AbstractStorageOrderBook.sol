@@ -18,10 +18,10 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 
 abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, OwnableUpgradeable {
     struct Order {
-        uint256 prev;
-        uint256 next;
         address ownerAddress;
         uint96 size;
+        uint40 prev;
+        uint40 next;
         uint24 price;
         bool isBuy;
     }
@@ -35,7 +35,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @param isBuy Boolean indicating if the order is a buy (true) or sell (false) order.
      */
     event OrderCreated(
-        uint256 orderId,
+        uint40 orderId,
         address owner,
         uint96 size,
         uint24 price,
@@ -69,12 +69,12 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * corresponds to the order ID at the same index in the `orderIds` array.
      */
     event OrdersUpdated(
-        uint256[] orderIds,
+        uint40[] orderIds,
         uint96[] updatedSizes
     );
 
     event OrderUpdated(
-        uint256 orderId,
+        uint40 orderId,
         uint96 updatedSize
     );
 
@@ -83,16 +83,16 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @param orderId Array of order identifiers that were completed or canceled.
      */
     event OrdersCanceled(
-        uint256[] orderId
+        uint40[] orderId
     );
 
-    mapping(uint256 => Order) public s_orders;
+    mapping(uint40 => Order) public s_orders;
     mapping(uint256 => OrderLinkedList.PricePoint) public s_buyPricePoints;
     mapping(uint256 => OrderLinkedList.PricePoint) public s_sellPricePoints;
     TreeMath.TreeUint24 public s_buyTree;
     TreeMath.TreeUint24 public s_sellTree;
 
-    uint256 public s_orderIdCounter;
+    uint40 public s_orderIdCounter;
 
     bool marketPaused;
 
@@ -189,12 +189,12 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
 
         if (_remainingFunds > 0) {
             uint96 _orderSize = _remainingFunds*sizePrecision/_price;
-            uint256 _orderId = s_orderIdCounter;
+            uint40 _orderId = s_orderIdCounter;
             s_orderIdCounter = _orderId + 1;
 
             // Add price to the tree and update DLL of price poit.
             TreeMath.add(s_buyTree, _price);
-            uint256 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId + 1);
+            uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId + 1);
 
             _addOrder(_price, _orderSize, _orderId + 1, true, _prevOrderId);
 
@@ -218,12 +218,12 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
 
         if (size == 0) return;
 
-        uint256 _orderId = s_orderIdCounter;
+        uint40 _orderId = s_orderIdCounter;
         s_orderIdCounter = _orderId + 1;
 
         // Add price to the tree and update DLL of price poit.
         TreeMath.add(s_sellTree, _price);
-        uint256 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId + 1);
+        uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId + 1);
 
         _addOrder(_price, size, _orderId + 1, false, _prevOrderId);
 
@@ -235,8 +235,8 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @param _price Price of the order.
      * @param _size Size of the order.
      */
-    function _addOrder(uint24 _price, uint96 _size, uint256 _orderId, bool _isBuy, uint256 _prevOrderId) internal {
-        s_orders[_orderId] = Order(_prevOrderId, OrderLinkedList.NULL, msg.sender, _size, _price, _isBuy);
+    function _addOrder(uint24 _price, uint96 _size, uint40 _orderId, bool _isBuy, uint40 _prevOrderId) internal {
+        s_orders[_orderId] = Order(msg.sender, _size, _prevOrderId, OrderLinkedList.NULL, _price, _isBuy);
         s_orders[_prevOrderId].next = _orderId;
     }
 
@@ -258,7 +258,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @dev Cancels multiple orders in a batch.
      * @param _orderIds Array of order IDs to cancel.
      */
-    function batchCancelOrders(uint256[] calldata _orderIds) external {
+    function batchCancelOrders(uint40[] calldata _orderIds) external {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _cancelOrder(_orderIds[i]);
         }
@@ -270,11 +270,10 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @dev Internal helper function to cancel a single order.
      * @param _orderId ID of the order to cancel.
      */
-    function _cancelOrder(uint256 _orderId) internal returns (bool) {
+    function _cancelOrder(uint40 _orderId) internal returns (bool) {
         Order memory _order = s_orders[_orderId];
 
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can cancel order");
-
         // update neighbouring orders
         if (_order.prev != OrderLinkedList.NULL) {
             require(s_orders[_order.prev].next == _orderId, "OrderBook: Order already canceled");
@@ -288,6 +287,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
             if (_order.prev == OrderLinkedList.NULL) {
                 require(s_buyPricePoints[_order.price].head == _orderId, "OrderBook: Order already canceled");
             }
+            require(s_buyPricePoints[_order.price].head <= _orderId, "Already filled!");
             OrderLinkedList.deleteOrder(s_buyPricePoints[_order.price], _order.prev, _order.next);
             if (_order.prev == _order.next) {
                 TreeMath.remove(s_buyTree, _order.price);
@@ -303,6 +303,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
             if (_order.prev == OrderLinkedList.NULL) {
                 require(s_sellPricePoints[_order.price].head == _orderId, "OrderBook: Order already canceled");
             }
+            require(s_sellPricePoints[_order.price].head <= _orderId, "Already filled!");
             OrderLinkedList.deleteOrder(s_sellPricePoints[_order.price], _order.prev, _order.next);
             if (_order.prev == _order.next) {
                 TreeMath.remove(s_sellTree, _order.price);
@@ -326,7 +327,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @param _orderIds Array of order IDs to be decreased in size.
      * @param _updatedSizes Array of new sizes for the orders. Each size corresponds to the order ID at the same index in the _orderIds array.
      */
-    function decreaseOrders(uint256[] calldata _orderIds, uint96[] calldata _updatedSizes, bool _useMargin) external marketActive {
+    function decreaseOrders(uint40[] calldata _orderIds, uint96[] calldata _updatedSizes, bool _useMargin) external marketActive {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _decreaseOrder(_orderIds[i], _updatedSizes[i], _useMargin);
         }
@@ -341,7 +342,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @param _orderId ID of the order to be decreased in size.
      * @param _updatedSize New size for the order. Must be less than the current size.
      */
-    function _decreaseOrder(uint256 _orderId, uint96 _updatedSize, bool _useMargin) internal {
+    function _decreaseOrder(uint40 _orderId, uint96 _updatedSize, bool _useMargin) internal {
         Order memory _order = s_orders[_orderId];
 
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can update order");
@@ -471,7 +472,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      */
     function _fillSizeForPrice(TreeMath.TreeUint24 storage _tree, uint24 _price, OrderLinkedList.PricePoint storage _pricePoint, uint96 _size) internal returns (uint96 remainingSize, bytes memory makerCredits) {
         remainingSize = _size;
-        uint256 _orderId = _pricePoint.head;
+        uint40 _orderId = _pricePoint.head;
         while (remainingSize > 0 && _orderId != OrderLinkedList.NULL) {
             bytes memory orderUpdate;
             (remainingSize, _orderId, orderUpdate) = _fillOrder(_orderId, remainingSize);
@@ -493,21 +494,23 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      * @return remainingSize The remaining size after attempting to fill this order.
      * @return _nextHead next head of the price point.
      */
-    function _fillOrder(uint256 _orderId, uint96 _size) internal returns (uint96 remainingSize, uint256 _nextHead, bytes memory _orderUpdate) {
+    function _fillOrder(uint40 _orderId, uint96 _size) internal returns (uint96 remainingSize, uint40 _nextHead, bytes memory _orderUpdate) {
         _nextHead = s_orders[_orderId].next;
-        remainingSize = (_size > s_orders[_orderId].size) ? (_size - s_orders[_orderId].size) : 0;
-
+        uint96 _orderSize = s_orders[_orderId].size;
+        remainingSize = (_size > _orderSize) ? (_size - _orderSize) : 0;
+        uint96 _updatedSize;
+        if(remainingSize == 0) {
+            _updatedSize = _orderSize - _size;
+        }
         _orderUpdate = _creditMaker(!s_orders[_orderId].isBuy, s_orders[_orderId].ownerAddress, (remainingSize == 0) ? _size : s_orders[_orderId].size, s_orders[_orderId].price);
 
         //@audit cancel order vulnerability, check later
         if (remainingSize == 0) {
             s_orders[_orderId].size -= _size;
-        } else {
-            s_orders[_orderId].size = 0;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
         //@audit remaining size emitted is incorrect
-        emit OrderUpdated(_orderId, remainingSize);
+        emit OrderUpdated(_orderId, _updatedSize);
     }
 
     /**

@@ -15,7 +15,6 @@ import {AbstractStorageOrderBook} from "./abstracts/AbstractStorageOrderBook.sol
 // size is 10**10
 // price is 10**2
 contract CranklessStorageOrderBook is AbstractStorageOrderBook, ICranklessStorageOrderBook {
-
     constructor(
         address _baseAssetAddress,
         uint256 _baseAssetDecimals,

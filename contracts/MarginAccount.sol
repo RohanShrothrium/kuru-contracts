@@ -18,7 +18,6 @@ contract MarginAccount is IMarginAccount {
 
     // Native token
     address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-
     constructor(address _router) {
         routerContractAddress = _router;
     }

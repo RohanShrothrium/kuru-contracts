@@ -7,20 +7,20 @@ pragma solidity ^0.8.10;
  */
 library OrderLinkedList {
     struct PricePoint {
-        uint256 head;
-        uint256 tail;
+        uint40 head;
+        uint40 tail;
     }
 
     // Constant representing a null order ID
-    uint256 constant NULL = 0;
+    uint40 constant NULL = 0;
 
     /**
      * @notice Inserts an order at the tail of the list for a given price point.
      * @param point The price point.
      * @param orderId The order ID to insert.
      */
-    function insertAtTail(PricePoint storage point, uint256 orderId) internal returns (uint256) {
-        uint256 _pointTail = point.tail;
+    function insertAtTail(PricePoint storage point, uint40 orderId) internal returns (uint40) {
+        uint40 _pointTail = point.tail;
         if (_pointTail == NULL) {
             // The list is empty
             point.head = orderId;
@@ -32,7 +32,7 @@ library OrderLinkedList {
         return _pointTail;
     }
 
-    function deleteOrder(PricePoint storage point, uint256 prev, uint256 next) internal {
+    function deleteOrder(PricePoint storage point, uint40 prev, uint40 next) internal {
         if (prev == NULL) {point.head = next;}
         if (next == NULL) {point.tail = prev;}
     }
@@ -42,7 +42,7 @@ library OrderLinkedList {
      * @param point The price point.
      * @param orderId The new orderId that has to be set as the tail.
      */
-    function updateTail(PricePoint storage point, uint256 orderId) internal returns (bool) {
+    function updateTail(PricePoint storage point, uint40 orderId) internal returns (bool) {
         if (orderId == NULL) {
             point.head = NULL;
             point.tail = NULL;
@@ -60,7 +60,7 @@ library OrderLinkedList {
      * @param point The price point.
      * @param orderId The new orderId that has to be set as the head.
      */
-    function updateHead(PricePoint storage point, uint256 orderId) internal returns (bool) {
+    function updateHead(PricePoint storage point, uint40 orderId) internal returns (bool) {
         if (orderId == NULL) {
             point.head = NULL;
             point.tail = NULL;
