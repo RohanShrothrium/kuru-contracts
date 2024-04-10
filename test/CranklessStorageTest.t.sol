@@ -210,7 +210,7 @@ contract OrderBookTest is Test {
     function testCancelOrder() public {
         _addBuyOrder();
 
-        uint256[] memory _orderIds = new uint256[](1);
+        uint40[] memory _orderIds = new uint40[](1);
         _orderIds[0] = 1;
 
         uint24 price = 1800*PRICE_PRECISION;
@@ -232,7 +232,7 @@ contract OrderBookTest is Test {
         _addBuyOrder();
         _addBuyOrder();
 
-        uint256[] memory _orderIds = new uint256[](1);
+        uint40[] memory _orderIds = new uint40[](1);
         _orderIds[0] = 2;
 
         uint24 price = 1800*PRICE_PRECISION;
@@ -249,7 +249,7 @@ contract OrderBookTest is Test {
     function testCancelOrderOnlyOwnerFail() public {
         _addBuyOrder();
 
-        uint256[] memory _orderIds = new uint256[](1);
+        uint40[] memory _orderIds = new uint40[](1);
         _orderIds[0] = 1;
 
         vm.startPrank(user1);
@@ -335,7 +335,7 @@ contract OrderBookTest is Test {
         orderBook.placeAndExecuteMarketSell(size*SIZE_PRECISION, false);
         vm.stopPrank();
 
-        (uint256 head, uint256 tail) = orderBook.s_buyPricePoints(price*PRICE_PRECISION);
+        (uint40 head, uint40 tail) = orderBook.s_buyPricePoints(price*PRICE_PRECISION);
 
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
         assertEq(usdc.balanceOf(address(marginAccount)), 0);

@@ -88,7 +88,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
 
     mapping(uint40 => Order) public s_orders;
     mapping(uint256 => OrderLinkedList.PricePoint) public s_buyPricePoints;
-    mapping(uint256 => OrderLinkedList.PricePoint) public s_sellPricePoints;
+    mapping(uint24 => OrderLinkedList.PricePoint) public s_sellPricePoints;
     TreeMath.TreeUint24 public s_buyTree;
     TreeMath.TreeUint24 public s_sellTree;
 

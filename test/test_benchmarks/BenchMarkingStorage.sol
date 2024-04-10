@@ -55,7 +55,6 @@ contract BenchMarkTest is Test, Gas {
         usdc.mint(u2, initUsdc);
 
 
-
     }
 
     function genAddress() internal returns (address) {
@@ -497,7 +496,7 @@ contract BenchMarkTest is Test, Gas {
         }
         vm.stopPrank();
         for(uint24 i = 0; i < _iterations; i++) {
-            uint256[] memory _orderId = new uint256[](1);
+            uint40[] memory _orderId = new uint40[](1);
             _orderId[0] = i + 1;
             vm.startPrank(_maker);
             startMeasuringGas("");
@@ -523,7 +522,7 @@ contract BenchMarkTest is Test, Gas {
         }
         vm.stopPrank();
         for(uint24 i = 0; i < _iterations; i++) {
-            uint256[] memory _orderId = new uint256[](1);
+            uint40[] memory _orderId = new uint40[](1);
             _orderId[0] = i + 1;
             vm.startPrank(_maker);
             startMeasuringGas("");
