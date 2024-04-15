@@ -506,6 +506,9 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
 
         //@audit cancel order vulnerability, check later
         if (remainingSize == 0) {
+            if (_updatedSize != 0) {
+                _nextHead = _orderId;
+            }
             s_orders[_orderId].size -= _size;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
