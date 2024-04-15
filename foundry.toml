@@ -1,9 +1,0 @@
-
-[profile.default]
-auto_detect_solc = true
-solc_version = "0.8.17"
-optimizer = false
-optimizer_runs = 0
-evm_version = "shanghai"
-cancun = true
-# Do not include the 'solc' variable

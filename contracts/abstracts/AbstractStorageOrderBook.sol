@@ -442,7 +442,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         uint24 _bestBid = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
 
         bytes memory makerCredits;
-        while (size > 0 && _bestBid > _limitPrice && _bestBid != type(uint24).max) {
+        while (size > 0 && _bestBid >= _limitPrice && _bestBid != type(uint24).max) {
             uint96 _tmpSize = size;
 
             bytes memory priceUpdate;
