@@ -272,11 +272,10 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      */
     function _cancelOrder(uint40 _orderId) internal returns (bool) {
         Order memory _order = s_orders[_orderId];
-
+        _checkIfCancelledOrFilled(_orderId, _order);
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can cancel order");
         // update neighbouring orders
         if (_order.prev != OrderLinkedList.NULL) {
-            require(s_orders[_order.prev].next == _orderId, "OrderBook: Order already canceled");
             s_orders[_order.prev].next = _order.next;
         }
         if (_order.next != OrderLinkedList.NULL) {
@@ -284,10 +283,6 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         }
 
         if (_order.isBuy) {
-            if (_order.prev == OrderLinkedList.NULL) {
-                require(s_buyPricePoints[_order.price].head == _orderId, "OrderBook: Order already canceled");
-            }
-            require(s_buyPricePoints[_order.price].head <= _orderId, "Already filled!");
             OrderLinkedList.deleteOrder(s_buyPricePoints[_order.price], _order.prev, _order.next);
             if (_order.prev == _order.next) {
                 TreeMath.remove(s_buyTree, _order.price);
@@ -300,10 +295,6 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
                 true
             );
         } else {
-            if (_order.prev == OrderLinkedList.NULL) {
-                require(s_sellPricePoints[_order.price].head == _orderId, "OrderBook: Order already canceled");
-            }
-            require(s_sellPricePoints[_order.price].head <= _orderId, "Already filled!");
             OrderLinkedList.deleteOrder(s_sellPricePoints[_order.price], _order.prev, _order.next);
             if (_order.prev == _order.next) {
                 TreeMath.remove(s_sellTree, _order.price);
@@ -318,6 +309,35 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         }
 
         return _order.isBuy;
+    }
+
+    /// @notice Checks if an order has been cancelled before, and reverts if true
+    /// Items to check : 
+    /// 1. s_orders[id.prev].next = id
+    /// 2. if prev == NULL, check for head requirement 
+    /// 3. price point's head must be BEFORE or the SAME as order id (time priority constraint)
+    /// @param _orderId ID of the order 
+    /// @param _order Order details in memory
+    function _checkIfCancelledOrFilled(uint40 _orderId, Order memory _order) internal view {
+        if(_order.prev != OrderLinkedList.NULL) {
+            require(s_orders[_order.prev].next == _orderId, "OrderBook: Order already cancelled");
+
+            if(_order.isBuy) {
+            require(s_buyPricePoints[_order.price].head <= _orderId, "Already filled!");
+            }
+            else {
+                require(s_sellPricePoints[_order.price].head <= _orderId, "Already filled!");
+            }
+
+        } 
+        else {
+            if(_order.isBuy) {
+                require(s_buyPricePoints[_order.price].head == _orderId, "OrderBook: Order already cancelled");
+            }
+            else {
+                require(s_sellPricePoints[_order.price].head == _orderId, "OrderBook: Order already cancelled");
+            }
+        }
     }
 
     /**
@@ -344,7 +364,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
      */
     function _decreaseOrder(uint40 _orderId, uint96 _updatedSize, bool _useMargin) internal {
         Order memory _order = s_orders[_orderId];
-
+        _checkIfCancelledOrFilled(_orderId, _order);
         require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can update order");
         require(_order.size > _updatedSize, "OrderBook: can't increase order size");
         require(_updatedSize > minSize, "Orderbook: size has to be greater than minimum");
@@ -479,6 +499,7 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
             makerCredits = bytes.concat(makerCredits, orderUpdate);
         }
 
+        s_orders[_orderId].prev = OrderLinkedList.NULL;
         OrderLinkedList.updateHead(_pricePoint, _orderId);
 
         if (_orderId == OrderLinkedList.NULL) {
@@ -512,7 +533,6 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
             s_orders[_orderId].size -= _size;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
-        //@audit remaining size emitted is incorrect
         emit OrderUpdated(_orderId, _updatedSize);
     }
 
