@@ -283,6 +283,9 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         }
 
         if (_order.isBuy) {
+            if(_orderId == s_buyPricePoints[_order.price].head) {
+                OrderLinkedList.updateHead(s_buyPricePoints[_order.price], _order.next);
+            }
             OrderLinkedList.deleteOrder(s_buyPricePoints[_order.price], _order.prev, _order.next);
             if (_order.prev == _order.next) {
                 TreeMath.remove(s_buyTree, _order.price);
@@ -295,6 +298,9 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
                 true
             );
         } else {
+            if(_orderId == s_sellPricePoints[_order.price].head) {
+                OrderLinkedList.updateHead(s_sellPricePoints[_order.price], _order.next);
+            }
             OrderLinkedList.deleteOrder(s_sellPricePoints[_order.price], _order.prev, _order.next);
             if (_order.prev == _order.next) {
                 TreeMath.remove(s_sellTree, _order.price);
@@ -498,8 +504,8 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
             (remainingSize, _orderId, orderUpdate) = _fillOrder(_orderId, remainingSize);
             makerCredits = bytes.concat(makerCredits, orderUpdate);
         }
-
-        s_orders[_orderId].prev = OrderLinkedList.NULL;
+        //Enforce head 
+        // s_orders[_orderId].prev = OrderLinkedList.NULL;
         OrderLinkedList.updateHead(_pricePoint, _orderId);
 
         if (_orderId == OrderLinkedList.NULL) {
