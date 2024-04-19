@@ -181,14 +181,15 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
-
-        _consumeFunds(quoteAsset, ((((size * _price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision), msg.sender);
         
-        uint24 _remainingFunds;
-        _remainingFunds = _matchAggressiveBuy(_price, uint24((size * _price) / sizePrecision), true);
+        uint96 _remainingSize;
+        uint24 _consumedFunds;
+        (_remainingSize, _consumedFunds) = _matchAggressiveBuyWithCap(_price, size);
+        _consumedFunds += uint24((_remainingSize * _price)/sizePrecision);
 
-        if (_remainingFunds > 0) {
-            uint96 _orderSize = _remainingFunds*sizePrecision/_price;
+        _consumeFunds(quoteAsset, (((_consumedFunds) * 10**quoteAssetDecimals) / pricePrecision), msg.sender);
+
+        if (_remainingSize > 0) {
             uint40 _orderId = s_orderIdCounter;
             s_orderIdCounter = _orderId + 1;
 
@@ -196,9 +197,9 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
             TreeMath.add(s_buyTree, _price);
             uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId + 1);
 
-            _addOrder(_price, _orderSize, _orderId + 1, true, _prevOrderId);
+            _addOrder(_price, _remainingSize, _orderId + 1, true, _prevOrderId);
 
-            emit OrderCreated(_orderId + 1, msg.sender, _orderSize, _price, true);
+            emit OrderCreated(_orderId + 1, msg.sender, _remainingSize, _price, true);
         }
     }
 
@@ -421,6 +422,39 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
             addSellOrder(_prices[i], _sizes[i]);
         }
     }
+
+    function _matchAggressiveBuyWithCap(uint24 _limitPrice, uint96 _size) internal returns(uint96, uint24) {
+        uint96 _sizeToGet;
+        uint24 _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
+        uint24 fundsConsumed = 0;
+
+        bytes memory makerCredits;
+        while (_size > 0 && _bestAsk <= _limitPrice && _bestAsk != 0) {
+            bytes memory priceUpdate;
+            uint96 sizeBefore = _size; // Capture the size before filling
+
+            (_size, priceUpdate) = _fillSizeForPrice(s_sellTree, _bestAsk, s_sellPricePoints[_bestAsk], _size);
+
+            uint96 sizeFilled = sizeBefore - _size; // Calculate the filled size
+            _sizeToGet += sizeFilled;
+
+            // @audit: This might make you consume lesser than what has to be consumed because of rounding down.
+            fundsConsumed += uint24((sizeFilled * _bestAsk)/sizePrecision);
+
+            makerCredits = bytes.concat(makerCredits, priceUpdate);
+            
+            _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
+        }
+
+        if (_sizeToGet > 0) {
+            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), (_sizeToGet) * 10 ** quoteAssetDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER), true)));
+        } else if (makerCredits.length > 0) {
+            marginAccount.creditUsersEncoded(makerCredits);
+        }
+
+        return (_size, fundsConsumed);
+    }
+
 
     /**
      * @dev Match limit buy orders if it crosses the book.
