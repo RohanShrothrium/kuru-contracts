@@ -599,4 +599,42 @@ abstract contract AbstractStorageOrderBook is IAbstractStorageOrderBook, Ownable
     function _amountPayable(uint96 _size, uint96 _price) internal view returns (uint256) {
         return (_size * _price  * 10 ** quoteAssetDecimals / (pricePrecision * sizePrecision));
     }
+
+    function getL2Book() external view returns (bytes memory) {
+        bytes memory data = abi.encode(block.number);
+
+        uint24 price = TreeMath.findFirstLeft(s_buyTree, 0); // Find the smallest ID in the tree
+        while (price != type(uint24).max || price == 0) {
+            uint40 orderId = s_buyPricePoints[price].head;
+            uint96 _size = 0;
+            while (orderId != 0) {
+                _size += s_orders[orderId].size;
+                orderId = s_orders[orderId].next;
+            }
+
+            data = bytes.concat(data, abi.encode(price, _size));
+            // Find the next ID
+            price = TreeMath.findFirstLeft(s_buyTree, price + 1);
+            if (price == 0) break; // If there is no higher ID, stop the iteration
+        }
+
+        data = bytes.concat(data, abi.encode(0));
+
+        price = TreeMath.findFirstLeft(s_sellTree, 0); // Find the smallest ID in the tree
+        while (price != type(uint24).max || price == 0) {
+            uint40 orderId = s_sellPricePoints[price].head;
+            uint96 _size = 0;
+            while (orderId != 0) {
+                _size += s_orders[orderId].size;
+                orderId = s_orders[orderId].next;
+            }
+
+            data = bytes.concat(data, abi.encode(price, _size));
+            // Find the next ID
+            price = TreeMath.findFirstLeft(s_sellTree, price + 1);
+            if (price == 0) break; // If there is no higher ID, stop the iteration
+        }
+
+        return data;
+    }
 }
