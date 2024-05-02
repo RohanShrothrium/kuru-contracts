@@ -78,7 +78,9 @@ contract CranklessStorageOrderBook is ICranklessStorageOrderBook, OwnableUpgrade
 
     event OrderUpdated(
         uint40 orderId,
-        uint96 updatedSize
+        uint96 updatedSize,
+        address takerAddress,
+        uint96 filledSize
     );
 
     /**
@@ -635,7 +637,7 @@ contract CranklessStorageOrderBook is ICranklessStorageOrderBook, OwnableUpgrade
             s_orders[_orderId].size -= _size;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
-        emit OrderUpdated(_orderId, _updatedSize);
+        emit OrderUpdated(_orderId, _updatedSize, msg.sender, _size - remainingSize);
     }
 
     /**

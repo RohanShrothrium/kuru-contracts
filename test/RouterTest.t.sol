@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import {CranklessOrderBook} from "../contracts/CranklessOrderBook.sol";
+import {CranklessStorageOrderBook} from "../contracts/CranklessStorageOrderBook.sol";
 import {Router} from "../contracts/Router.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -12,8 +12,8 @@ contract OrderBookTest is Test {
     uint96 constant SIZE_PRECISION = 10 ** 10;
     uint96 constant PRICE_PRECISION = 10 ** 2;
 
-    CranklessOrderBook eth_usdc;
-    CranklessOrderBook mon_usdc;
+    CranklessStorageOrderBook eth_usdc;
+    CranklessStorageOrderBook mon_usdc;
     Router router;
     MarginAccount marginAccount;
     MintableERC20 eth;
@@ -113,15 +113,15 @@ contract OrderBookTest is Test {
         vm.stopPrank();
     }
 
-    function _createOrderbook(MintableERC20 _baseAsset, MintableERC20 _quoteAsset, MarginAccount _marginAccount) internal returns (CranklessOrderBook) {
+    function _createOrderbook(MintableERC20 _baseAsset, MintableERC20 _quoteAsset, MarginAccount _marginAccount) internal returns (CranklessStorageOrderBook) {
         uint96 _sizePrecision = 10 ** 10;
-        uint96 _pricePrecision = 10 ** 2;
+        uint24 _pricePrecision = 10 ** 2;
         uint96 _tickSize = _pricePrecision / 2;
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 15;
         uint256 _takerFeeBps = 0;
 
-        return new CranklessOrderBook(
+        return new CranklessStorageOrderBook(
             address(_baseAsset),
             18,
             address(_quoteAsset),
