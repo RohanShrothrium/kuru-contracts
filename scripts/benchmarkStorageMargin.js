@@ -29,8 +29,8 @@ async function main() {
     await tx.wait();
 
     // create contract instance of OrderBook from config address
-    const orderBookMaker = await hre.ethers.getContractAt("CranklessStorageOrderBook", config.cranklessOrderBookAddress);
-    const orderBookTaker = await hre.ethers.getContractAt("CranklessStorageOrderBook", config.cranklessOrderBookAddress, taker);
+    const orderBookMaker = await hre.ethers.getContractAt("OrderBook", config.cranklessOrderBookAddress);
+    const orderBookTaker = await hre.ethers.getContractAt("OrderBook", config.cranklessOrderBookAddress, taker);
 
     // loop over 100 and place limit orders
     // prices: 1800, 1801, 1802, ... ,1899

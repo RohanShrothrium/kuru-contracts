@@ -2,7 +2,7 @@ const { ethers } = require("hardhat");
 const config = require("../config.json");
 
 async function main() {
-    const orderBook = await ethers.getContractAt("CranklessStorageOrderBook", config.cranklessOrderBookAddress);
+    const orderBook = await ethers.getContractAt("OrderBook", config.cranklessOrderBookAddress);
 
   // Call the function
   const data = await orderBook.getL2Book();

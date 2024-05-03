@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {CranklessStorageOrderBook} from "../../contracts/CranklessStorageOrderBook.sol";
+import {OrderBook} from "../../contracts/OrderBook.sol";
 import {MintableERC20} from "../lib/MintableERC20.sol";
 import {Router} from "../../contracts/Router.sol";
 import {MarginAccount} from "../../contracts/MarginAccount.sol";
@@ -11,7 +11,7 @@ import {Gas} from "./gas_helpers/Gas.sol";
 import {Test, console} from "forge-std/Test.sol";
 
 contract BenchMarkTest is Test, Gas {
-    CranklessStorageOrderBook orderBook;
+    OrderBook orderBook;
     MintableERC20 usdc; 
     MintableERC20 eth;
     Router router;
@@ -45,7 +45,7 @@ contract BenchMarkTest is Test, Gas {
 
         router.setMarginAccount(address(marginAccount));
 
-        orderBook = new CranklessStorageOrderBook(
+        orderBook = new OrderBook(
             address(eth),
             18,
             address(usdc),

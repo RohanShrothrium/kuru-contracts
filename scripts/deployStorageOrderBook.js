@@ -65,7 +65,7 @@ async function main() {
     console.log("Router set with margin account address:", marginAccountAddress);
 
     // deploy CranklessOrderBook contract
-    const CranklessOrderBook = await hre.ethers.getContractFactory("CranklessStorageOrderBook");
+    const CranklessOrderBook = await hre.ethers.getContractFactory("OrderBook");
     const cranklessOrderBook = await CranklessOrderBook.deploy(wbtcAddress, wbtcDecimals, usdcAddress, usdcDecimals, marginAccountAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
     await cranklessOrderBook.deployed();
 

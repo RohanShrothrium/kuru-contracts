@@ -1,10 +1,41 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0; 
+pragma solidity ^0.8.0;
 
 interface IOrderBook {
-    function placeAndExecuteMarketBuy(uint256[] calldata c_prices, uint96 _size) external;
-    function placeAndExecuteMarketSell(uint256[] calldata c_prices, uint96 _size) external;
-    function claimSellLimitOrder(uint256 _orderId) external;
-    function claimBuyLimitOrder(uint256 _orderId) external;
+    function addBuyOrder(uint24 _price, uint96 size) external;
+
+    function addSellOrder(uint24 _price, uint96 size) external;
+
+    function batchCancelOrders(
+        uint40[] calldata _orderIds
+    ) external;
+
+    function placeMultipleBuyOrders(
+        uint24[] memory _prices,
+        uint96[] memory _sizes
+    ) external;
+
+    function placeMultipleSellOrders(
+        uint24[] memory _prices,
+        uint96[] memory _sizes
+    ) external;
+
+    function placeAndExecuteMarketBuy(
+        uint24 _quoteAmount,
+        bool _isFillOrKill
+    ) external;
+
+    function placeAndExecuteMarketSell(
+        uint96 _size,
+        bool _isFillOrKill
+    ) external;
+
+    function getPricePrecision() external view returns (uint24);
+
+    function getSizePrecision() external view returns (uint96);
+
+    function getBaseAssetDecimals() external view returns (uint256);
+
+    function getQuoteAssetDecimals() external view returns (uint256);
 }

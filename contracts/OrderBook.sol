@@ -7,7 +7,7 @@ import {OrderLinkedList} from "./libraries/OrderLinkedList.sol";
 import {TreeMath} from "./libraries/TreeMath.sol";
 
 // ============ Internal Interfaces Imports ============
-import {ICranklessStorageOrderBook} from "./interfaces/ICranklessStorageOrderBook.sol";
+import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
 // ============ Internal Contracts Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
@@ -19,7 +19,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 
 // size is 10**10
 // price is 10**2
-contract CranklessStorageOrderBook is ICranklessStorageOrderBook, OwnableUpgradeable {
+contract OrderBook is IOrderBook, OwnableUpgradeable {
    struct Order {
         address ownerAddress;
         uint96 size;

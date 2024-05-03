@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import {CranklessStorageOrderBook} from "../contracts/CranklessStorageOrderBook.sol";
+import {OrderBook} from "../contracts/OrderBook.sol";
 import {Router} from "../contracts/Router.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -12,7 +12,7 @@ contract OrderBookTest is Test {
     uint96 constant SIZE_PRECISION = 10**10;
     uint24 constant PRICE_PRECISION = 10**2;
 
-    CranklessStorageOrderBook orderBook;
+    OrderBook orderBook;
     Router router;
     MarginAccount marginAccount;
 
@@ -45,7 +45,7 @@ contract OrderBookTest is Test {
 
         router.setMarginAccount(address(marginAccount));
 
-        orderBook = new CranklessStorageOrderBook(address(eth), 18, address(usdc), 18, address(marginAccount), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+        orderBook = new OrderBook(address(eth), 18, address(usdc), 18, address(marginAccount), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
 
         router.registerMarket(address(eth), address(usdc), address(orderBook));
 

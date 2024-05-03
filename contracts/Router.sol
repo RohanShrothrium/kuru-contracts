@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 // ============ Internal Interface Imports ============
-import {ICranklessStorageOrderBook} from "./interfaces/ICranklessStorageOrderBook.sol";
+import {IOrderBook} from "./interfaces/IOrderBook.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
@@ -81,7 +81,7 @@ contract Router is IRouter, OwnableUpgradeable {
             address _marketAddress = _isBuy[i] ? marketAddress(_route[i+1], _route[i]) : marketAddress(_route[i], _route[i + 1]);
             require(_marketAddress != address(0), "Router: Market does not exist");
 
-            ICranklessStorageOrderBook market = ICranklessStorageOrderBook(_marketAddress);
+            IOrderBook market = IOrderBook(_marketAddress);
             _isBuy[i]
                 ? market.placeAndExecuteMarketBuy(
                     _amountToSize(_amount, _isBuy[i], market),
@@ -110,7 +110,7 @@ contract Router is IRouter, OwnableUpgradeable {
         return IERC20(_token).balanceOf(address(this));
     }
 
-    function _amountToSize(uint256 _amount, bool _isBuy, ICranklessStorageOrderBook market) internal view returns (uint24) {
+    function _amountToSize(uint256 _amount, bool _isBuy, IOrderBook market) internal view returns (uint24) {
         return
             _isBuy
                 ? uint24(
