@@ -46,26 +46,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable {
     );
 
     /**
-     * @dev Emitted when one or more orders are executed partially/completely by buy taker orders.
-     * @param takerAddress Address of the taker.
-     * corresponds to the order ID at the same index in the `orderIds` array.
-     */
-    event BuyIOC(
-        address takerAddress,
-        uint96 orderSize
-    );
-
-    /**
-     * @dev Emitted when one or more orders are executed partially/completely by sell taker orders.
-     * @param takerAddress Address of the taker.
-     * corresponds to the order ID at the same index in the `orderIds` array.
-     */
-    event SellIOC(
-        address takerAddress,
-        uint96 orderSize
-    );
-
-    /**
      * @dev Emitted when one or more orders are updated.
      * @param orderIds Array of order identifiers that were updated.
      * @param updatedSizes Array of new sizes for the corresponding orders. Each size
@@ -76,19 +56,27 @@ contract OrderBook is IOrderBook, OwnableUpgradeable {
         uint96[] updatedSizes
     );
 
-    event OrderUpdated(
-        uint40 orderId,
-        uint96 updatedSize,
-        address takerAddress,
-        uint96 filledSize
-    );
-
     /**
      * @dev Emitted when one or more orders are completed or canceled.
      * @param orderId Array of order identifiers that were completed or canceled.
      */
     event OrdersCanceled(
         uint40[] orderId
+    );
+
+    /***
+     * @dev Emitted when a trade goes through.
+     * @param orderId Order Id of the order that was filled.
+     * PS. All data regarding the original order can be found out from the order ID
+     * @param updatedSize New size of the order
+     * @param takerAddress Address of the taker.
+     * @param filledSize Size taken by the taker.
+     */
+    event Trade(
+        uint40 orderId,
+        uint96 updatedSize,
+        address takerAddress,
+        uint96 filledSize
     );
 
     mapping(uint40 => Order) public s_orders;
@@ -438,7 +426,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable {
         uint24 _quoteSize,
         bool _isFillOrKill
     ) public override marketActive {
-        uint24 _initQuoteSize = _quoteSize;
         quoteAsset.transferFrom(msg.sender, address(marginAccount), uint256(_quoteSize * 10 ** quoteAssetDecimals / pricePrecision));
         _quoteSize = _matchAggressiveBuy(type(uint24).max, _quoteSize, false);
         if (_quoteSize > 0) {
@@ -450,8 +437,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable {
                 false
             );
         }
-
-        emit BuyIOC(msg.sender, _initQuoteSize - _quoteSize);
     }
 
     /**
@@ -464,7 +449,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable {
         bool _isFillOrKill
     ) public marketActive{
         // Transfer the base asset from the user to the contract
-        uint96 _initSize = _size;
         baseAsset.transferFrom(
             msg.sender,
             address(marginAccount),
@@ -483,8 +467,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable {
                 false
             );
         }
-
-        emit SellIOC(msg.sender, _initSize - _size);
     }
 
     function _matchAggressiveBuyWithCap(uint24 _limitPrice, uint96 _size) internal returns(uint96, uint24) {
@@ -637,7 +619,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable {
             s_orders[_orderId].size -= _size;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
-        emit OrderUpdated(_orderId, _updatedSize, msg.sender, _size - remainingSize);
+        emit Trade(_orderId, _updatedSize, msg.sender, _size - remainingSize);
     }
 
     /**

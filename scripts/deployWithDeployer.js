@@ -2,22 +2,12 @@ const hre = require("hardhat");
 const fs = require('fs');
 
 async function main() {
-    const currentProvider = new hre.ethers.providers.JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
-    const deployerPvtKey = "PVT_KEY_PLZ";
+    const currentProvider = new hre.ethers.providers.JsonRpcProvider("http://localhost:8545");
+    const deployerPvtKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     const deployer = new hre.ethers.Wallet(deployerPvtKey, currentProvider);
 
-    // contract addresses
-    const wbtcDecimals = 18;
-    const usdcDecimals = 18;
-
-    const _sizePrecision = 10**10;
-    const _pricePrecision = 10**2;
-    const _tickSize = _pricePrecision/2;
-    const _minSize = 10**5;
-    const _maxSize = 10**12;
-    const _takerFeeBps = 0;
-
-    const userAddress = "ADDRESS_PLZ";
+    const userAddress = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
+    const takerAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 
     const ERC20 = await hre.ethers.getContractFactory("MintableERC20", deployer);
     const wbtc = await ERC20.deploy("Wrapped Bitcoin", "WBTC");
@@ -29,8 +19,8 @@ async function main() {
     console.log("USDC deployed to:", usdc.address);
 
     // Fund the shark account with a substantial amount of tokens
-    await (await wbtc.mint(userAddress, hre.ethers.utils.parseEther("1000000"))).wait();
-    console.log("Shark WBTC balance:", (await wbtc.balanceOf(userAddress)).toString());
+    await (await wbtc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"))).wait();
+    console.log("Shark WBTC balance:", (await wbtc.balanceOf(takerAddress)).toString());
 
     await (await usdc.mint(userAddress, hre.ethers.utils.parseEther("1000000"))).wait();
     console.log("Shark USDC balance:", (await usdc.balanceOf(userAddress)).toString());
@@ -66,25 +56,11 @@ async function main() {
     await setMarginTx.wait();
     console.log("Router set with margin account address:", marginAccountAddress);
 
-    // deploy CranklessOrderBook contract
-    const CranklessOrderBook = await hre.ethers.getContractFactory("CranklessStorageOrderBook", deployer);
-    const cranklessOrderBook = await CranklessOrderBook.deploy(wbtcAddress, wbtcDecimals, usdcAddress, usdcDecimals, marginAccountAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
-    await cranklessOrderBook.deployed();
-
-    const cranklessOrderBookAddress = cranklessOrderBook.address;
-    console.log("CranklessOrderBook deployed to:", cranklessOrderBookAddress);
-
-    // register wbtc-usdc market
-    const marketRegisterTx = await router.registerMarket(wbtcAddress, usdcAddress, cranklessOrderBookAddress);
-    await marketRegisterTx.wait();
-    console.log("wbtc-usdc market registered");
-
     const config = {
         "usdcAddress": usdcAddress,
         "wbtcAddress": wbtcAddress,
         "routerAddress": routerAddress,
         "marginAccountAddress": marginAccountAddress,
-        "cranklessOrderBookAddress": cranklessOrderBookAddress
     }
     fs.writeFileSync("config.json", JSON.stringify(config));
 }
