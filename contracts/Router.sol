@@ -158,10 +158,6 @@ contract Router is IRouter, OwnableUpgradeable {
         address _quoteAsset,
         address _marketAddress
     ) internal {
-        // bytes32 pairKey = _marketsKey(_baseAsset, _quoteAsset);
-        // require(markets[pairKey] == address(0), "Router: Market already exists");
-        // markets[pairKey] = _marketAddress;
-
         verifiedMarket[_marketAddress] = true;
         IERC20(_baseAsset).approve(_marketAddress, type(uint256).max);
         IERC20(_quoteAsset).approve(_marketAddress, type(uint256).max);
@@ -191,7 +187,7 @@ contract Router is IRouter, OwnableUpgradeable {
         // TODO: This is wrong logic, this has to be fixed. Proceeds from one round should be used for the other.
         for (uint i = 0; i < _marketAddresses.length; i++) {
             address _currentMarket = _marketAddresses[i];
-            require(_currentMarket != address(0), "Router: Wrong market address!");
+            require(verifiedMarket[_currentMarket], "Router: Invalid market!");
             IOrderBook market = IOrderBook(_currentMarket);
             _amountOut = _isBuy[i]
                 ? market.placeAndExecuteMarketBuy(
