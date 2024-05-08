@@ -17,21 +17,18 @@ async function main() {
     const _minSize = 10**5;
     const _maxSize = 10**12;
     const _takerFeeBps = 0;
-
-    // deploy CranklessOrderBook contract
-    const CranklessOrderBook = await hre.ethers.getContractFactory("OrderBook", deployer);
-    const cranklessOrderBook = await CranklessOrderBook.deploy(config.wbtcAddress, wbtcDecimals, config.usdcAddress, usdcDecimals, config.marginAccountAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
-    await cranklessOrderBook.deployed();
-
-    const cranklessOrderBookAddress = cranklessOrderBook.address;
-    console.log("CranklessOrderBook deployed to:", cranklessOrderBookAddress);
+    
+    var largerFlag = hre.ethers.BigNumber.from(wbtcAddress).gt(hre.ethers.BigNumber.from(usdcAddress));
 
     const router = await hre.ethers.getContractAt("Router", config.routerAddress, deployer);
+    const cranklessOrderBookAddress = router.callStatic.deployProxy(largerFlag ? usdcAddress : wbtcAddress, largerFlag ? wbtcAddress : usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    const deployProxyTx = await router.deployProxy(wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    await deployProxyTx.wait();
 
-    // register wbtc-usdc market
-    const marketRegisterTx = await router.registerMarket(config.wbtcAddress, config.usdcAddress, cranklessOrderBookAddress);
-    await marketRegisterTx.wait();
-    console.log("wbtc-usdc market registered");
+    console.log("CranklessOrderBook deployed to:", cranklessOrderBookAddress);
+
+
+
 
     config.cranklessOrderBookAddress = cranklessOrderBookAddress;
     fs.writeFileSync("config.json", JSON.stringify(config));

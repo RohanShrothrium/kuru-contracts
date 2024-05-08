@@ -10,9 +10,9 @@ async function main() {
     const takerAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 
     const ERC20 = await hre.ethers.getContractFactory("MintableERC20", deployer);
-    const wbtc = await ERC20.deploy("Wrapped Bitcoin", "WBTC");
-    await wbtc.deployed();
-    console.log("WBTC deployed to:", wbtc.address);
+    const tokenA = await ERC20.deploy("Token A", "TOKA");
+    await tokenA.deployed();
+    console.log("WBTC deployed to:", tokenA.address);
 
     const usdc = await ERC20.deploy("USD Coin", "USDC");
     await usdc.deployed();
@@ -20,16 +20,22 @@ async function main() {
 
     // Fund the shark account with a substantial amount of tokens
     await (await wbtc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"))).wait();
+    await (await wbtc.mint(userAddress, hre.ethers.utils.parseEther("1000000"))).wait();
     console.log("Shark WBTC balance:", (await wbtc.balanceOf(takerAddress)).toString());
 
     await (await usdc.mint(userAddress, hre.ethers.utils.parseEther("1000000"))).wait();
+    await (await usdc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"))).wait();
     console.log("Shark USDC balance:", (await usdc.balanceOf(userAddress)).toString());
 
     // Your existing deployment logic here, modified to use the deployed token addresses
     // Replace wbtcAddress and usdcAddress with the addresses of the deployed contracts
-    const wbtcAddress = wbtc.address;
-    const usdcAddress = usdc.address;
-
+    var wbtcAddress = wbtc.address;
+    var usdcAddress = usdc.address;
+    if(hre.ethers.BigNumber.from(wbtcAddress).gt(hre.ethers.BigNumber.from(usdcAddress))) {
+        const temp = wbtcAddress;
+        wbtcAddress = usdcAddress;
+        usdcAddress = temp;
+    }
     // deploy Router Contract
     const Router = await hre.ethers.getContractFactory("Router", deployer);
     const router = await Router.deploy();

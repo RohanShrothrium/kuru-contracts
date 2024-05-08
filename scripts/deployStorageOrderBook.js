@@ -48,11 +48,6 @@ async function main() {
     const routerAddress = router.address;
     console.log("Router deployed to:", routerAddress);
 
-    // // initialize router contract
-    // const routerInitTx = await router.initialize(userAddress);
-    // await routerInitTx.wait();
-    // console.log("Router Initialized with owner:", userAddress);
-
     // deploy Margin Account Contract
     const MarginAccount = await hre.ethers.getContractFactory("MarginAccount");
     const marginAccount = await MarginAccount.deploy(routerAddress);
@@ -76,15 +71,10 @@ async function main() {
     await initializeRouterTx.wait();
     console.log("Router initialized with \n Admin :", userAddress, "\nMargin Account: ", marginAccountAddress, "\nImplementation:", implementation.address);
 
-    // const ProxyFactory = await hre.ethers.getContractFactory("OrderBookProxyFactory");
-    // const proxyFactoryDeployment = await ProxyFactory.deploy(userAddress, marginAccountAddress, implementation.address);
-    // await proxyFactoryDeployment.deployed();
     const cranklessOrderBookAddress = await router.callStatic.deployProxy(wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
     const deployProxyTx = await router.deployProxy(wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
     await deployProxyTx.wait();
-    // await cranklessOrderBook.deployed();
 
-    // const cranklessOrderBookAddress = cranklessOrderBook.address;
     console.log("CranklessOrderBook deployed to:", cranklessOrderBookAddress);
 
     const config = {

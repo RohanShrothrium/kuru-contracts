@@ -55,10 +55,10 @@ contract Router is IRouter, OwnableUpgradeable {
         uint96 _maxSize,
         uint256 _takerFeeBps
     ) public returns (address proxy) {
-        require(
-            _baseAssetAddress < _quoteAssetAddress,
-            "ProxyFactory: Invalid order of tokens"
-        );
+
+        {
+            (_baseAssetAddress, _quoteAssetAddress) = _reOrder(_baseAssetAddress, _quoteAssetAddress);
+        }
 
         
         {
@@ -100,6 +100,10 @@ contract Router is IRouter, OwnableUpgradeable {
         _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy);
 
         return proxy;
+    }
+
+    function _reOrder(address _tokenA, address _tokenB) internal pure returns (address _baseAsset, address _quoteAsset) {
+        (_baseAsset, _quoteAsset) = (_tokenA > _tokenB) ? (_tokenB, _tokenA) : (_tokenA, _tokenB);
     }
 
     function computeAddress(
