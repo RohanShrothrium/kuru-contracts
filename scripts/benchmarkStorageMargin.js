@@ -32,6 +32,9 @@ async function main() {
     const orderBookMaker = await hre.ethers.getContractAt("OrderBook", config.cranklessOrderBookAddress);
     const orderBookTaker = await hre.ethers.getContractAt("OrderBook", config.cranklessOrderBookAddress, taker);
 
+    // const OrderBook = await hre.ethers.getContractFactory("OrderBook");
+    // const orderBookMaker = OrderBook.attach(config.cranklessOrderBookAddress);
+    // const orderBookTaker = OrderBook.attach(config.cranklessOrderBookAddress, taker);
     // loop over 100 and place limit orders
     // prices: 1800, 1801, 1802, ... ,1899
     // orderIds: 1, 2, 3, ..., 100
