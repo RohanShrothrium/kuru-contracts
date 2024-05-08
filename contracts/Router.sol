@@ -11,18 +11,26 @@ import {IERC20} from "./libraries/IERC20.sol";
 
 // ============ External Imports ============
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 
 contract Router is IRouter, OwnableUpgradeable {
     // Mapping of hash of token pairs to their market contract addresses
-    mapping(bytes32 => address) public markets;
+    mapping(address => bool) public verifiedMarket;
 
     // used to create base/native and native/quote markets
     address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
-    IMarginAccount marginAccount;
+    address orderBookImplementation;
+    address marginAccountAddress;
+
 
     // Event for market registration
-    event MarketRegistered(address baseAsset, address quoteAsset, address market);
+    event MarketRegistered(
+        address baseAsset,
+        address quoteAsset,
+        address market
+    );
 
     // Event for market updation
     event MarketUpdated(address baseAsset, address quoteAsset, address market);
@@ -30,87 +38,186 @@ contract Router is IRouter, OwnableUpgradeable {
     /**
      * @param _owner The owner of the contract.
      */
-    function initialize(address _owner) public initializer {
+    function initialize(address _owner, address _marginAccount, address _implementation) public initializer {
         __Ownable_init();
         _transferOwnership(_owner);
+        marginAccountAddress = _marginAccount;
+        orderBookImplementation = _implementation;
     }
 
-    function setMarginAccount(address _marginAccount) public onlyOwner {
-        marginAccount = IMarginAccount(_marginAccount);
+    function deployProxy(
+        address _baseAssetAddress,
+        address _quoteAssetAddress,
+        uint96 _sizePrecision,
+        uint24 _pricePrecision,
+        uint96 _tickSize,
+        uint96 _minSize,
+        uint96 _maxSize,
+        uint256 _takerFeeBps
+    ) public returns (address proxy) {
+        require(
+            _baseAssetAddress < _quoteAssetAddress,
+            "ProxyFactory: Invalid order of tokens"
+        );
+
+        
+        {
+            bytes32 _salt = _getSalt(
+                _baseAssetAddress,
+                _quoteAssetAddress,
+                _sizePrecision,
+                _pricePrecision,
+                _tickSize,
+                _minSize,
+                _maxSize,
+                _takerFeeBps
+            );
+            proxy = Create2.deploy(
+                0,
+                _salt,
+                abi.encodePacked(
+                    type(ERC1967Proxy).creationCode,
+                    abi.encode(orderBookImplementation, bytes(""))
+                )
+            );
+        }
+
+        IOrderBook(proxy).initialize(
+            address(this),
+            _baseAssetAddress,
+            IERC20(_baseAssetAddress).decimals(),
+            _quoteAssetAddress,
+            IERC20(_quoteAssetAddress).decimals(),
+            marginAccountAddress,
+            _sizePrecision,
+            _pricePrecision,
+            _tickSize,
+            _minSize,
+            _maxSize,
+            _takerFeeBps
+        );
+
+        _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy);
+
+        return proxy;
+    }
+
+    function computeAddress(
+        address _baseAssetAddress,
+        address _quoteAssetAddress,
+        uint96 _sizePrecision,
+        uint24 _pricePrecision,
+        uint96 _tickSize,
+        uint96 _minSize,
+        uint96 _maxSize,
+        uint256 _takerFeeBps,
+        address oldImplementation,
+        bool old
+    ) public view returns (address proxy) {
+        bytes32 _salt = _getSalt(
+            _baseAssetAddress,
+            _quoteAssetAddress,
+            _sizePrecision,
+            _pricePrecision,
+            _tickSize,
+            _minSize,
+            _maxSize,
+            _takerFeeBps
+        );
+        proxy = Create2.computeAddress(
+            _salt,
+            keccak256(
+                abi.encodePacked(
+                    type(ERC1967Proxy).creationCode,
+                    abi.encode(
+                        old ? oldImplementation : orderBookImplementation,
+                        bytes("")
+                    )
+                )
+            )
+        );
+    }
+
+    function upgradeImplementation(
+        address newImplementation
+    ) external onlyOwner {
+        require(newImplementation != orderBookImplementation);
+        orderBookImplementation = newImplementation;
+    }
+
+    function upgradeMultipleProxies(address[] memory proxies) public {
+        for (uint i = 0; i < proxies.length; i++) {
+            (bool success, ) = proxies[i].call(abi.encodeWithSelector(0x3659cfe6, orderBookImplementation));
+            require(success, "Router: Upgrade Failed");
+        }
     }
 
     // Register a market for a token pair
-    function registerMarket(address _baseAsset, address _quoteAsset, address _marketAddress) onlyOwner external {
-        bytes32 pairKey = _marketsKey(_baseAsset, _quoteAsset);
-        require(markets[pairKey] == address(0), "Router: Market already exists");
-        markets[pairKey] = _marketAddress;
+    function _registerMarket(
+        address _baseAsset,
+        address _quoteAsset,
+        address _marketAddress
+    ) internal {
+        // bytes32 pairKey = _marketsKey(_baseAsset, _quoteAsset);
+        // require(markets[pairKey] == address(0), "Router: Market already exists");
+        // markets[pairKey] = _marketAddress;
 
+        verifiedMarket[_marketAddress] = true;
         IERC20(_baseAsset).approve(_marketAddress, type(uint256).max);
         IERC20(_quoteAsset).approve(_marketAddress, type(uint256).max);
 
-        marginAccount.updateMarkets(_marketAddress);
+        IMarginAccount(marginAccountAddress).updateMarkets(_marketAddress);
 
         emit MarketRegistered(_baseAsset, _quoteAsset, _marketAddress);
     }
 
-    // Register a market for a token pair
-    function updateMarket(address _baseAsset, address quoteAsset, address _marketAddress) onlyOwner external {
-        bytes32 pairKey = _marketsKey(_baseAsset, quoteAsset);
-        require(markets[pairKey] != address(0), "Router: Market does not exist");
-        markets[pairKey] = _marketAddress;
-
-        emit MarketUpdated(_baseAsset, quoteAsset, _marketAddress);
-    }
-
     // Perform an any-to-any swap
     function anyToAnySwap(
-        address[] calldata _route,
+        address[] calldata _marketAddresses,
         bool[] calldata _isBuy,
-        uint256 _amount
-    ) external {
-        require(_route.length >= 2, "Router: Invalid _route length");
-        require(_isBuy.length == _route.length - 1, "Router: Sizes length mismatch");
+        address _debitToken,
+        address _creditToken,
+        uint256 _amount,
+        uint256 _minAmountOut
+    ) external returns (uint256 _amountOut) {
+        require(_marketAddresses.length >= 1, "Router: No markets in input");
+        require(
+            _isBuy.length == _marketAddresses.length,
+            "Router: Sizes length mismatch"
+        );
 
-        IERC20(_route[0]).transferFrom(msg.sender, address(this), _amount);
+        IERC20(_debitToken).transferFrom(msg.sender, address(this), _amount);
 
-        address _creditToken;
         // TODO: This is wrong logic, this has to be fixed. Proceeds from one round should be used for the other.
-        for (uint i = 0; i < _route.length - 1; i++) {
-            _creditToken = _route[i+1];
-            uint256 _initBalance = _getTokenBalance(_creditToken);
-            address _marketAddress = _isBuy[i] ? marketAddress(_route[i+1], _route[i]) : marketAddress(_route[i], _route[i + 1]);
-            require(_marketAddress != address(0), "Router: Market does not exist");
-
-            IOrderBook market = IOrderBook(_marketAddress);
-            _isBuy[i]
+        for (uint i = 0; i < _marketAddresses.length; i++) {
+            address _currentMarket = _marketAddresses[i];
+            require(_currentMarket != address(0), "Router: Wrong market address!");
+            IOrderBook market = IOrderBook(_currentMarket);
+            _amountOut = _isBuy[i]
                 ? market.placeAndExecuteMarketBuy(
-                    _amountToSize(_amount, _isBuy[i], market),
+                    _amountToSize(_amount, true, market),
                     true
                 )
                 : market.placeAndExecuteMarketSell(
-                    _amountToSize(_amount, _isBuy[i], market),
+                    _amountToSize(_amount, false, market),
                     true
                 );
-
-            _amount = _getTokenBalance(_creditToken) - _initBalance;
+        
+            _amount = _amountOut;
         }
-
-        IERC20(_creditToken).transfer(msg.sender, _amount);
+        require(
+            _amountOut >= _minAmountOut,
+            "Router: Slippage exceeds expected value!"
+        );
+        IERC20(_creditToken).transfer(msg.sender, _amountOut);
     }
 
-    function marketAddress(address _baseAsset, address _qutoeAsset) public view returns (address) {
-        return markets[_marketsKey(_baseAsset, _qutoeAsset)];
-    }
 
-    function _getTokenBalance(address _token) internal view returns (uint256) {
-        if (_token == ETH) {
-            return address(this).balance;
-        }
-
-        return IERC20(_token).balanceOf(address(this));
-    }
-
-    function _amountToSize(uint256 _amount, bool _isBuy, IOrderBook market) internal view returns (uint24) {
+    function _amountToSize(
+        uint256 _amount,
+        bool _isBuy,
+        IOrderBook market
+    ) internal view returns (uint24) {
         return
             _isBuy
                 ? uint24(
@@ -123,8 +230,28 @@ contract Router is IRouter, OwnableUpgradeable {
                 );
     }
 
-    // Function to generate a hash for a token pair
-    function _marketsKey(address _baseAsset, address _qutoeAsset) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_baseAsset, _qutoeAsset));
+    function _getSalt(
+        address _baseAssetAddress,
+        address _quoteAssetAddress,
+        uint96 _sizePrecision,
+        uint24 _pricePrecision,
+        uint96 _tickSize,
+        uint96 _minSize,
+        uint96 _maxSize,
+        uint256 _takerFeeBps
+    ) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    _baseAssetAddress,
+                    _quoteAssetAddress,
+                    _sizePrecision,
+                    _pricePrecision,
+                    _tickSize,
+                    _minSize,
+                    _maxSize,
+                    _takerFeeBps
+                )
+            );
     }
 }

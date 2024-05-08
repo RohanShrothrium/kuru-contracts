@@ -168,6 +168,11 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      */
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
+    function upgradeTo(address newImplementation) public virtual override onlyProxy {
+        _authorizeUpgrade(newImplementation);
+        _upgradeToAndCallUUPS(newImplementation, new bytes(0), false);
+    }
+
     /**
      * @dev Allows admin to pause the market.
      */
@@ -218,7 +223,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
         _consumeFunds(baseAsset, ((size * 10**baseAssetDecimals) / sizePrecision), msg.sender);
 
-        size = _matchAggressiveSell(_price, size, true);
+        (size,) = _matchAggressiveSell(_price, size, true);
 
         if (size == 0) return;
 
@@ -435,9 +440,10 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     function placeAndExecuteMarketBuy(
         uint24 _quoteSize,
         bool _isFillOrKill
-    ) public override marketActive {
+    ) public override marketActive returns (uint256) {
+        uint256 _baseTokensCredited;
         quoteAsset.transferFrom(msg.sender, address(marginAccount), uint256(_quoteSize * 10 ** quoteAssetDecimals / pricePrecision));
-        _quoteSize = _matchAggressiveBuy(type(uint24).max, _quoteSize, false);
+        (_quoteSize, _baseTokensCredited) = _matchAggressiveBuy(type(uint24).max, _quoteSize, false);
         if (_quoteSize > 0) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
             marginAccount.creditUser(
@@ -447,6 +453,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 false
             );
         }
+        return _baseTokensCredited;
     }
 
     /**
@@ -457,7 +464,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     function placeAndExecuteMarketSell(
         uint96 _size,
         bool _isFillOrKill
-    ) public marketActive{
+    ) public marketActive returns (uint256) {
         // Transfer the base asset from the user to the contract
         baseAsset.transferFrom(
             msg.sender,
@@ -465,7 +472,8 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             (_size * 10 ** baseAssetDecimals) / sizePrecision
         );
 
-        _size = _matchAggressiveSell(0, _size, false);
+        uint256 _quoteCredited;
+        (_size, _quoteCredited) = _matchAggressiveSell(0, _size, false);
 
         if (_size > 0) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
@@ -477,6 +485,8 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 false
             );
         }
+
+        return _quoteCredited;
     }
 
     function _matchAggressiveBuyWithCap(uint24 _limitPrice, uint96 _size) internal returns(uint96, uint24) {
@@ -519,10 +529,10 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      * @param _quoteSize amount of quote asset user is ready to pay.
      * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      */
-    function _matchAggressiveBuy(uint24 _limitPrice, uint24 _quoteSize, bool _useMargin) internal returns(uint24) {
+    function _matchAggressiveBuy(uint24 _limitPrice, uint24 _quoteSize, bool _useMargin) internal returns(uint24, uint256) {
         uint96 _sizeToGet;
         uint24 _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
-
+        uint256 _tokenCredit;
         bytes memory makerCredits;
         while (_quoteSize > 0 && _bestAsk <= _limitPrice && _bestAsk != 0) {
             uint96 _size = _quoteSize * sizePrecision / _bestAsk;
@@ -531,7 +541,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             _sizeToGet += _size;
             (_size, priceUpdate) = _fillSizeForPrice(s_sellTree, _bestAsk, s_sellPricePoints[_bestAsk], _size);
             _sizeToGet -= _size;
-
             makerCredits = bytes.concat(makerCredits, priceUpdate);
 
             _quoteSize = uint24(_size * _bestAsk / sizePrecision);
@@ -540,12 +549,13 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         }
 
         if (_sizeToGet > 0) {
-            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), (_sizeToGet) * 10 ** quoteAssetDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER), _useMargin)));
+            _tokenCredit = (_sizeToGet) * 10 ** quoteAssetDecimals * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * BPS_MULTIPLIER);
+            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit, _useMargin)));
         } else if (makerCredits.length > 0) {
             marginAccount.creditUsersEncoded(makerCredits);
         }
 
-        return _quoteSize;
+        return (_quoteSize, _tokenCredit);
     }
 
     /**
@@ -554,10 +564,10 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      * @param size Size of the sell order.
      * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      */
-    function _matchAggressiveSell(uint24 _limitPrice, uint96 size, bool _useMargin) internal returns(uint96) {
+    function _matchAggressiveSell(uint24 _limitPrice, uint96 size, bool _useMargin) internal returns(uint96, uint256) {
         uint96 _priceToGet = 0;
         uint24 _bestBid = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
-
+        uint256 _tokenCredit;
         bytes memory makerCredits;
         while (size > 0 && _bestBid >= _limitPrice && _bestBid != type(uint24).max) {
             uint96 _tmpSize = size;
@@ -572,12 +582,13 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         }
 
         if (_priceToGet > 0) {
-            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(quoteAsset), (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER)), _useMargin)));
+            _tokenCredit = (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER));
+            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(quoteAsset), _tokenCredit, _useMargin)));
         } else if (makerCredits.length > 0) {
             marginAccount.creditUsersEncoded(makerCredits);
         }
 
-        return size;
+        return (size, _tokenCredit);
     }
 
     /**
