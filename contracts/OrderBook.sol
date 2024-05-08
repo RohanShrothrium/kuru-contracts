@@ -15,11 +15,13 @@ import {MarginAccount} from  "./MarginAccount.sol";
 
 // ============ External Imports ============
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 
 // size is 10**10
 // price is 10**2
-contract OrderBook is IOrderBook, OwnableUpgradeable {
+contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
+
    struct Order {
         address ownerAddress;
         uint96 size;
@@ -89,34 +91,47 @@ contract OrderBook is IOrderBook, OwnableUpgradeable {
 
     bool marketPaused;
 
-    uint96 immutable sizePrecision;
-    uint24 immutable pricePrecision;
+    uint96 sizePrecision;
+    uint24 pricePrecision;
 
-    uint96 immutable tickSize;
-    uint96 immutable minSize;
-    uint96 immutable maxSize;
+    uint96 tickSize;
+    uint96 minSize;
+    uint96 maxSize;
 
     // TODO: might have to be public
-    uint256 immutable takerFeeBps;
+    uint256 takerFeeBps;
     // TODO: add maker fee
 
-    IERC20 immutable baseAsset;
-    IERC20 immutable quoteAsset;
-    MarginAccount immutable marginAccount;
+    IERC20 baseAsset;
+    IERC20 quoteAsset;
+    MarginAccount marginAccount;
 
-    uint256 immutable baseAssetDecimals;
-    uint256 immutable quoteAssetDecimals;
+    uint256 baseAssetDecimals;
+    uint256 quoteAssetDecimals;
 
     uint256 constant BPS_MULTIPLIER = 10000;
 
     /**
      * @dev Constructor.
+     */
+    constructor () {
+        _disableInitializers();
+    }
+
+    modifier marketActive() {
+        require(!marketPaused, "OrderBook: market is paused");
+        _;
+    }
+
+    /**
+     * @param _owner The owner of the contract.
      * @param _baseAssetAddress Address of the first token used for trading.
      * @param _baseAssetDecimals Deciimal pricicsion of the first swap token.
      * @param _quoteAssetAddress Address of the second token used for trading.
      * @param _quoteAssetDecimals Deciimal pricicsion of the first swap token.
      */
-    constructor (
+    function initialize(
+        address _owner,
         address _baseAssetAddress,
         uint256 _baseAssetDecimals,
         address _quoteAssetAddress,
@@ -127,8 +142,10 @@ contract OrderBook is IOrderBook, OwnableUpgradeable {
         uint96 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
-        uint256 _takerFeeBps
-    ) {
+        uint256 _takerFeeBps) public initializer {
+
+        __Ownable_init();
+        _transferOwnership(_owner);
         baseAsset = IERC20(_baseAssetAddress);
         quoteAsset = IERC20(_quoteAssetAddress);
 
@@ -145,18 +162,11 @@ contract OrderBook is IOrderBook, OwnableUpgradeable {
         takerFeeBps = _takerFeeBps;
     }
 
-    modifier marketActive() {
-        require(!marketPaused, "OrderBook: market is paused");
-        _;
-    }
 
     /**
-     * @param _owner The owner of the contract.
+    * @dev Makes sure owner is the one upgrading contract
      */
-    function initialize(address _owner) public initializer {
-        __Ownable_init();
-        _transferOwnership(_owner);
-    }
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /**
      * @dev Allows admin to pause the market.
@@ -486,7 +496,8 @@ contract OrderBook is IOrderBook, OwnableUpgradeable {
 
             // @audit: This might make you consume lesser than what has to be consumed because of rounding down.
             fundsConsumed += uint24((sizeFilled * _bestAsk)/sizePrecision);
-
+            /// round up
+            ++fundsConsumed;
             makerCredits = bytes.concat(makerCredits, priceUpdate);
             
             _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
