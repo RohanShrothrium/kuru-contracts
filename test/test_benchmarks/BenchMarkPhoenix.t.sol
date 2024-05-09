@@ -31,26 +31,29 @@ contract BenchMarkTest is Test, Gas {
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
+        if(address(eth) > address(usdc)){
+            MintableERC20 temp = eth;
+            eth = usdc; 
+            usdc = temp;
+        }
         uint96 _tickSize = PRICE_PRECISION / 2;
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 12;
         uint256 _takerFeeBps = 0;
 
         router = new Router();
-        router.initialize(address(this));
         u1 = genAddress();
         u2 = genAddress();
         u3 = genAddress();
         marginAccount = new MarginAccount(address(router));
 
-        router.setMarginAccount(address(marginAccount));
+        OrderBook implementation = new OrderBook();
 
-        orderBook = new OrderBook(
+        router.initialize(address(this), address(marginAccount), address(implementation));
+
+        address proxy = router.deployProxy(
             address(eth),
-            18,
             address(usdc),
-            18,
-            address(marginAccount),
             SIZE_PRECISION,
             PRICE_PRECISION,
             _tickSize,
@@ -59,7 +62,7 @@ contract BenchMarkTest is Test, Gas {
             _takerFeeBps
         );
 
-        router.registerMarket(address(eth), address(usdc), address(orderBook));
+        orderBook = OrderBook(proxy);
 
         eth.mint(u1, initEth);
         usdc.mint(u2, initUsdc);

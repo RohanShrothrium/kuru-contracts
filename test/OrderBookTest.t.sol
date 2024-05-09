@@ -29,7 +29,11 @@ contract OrderBookTest is Test {
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USD", "USDC");
-
+        if(address(eth) > address(usdc)) {
+            MintableERC20 temp = eth;
+            eth = usdc;
+            usdc = eth;
+        }
         uint96 _sizePrecision = 10**10;
         uint24 _pricePrecision = 10**2;
         uint96 _tickSize = _pricePrecision/2;
@@ -37,17 +41,16 @@ contract OrderBookTest is Test {
         uint96 _maxSize = 10**12;
         uint256 _takerFeeBps = 0;
 
-        router = new Router();
+        OrderBook implementation = new OrderBook();
 
-        router.initialize(address(this));
+        router = new Router();
 
         marginAccount = new MarginAccount(address(router));
 
-        router.setMarginAccount(address(marginAccount));
+        router.initialize(address(this), address(marginAccount), address(implementation));
 
-        orderBook = new OrderBook(address(eth), 18, address(usdc), 18, address(marginAccount), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
-
-        router.registerMarket(address(eth), address(usdc), address(orderBook));
+        address proxy = router.deployProxy(address(eth), address(usdc), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+        orderBook = OrderBook(proxy);
 
         eth.mint(user1, initEth);
         usdc.mint(user2, initUsdc);
