@@ -32,7 +32,7 @@ contract OrderBookTest is Test {
         if(address(eth) > address(usdc)) {
             MintableERC20 temp = eth;
             eth = usdc;
-            usdc = eth;
+            usdc = temp;
         }
         uint96 _sizePrecision = 10**10;
         uint24 _pricePrecision = 10**2;
@@ -398,7 +398,7 @@ contract OrderBookTest is Test {
 
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
         // assertEq(marginAccount.balances(keccak256(abi.encodePacked(user2, address(usdc)))), 10**18);
-        assertEq(usdc.balanceOf(address(marginAccount)), (1801*size)*10**18);
+        assertEq(usdc.balanceOf(address(marginAccount)), (1801*uint256(size))*10**18);
         assertEq(marginAccount.balances(keccak256(abi.encodePacked(user2, address(eth)))), size*10**18);
 
         assertEq(head, 0);
