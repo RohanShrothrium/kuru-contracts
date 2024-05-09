@@ -195,7 +195,7 @@ contract Router is IRouter, OwnableUpgradeable {
             IOrderBook market = IOrderBook(_currentMarket);
             _amountOut = _isBuy[i]
                 ? market.placeAndExecuteMarketBuy(
-                    _amountToSize(_amount, true, market),
+                   uint24( _amountToSize(_amount, true, market)),
                     true
                 )
                 : market.placeAndExecuteMarketSell(
@@ -217,14 +217,14 @@ contract Router is IRouter, OwnableUpgradeable {
         uint256 _amount,
         bool _isBuy,
         IOrderBook market
-    ) internal view returns (uint24) {
+    ) internal view returns (uint96) {
         return
             _isBuy
                 ? uint24(
                     (_amount * market.getPricePrecision()) /
                         10 ** market.getQuoteAssetDecimals()
                 )
-                : uint24(
+                : uint96(
                     (_amount * market.getSizePrecision()) /
                         10 ** market.getBaseAssetDecimals()
                 );
