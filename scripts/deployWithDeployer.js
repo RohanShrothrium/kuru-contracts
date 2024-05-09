@@ -10,32 +10,33 @@ async function main() {
     const takerAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 
     const ERC20 = await hre.ethers.getContractFactory("MintableERC20", deployer);
-    const tokenA = await ERC20.deploy("Token A", "TOKA");
+    var tokenA = await ERC20.deploy("Token A", "TOKA");
     await tokenA.deployed();
-    console.log("WBTC deployed to:", tokenA.address);
+    console.log("Token A deployed to:", tokenA.address);
 
-    const usdc = await ERC20.deploy("USD Coin", "USDC");
-    await usdc.deployed();
-    console.log("USDC deployed to:", usdc.address);
+    var tokenB = await ERC20.deploy("Token B", "TOKB");
+    await tokenB.deployed();
+    console.log("Token B deployed to:", tokenB.address);
+
+    if(hre.ethers.BigNumber.from(tokenA.address).gt(hre.ethers.BigNumber.from(tokenB.address))) {
+        const temp = tokenA;
+        tokenA = tokenB;
+        tokenB = temp;
+    }
 
     // Fund the shark account with a substantial amount of tokens
-    await (await wbtc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"))).wait();
-    await (await wbtc.mint(userAddress, hre.ethers.utils.parseEther("1000000"))).wait();
-    console.log("Shark WBTC balance:", (await wbtc.balanceOf(takerAddress)).toString());
+    await (await tokenA.mint(userAddress, hre.ethers.utils.parseEther("1000000"))).wait();
+    await (await tokenA.mint(takerAddress, hre.ethers.utils.parseEther("1000000"))).wait();
+    console.log("Shark WBTC balance:", (await tokenA.balanceOf(takerAddress)).toString());
 
-    await (await usdc.mint(userAddress, hre.ethers.utils.parseEther("1000000"))).wait();
-    await (await usdc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"))).wait();
-    console.log("Shark USDC balance:", (await usdc.balanceOf(userAddress)).toString());
+    await (await tokenB.mint(userAddress, hre.ethers.utils.parseEther("1000000"))).wait();
+    await (await tokenB.mint(takerAddress, hre.ethers.utils.parseEther("1000000"))).wait();
+    console.log("Shark USDC balance:", (await tokenB.balanceOf(userAddress)).toString());
 
     // Your existing deployment logic here, modified to use the deployed token addresses
     // Replace wbtcAddress and usdcAddress with the addresses of the deployed contracts
-    var wbtcAddress = wbtc.address;
-    var usdcAddress = usdc.address;
-    if(hre.ethers.BigNumber.from(wbtcAddress).gt(hre.ethers.BigNumber.from(usdcAddress))) {
-        const temp = wbtcAddress;
-        wbtcAddress = usdcAddress;
-        usdcAddress = temp;
-    }
+    var wbtcAddress = tokenA.address;
+    var usdcAddress = tokenB.address;
     // deploy Router Contract
     const Router = await hre.ethers.getContractFactory("Router", deployer);
     const router = await Router.deploy();
@@ -44,10 +45,7 @@ async function main() {
     const routerAddress = router.address;
     console.log("Router deployed to:", routerAddress);
 
-    // initialize router contract
-    const routerInitTx = await router.initialize(userAddress);
-    await routerInitTx.wait();
-    console.log("Router Initialized with owner:", userAddress);
+
 
     // deploy Margin Account Contract
     const MarginAccount = await hre.ethers.getContractFactory("MarginAccount", deployer);
@@ -57,10 +55,16 @@ async function main() {
     const marginAccountAddress = marginAccount.address;
     console.log("MarginAccountAddress deployed to:", marginAccountAddress);
 
-    // set margin account address for router
-    const setMarginTx = await router.setMarginAccount(marginAccountAddress);
-    await setMarginTx.wait();
-    console.log("Router set with margin account address:", marginAccountAddress);
+    //Deploy OrderBook implementation
+    const OrderBook = await hre.ethers.getContractFactory("OrderBook", deployer);
+    const implementation = await OrderBook.deploy();
+    await implementation.deployed();
+    console.log("Orderbook implementation deployed at: ", implementation.address);
+
+    // initialize router contract
+    const routerInitTx = await router.initialize(userAddress, marginAccountAddress, implementation.address);
+    await routerInitTx.wait();
+    console.log("Router Initialized with owner:", userAddress);
 
     const config = {
         "usdcAddress": usdcAddress,

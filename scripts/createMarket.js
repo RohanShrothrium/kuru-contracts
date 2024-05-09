@@ -10,7 +10,8 @@ async function main() {
     // contract addresses
     const wbtcDecimals = 18;
     const usdcDecimals = 18;
-
+    const wbtcAddress = config.wbtcAddress;
+    const usdcAddress = config.usdcAddress;
     const _sizePrecision = 10**10;
     const _pricePrecision = 10**2;
     const _tickSize = _pricePrecision/2;
@@ -21,7 +22,7 @@ async function main() {
     var largerFlag = hre.ethers.BigNumber.from(wbtcAddress).gt(hre.ethers.BigNumber.from(usdcAddress));
 
     const router = await hre.ethers.getContractAt("Router", config.routerAddress, deployer);
-    const cranklessOrderBookAddress = router.callStatic.deployProxy(largerFlag ? usdcAddress : wbtcAddress, largerFlag ? wbtcAddress : usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    const cranklessOrderBookAddress = await router.callStatic.deployProxy(largerFlag ? usdcAddress : wbtcAddress, largerFlag ? wbtcAddress : usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
     const deployProxyTx = await router.deployProxy(wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
     await deployProxyTx.wait();
 

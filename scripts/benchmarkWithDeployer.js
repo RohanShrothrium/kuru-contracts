@@ -3,19 +3,20 @@ const config = require("../config.json");
 const fs = require("fs");
 
 async function main() {
-    const currentProvider = new hre.ethers.providers.JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
-    const deployerPvtKey = "PVT_KEY_PLZ";
+    const currentProvider = new hre.ethers.providers.JsonRpcProvider("http://localhost:8545");
+    const deployerPvtKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     const deployer = new hre.ethers.Wallet(deployerPvtKey, currentProvider);
 
-    const userAddress = "ADDRESS_PLZ";
-
+    const userAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+    console.log("HERE")
     const usdcContract = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", config.usdcAddress, deployer);
+    console.log("HERE")
     var tx = await usdcContract.approve(
         config.marginAccountAddress,
         hre.ethers.utils.parseEther("10000"),
     );
     await tx.wait();
-
+        console.log("HERE")
     var tx = await usdcContract.approve(
         config.cranklessOrderBookAddress,
         hre.ethers.utils.parseEther("10000"),
@@ -51,7 +52,7 @@ async function main() {
     await tx.wait();
 
     // create contract instance of OrderBook from config address
-    const orderBook = await hre.ethers.getContractAt("CranklessStorageOrderBook", config.cranklessOrderBookAddress, deployer);
+    const orderBook = await hre.ethers.getContractAt("OrderBook", config.cranklessOrderBookAddress, deployer);
 
     // loop over 100 and place limit orders
     // prices: 1800, 1801, 1802, ... ,1899
