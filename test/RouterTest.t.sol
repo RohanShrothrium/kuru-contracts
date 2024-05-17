@@ -88,7 +88,7 @@ contract OrderBookTest is Test {
         marginAccount.deposit(_maker, address(token), _tokenForEachOrder);
         uint24 _pricePrecision = orderBook.getPricePrecision();
         uint96 _sizePrecision = orderBook.getSizePrecision();
-        orderBook.addBuyOrder(_price * _pricePrecision, _size * _sizePrecision);
+        orderBook.addBuyOrder(_price * _pricePrecision, _size * _sizePrecision, false);
         vm.stopPrank();
     }
 
@@ -107,7 +107,8 @@ contract OrderBookTest is Test {
         uint96 _sizePrecision = orderBook.getSizePrecision();
         orderBook.addSellOrder(
             _price * _pricePrecision,
-            _size * _sizePrecision
+            _size * _sizePrecision,
+            false
         );
         vm.stopPrank();
     }

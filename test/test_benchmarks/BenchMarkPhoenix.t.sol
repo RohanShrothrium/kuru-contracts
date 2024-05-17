@@ -85,7 +85,7 @@ contract BenchMarkTest is Test, Gas {
         uint96 _size
     ) internal {
         vm.startPrank(_user);
-        orderBook.addBuyOrder(_price, _size);
+        orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
 
@@ -99,7 +99,7 @@ contract BenchMarkTest is Test, Gas {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _usdcForEachOrder);
         marginAccount.deposit(_maker, address(usdc), _usdcForEachOrder);
-        orderBook.addBuyOrder(_price * PRICE_PRECISION, _size * SIZE_PRECISION);
+        orderBook.addBuyOrder(_price * PRICE_PRECISION, _size * SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -114,7 +114,8 @@ contract BenchMarkTest is Test, Gas {
         marginAccount.deposit(_maker, address(eth), _size * 10 ** 18);
         orderBook.addSellOrder(
             _price * PRICE_PRECISION,
-            _size * SIZE_PRECISION
+            _size * SIZE_PRECISION,
+            false
         );
         vm.stopPrank();
     }
@@ -125,7 +126,7 @@ contract BenchMarkTest is Test, Gas {
         uint96 _size
     ) internal {
         vm.startPrank(_user);
-        orderBook.addSellOrder(_price, _size);
+        orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }
 

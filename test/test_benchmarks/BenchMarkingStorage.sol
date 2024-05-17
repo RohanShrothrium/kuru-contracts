@@ -74,7 +74,7 @@ contract BenchMarkTest is Test, Gas {
 
     function _addCustomBuyOrder(address _user, uint24 _price, uint96 _size) internal {       
         vm.startPrank(_user);
-        orderBook.addBuyOrder(_price, _size);
+        orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
 
@@ -84,14 +84,14 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_maker);
             eth.approve(address(marginAccount), _size*10**18);
             marginAccount.deposit(_maker, address(eth), _size*10**18);
-            orderBook.addSellOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+            orderBook.addSellOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION, false);
             vm.stopPrank();
     }
 
 
     function _addCustomSellOrder(address _user, uint24 _price, uint96 _size) internal {
         vm.startPrank(_user);
-        orderBook.addSellOrder(_price, _size);
+        orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }
 
@@ -103,10 +103,9 @@ contract BenchMarkTest is Test, Gas {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _usdcForEachOrder);
         marginAccount.deposit(_maker, address(usdc), _usdcForEachOrder);
-        orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+        orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
-
 
     function testBenchmarkBuySingleMultiplePriceDifferentUser() public {
         uint96 _size = 10;
@@ -120,7 +119,7 @@ contract BenchMarkTest is Test, Gas {
             usdc.approve(address(marginAccount), _consumableFunds);
             marginAccount.deposit(_user, address(usdc), _consumableFunds);
             startMeasuringGas("");
-            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION, false);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i+1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -139,13 +138,12 @@ contract BenchMarkTest is Test, Gas {
             usdc.approve(address(marginAccount), _consumableFunds);
             marginAccount.deposit(_user, address(usdc), _consumableFunds);
             startMeasuringGas("");
-            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION, false);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i+1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
     }
-
 
     function testBenchmarkSellSingleSamePriceSameUser() public {
         console.log("LIMIT SELL ORDER 1PP: ");
@@ -159,7 +157,7 @@ contract BenchMarkTest is Test, Gas {
         marginAccount.deposit(_user, address(eth), _iterations * _size * 10 ** 18);
         for(uint24 i; i < _iterations; i++){
             startMeasuringGas("");
-            orderBook.addSellOrder(_price*PRICE_PRECISION, _size * SIZE_PRECISION);
+            orderBook.addSellOrder(_price*PRICE_PRECISION, _size * SIZE_PRECISION, false);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, "GAS USED: ", gasVar);
         }
@@ -178,7 +176,7 @@ contract BenchMarkTest is Test, Gas {
         marginAccount.deposit(_user, address(eth), _iterations * _size * 10 ** eth.decimals());
         for(uint24 i; i < _iterations; i++){
             startMeasuringGas("");
-            orderBook.addSellOrder((_startingPrice + i) * PRICE_PRECISION, _size * SIZE_PRECISION);
+            orderBook.addSellOrder((_startingPrice + i) * PRICE_PRECISION, _size * SIZE_PRECISION, false);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, "GAS USED: ", gasVar);
         }
@@ -375,9 +373,6 @@ contract BenchMarkTest is Test, Gas {
         }
     }
 
-
-
-
     function testBenchmarkCancelBuyOrders() public {
         console.log("CANCEL BUY ORDERS 1LO : ");
         uint24 _price = 3600;
@@ -390,7 +385,7 @@ contract BenchMarkTest is Test, Gas {
         usdc.approve(address(marginAccount), _iterations * _usdcForEachOrder);
         marginAccount.deposit(_maker, address(usdc), _iterations * _usdcForEachOrder);
         for(uint24 i = 0; i < _iterations; i++) {
-            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION, false);
         }
         vm.stopPrank();
         for(uint24 i = 0; i < _iterations; i++) {
@@ -416,7 +411,7 @@ contract BenchMarkTest is Test, Gas {
         eth.approve(address(marginAccount), _iterations * _size * 10 ** eth.decimals());
         marginAccount.deposit(_maker, address(eth), _iterations * _size * 10 ** eth.decimals());
         for(uint24 i; i < _iterations; i++) {
-            orderBook.addSellOrder(_price * PRICE_PRECISION, _size * SIZE_PRECISION);
+            orderBook.addSellOrder(_price * PRICE_PRECISION, _size * SIZE_PRECISION, false);
         }
         vm.stopPrank();
         for(uint24 i = 0; i < _iterations; i++) {

@@ -19,20 +19,22 @@ interface IOrderBook {
         uint256 _takerFeeBps
     ) external;
 
-    function addBuyOrder(uint24 _price, uint96 size) external;
+    function addBuyOrder(uint24 _price, uint96 size, bool _postOnly) external;
 
-    function addSellOrder(uint24 _price, uint96 size) external;
+    function addSellOrder(uint24 _price, uint96 size, bool _postOnly) external;
 
     function batchCancelOrders(uint40[] calldata _orderIds) external;
 
     function placeMultipleBuyOrders(
         uint24[] memory _prices,
-        uint96[] memory _sizes
+        uint96[] memory _sizes,
+        bool _postOnly
     ) external;
 
     function placeMultipleSellOrders(
         uint24[] memory _prices,
-        uint96[] memory _sizes
+        uint96[] memory _sizes,
+        bool _postOnly
     ) external;
 
     function placeAndExecuteMarketBuy(

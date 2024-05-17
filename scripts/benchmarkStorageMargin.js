@@ -45,7 +45,8 @@ async function main() {
     for (let i = 0; i < 100; i++) {
         var tx = await orderBookMaker.addBuyOrder(
             180000 + (i * 100),
-            10**8
+            10**8,
+            false
         );
         const receipt = await tx.wait();
 
@@ -81,6 +82,7 @@ async function main() {
         var tx = await orderBookMaker.addBuyOrder(
             181100,
             10**8,
+            false
         );
         const receipt = await tx.wait();
 
@@ -147,6 +149,7 @@ async function main() {
         var tx = await orderBookMaker.addBuyOrder(
             190000,
             10**8,
+            false
         );
         const receipt = await tx.wait();
 

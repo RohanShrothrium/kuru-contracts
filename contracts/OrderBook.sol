@@ -185,7 +185,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      * @param _price Price of the buy order.
      * @param size Size of the buy order.
      */
-    function addBuyOrder(uint24 _price, uint96 size) public marketActive {
+    function addBuyOrder(uint24 _price, uint96 size, bool _postOnly) public marketActive {
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
@@ -196,6 +196,10 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         _consumedFunds += uint24((_remainingSize * _price)/sizePrecision);
 
         _consumeFunds(quoteAsset, (((_consumedFunds) * 10**quoteAssetDecimals) / pricePrecision), msg.sender);
+
+        if (_postOnly) {
+            require(size == _remainingSize, "OrderBook: Post only crossed the book");
+        }
 
         if (_remainingSize > 0) {
             uint40 _orderId = s_orderIdCounter;
@@ -216,14 +220,18 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      * @param _price Price of the sell order.
      * @param size Size of the sell order.
      */
-    function addSellOrder(uint24 _price, uint96 size) public marketActive {
+    function addSellOrder(uint24 _price, uint96 size, bool _postOnly) public marketActive {
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
 
+        uint256 _tokenCredit;
         _consumeFunds(baseAsset, ((size * 10**baseAssetDecimals) / sizePrecision), msg.sender);
 
-        (size,) = _matchAggressiveSell(_price, size, true);
+        (size, _tokenCredit) = _matchAggressiveSell(_price, size, true);
+        if (_postOnly) {
+            require(_tokenCredit > 0, "OrderBook: Post only crossed the book");
+        }
 
         if (size == 0) return;
 
@@ -410,11 +418,11 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      * @param _prices Array of prices for the buy orders.
      * @param _sizes Array of sizes for the buy orders.
      */
-    function placeMultipleBuyOrders(uint24[] calldata _prices, uint96[] calldata _sizes) external marketActive {
+    function placeMultipleBuyOrders(uint24[] calldata _prices, uint96[] calldata _sizes, bool _postOnly) external marketActive {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {
-            addBuyOrder(_prices[i], _sizes[i]);
+            addBuyOrder(_prices[i], _sizes[i], _postOnly);
         }
     }
 
@@ -423,11 +431,11 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      * @param _prices Array of prices for the sell orders.
      * @param _sizes Array of sizes for the sell orders.
      */
-    function placeMultipleSellOrders(uint24[] calldata _prices, uint96[] calldata _sizes) external marketActive {
+    function placeMultipleSellOrders(uint24[] calldata _prices, uint96[] calldata _sizes, bool _postOnly) external marketActive {
         require(_prices.length == _sizes.length, "OrderBook: Prices and sizes array length must match");
 
         for (uint256 i = 0; i < _prices.length; i++) {
-            addSellOrder(_prices[i], _sizes[i]);
+            addSellOrder(_prices[i], _sizes[i], _postOnly);
         }
     }
 
@@ -669,6 +677,13 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /**
+     * @dev Getter of market params.
+     */
+    function getMarketParams() external view returns (uint24, uint96, address, uint256, address, uint256) {
+        return (pricePrecision, sizePrecision, address(baseAsset), baseAssetDecimals, address(quoteAsset), quoteAssetDecimals);
+    }
+
+    /**
      * @dev Getter function to fetch price precision.
      */
     function getPricePrecision() external view returns (uint24) {
@@ -734,4 +749,77 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         return data;
     }
 
+    function getActiveBuysForAddress(address _maker) external view returns (bytes memory) {
+        bytes memory data = abi.encode(block.number);
+
+        uint24 price = TreeMath.findFirstLeft(s_buyTree, 0); // Find the smallest ID in the tree
+        while (price != type(uint24).max || price == 0) {
+            uint40 orderId = s_buyPricePoints[price].head;
+            while (orderId != 0) {
+                if (s_orders[orderId].ownerAddress == _maker) {
+                    data = bytes.concat(data, abi.encode(orderId));
+                }
+                orderId = s_orders[orderId].next;
+            }
+
+            price = TreeMath.findFirstLeft(s_buyTree, price + 1);
+            if (price == 0) break; // If there is no higher ID, stop the iteration
+        }
+
+        return data;
+    }
+
+    function getActiveSellsForAddress(address _maker) external view returns (bytes memory) {
+        bytes memory data = abi.encode(block.number);
+
+        uint24 price = TreeMath.findFirstLeft(s_sellTree, 0); // Find the smallest ID in the tree
+        while (price != type(uint24).max || price == 0) {
+            uint40 orderId = s_sellPricePoints[price].head;
+            while (orderId != 0) {
+                if (s_orders[orderId].ownerAddress == _maker) {
+                    data = bytes.concat(data, abi.encode(orderId));
+                }
+                orderId = s_orders[orderId].next;
+            }
+            // Find the next ID
+            price = TreeMath.findFirstLeft(s_sellTree, price + 1);
+            if (price == 0) break; // If there is no higher ID, stop the iteration
+        }
+
+        return data;
+    }
+
+    function getActiveOrdersForAddress(address _maker) external view returns (bytes memory) {
+        bytes memory data = abi.encode(block.number);
+
+        uint24 price = TreeMath.findFirstLeft(s_buyTree, 0); // Find the smallest ID in the tree
+        while (price != type(uint24).max || price == 0) {
+            uint40 orderId = s_buyPricePoints[price].head;
+            while (orderId != 0) {
+                if (s_orders[orderId].ownerAddress == _maker) {
+                    data = bytes.concat(data, abi.encode(orderId));
+                }
+                orderId = s_orders[orderId].next;
+            }
+
+            price = TreeMath.findFirstLeft(s_buyTree, price + 1);
+            if (price == 0) break; // If there is no higher ID, stop the iteration
+        }
+
+        price = TreeMath.findFirstLeft(s_sellTree, 0); // Find the smallest ID in the tree
+        while (price != type(uint24).max || price == 0) {
+            uint40 orderId = s_sellPricePoints[price].head;
+            while (orderId != 0) {
+                if (s_orders[orderId].ownerAddress == _maker) {
+                    data = bytes.concat(data, abi.encode(orderId));
+                }
+                orderId = s_orders[orderId].next;
+            }
+            // Find the next ID
+            price = TreeMath.findFirstLeft(s_sellTree, price + 1);
+            if (price == 0) break; // If there is no higher ID, stop the iteration
+        }
+
+        return data;
+    }
 }

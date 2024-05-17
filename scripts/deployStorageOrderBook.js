@@ -8,7 +8,7 @@ async function main() {
 
     const _sizePrecision = 10**10;
     const _pricePrecision = 10**2;
-    const _tickSize = _pricePrecision/2;
+    const _tickSize = 1;
     const _minSize = 10**5;
     const _maxSize = 10**12;
     const _takerFeeBps = 0;

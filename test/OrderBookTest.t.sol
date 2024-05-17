@@ -63,7 +63,7 @@ contract OrderBookTest is Test {
         vm.startPrank(user2);
         usdc.approve(address(marginAccount), initUsdc);
         marginAccount.deposit(user2, address(usdc), (price*size)*10**18);
-        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -74,7 +74,7 @@ contract OrderBookTest is Test {
         vm.startPrank(user1);
         eth.approve(address(marginAccount), initEth);
         marginAccount.deposit(user1, address(eth), size*10**18);
-        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -99,7 +99,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user2);
         vm.expectRevert("OrderBook: Size too low");
-        orderBook.addBuyOrder(price*PRICE_PRECISION, size);
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size, false);
         vm.stopPrank();
     }
 
@@ -109,7 +109,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user2);
         vm.expectRevert("OrderBook: Size too large");
-        orderBook.addBuyOrder(price*PRICE_PRECISION, size*10**20);
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size*10**20, false);
         vm.stopPrank();
     }
 
@@ -119,7 +119,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user2);
         vm.expectRevert("OrderBook: Tick Size");
-        orderBook.addBuyOrder(price, size*SIZE_PRECISION);
+        orderBook.addBuyOrder(price, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -129,7 +129,7 @@ contract OrderBookTest is Test {
 
     //     vm.startPrank(user2);
     //     vm.expectRevert("MarginAccoiunt: Insufficient Balance");
-    //     orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+    //     orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
     //     vm.stopPrank();
     // }
 
@@ -140,7 +140,7 @@ contract OrderBookTest is Test {
         vm.startPrank(user3);
         usdc.approve(address(orderBook), initUsdc);
         vm.expectRevert("MarginAccoiunt: Insufficient Balance");
-        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -165,7 +165,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         vm.expectRevert("OrderBook: Size too low");
-        orderBook.addSellOrder(price*PRICE_PRECISION, size);
+        orderBook.addSellOrder(price*PRICE_PRECISION, size, false);
         vm.stopPrank();
     }
 
@@ -175,7 +175,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         vm.expectRevert("OrderBook: Size too large");
-        orderBook.addSellOrder(price*PRICE_PRECISION, size*10**20);
+        orderBook.addSellOrder(price*PRICE_PRECISION, size*10**20, false);
         vm.stopPrank();
     }
 
@@ -185,7 +185,7 @@ contract OrderBookTest is Test {
 
         vm.startPrank(user1);
         vm.expectRevert("OrderBook: Tick Size");
-        orderBook.addSellOrder(price, size*SIZE_PRECISION);
+        orderBook.addSellOrder(price, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -195,7 +195,7 @@ contract OrderBookTest is Test {
 
     //     vm.startPrank(user1);
     //     vm.expectRevert("ERC20: insufficient allowance");
-    //     orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+    //     orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
     //     vm.stopPrank();
     // }
 
@@ -206,7 +206,7 @@ contract OrderBookTest is Test {
         vm.startPrank(user3);
         eth.approve(address(orderBook), initEth);
         vm.expectRevert("MarginAccoiunt: Insufficient Balance");
-        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -275,7 +275,7 @@ contract OrderBookTest is Test {
         vm.startPrank(user2);
         usdc.approve(address(marginAccount), initUsdc);
         marginAccount.deposit(user2, address(usdc), (prices[0]*sizes[0] + prices[1]*sizes[1] + prices[2]*sizes[2])/PRICE_PRECISION/SIZE_PRECISION*10**18);
-        orderBook.placeMultipleBuyOrders(prices, sizes);
+        orderBook.placeMultipleBuyOrders(prices, sizes, false);
         vm.stopPrank();
 
         assertEq(usdc.balanceOf(user2), initUsdc - (prices[0]*sizes[0] + prices[1]*sizes[1] + prices[2]*sizes[2])/PRICE_PRECISION/SIZE_PRECISION*10**18);
@@ -308,7 +308,7 @@ contract OrderBookTest is Test {
         vm.startPrank(user1);
         eth.approve(address(marginAccount), initEth);
         marginAccount.deposit(user1, address(eth), (sizes[0] + sizes[1] + sizes[2])/SIZE_PRECISION*10**18);
-        orderBook.placeMultipleSellOrders(prices, sizes);
+        orderBook.placeMultipleSellOrders(prices, sizes, false);
         vm.stopPrank();
 
         assertEq(eth.balanceOf(user1), initEth - (sizes[0] + sizes[1] + sizes[2])/SIZE_PRECISION*10**18);
@@ -391,7 +391,7 @@ contract OrderBookTest is Test {
         vm.startPrank(user2);
         usdc.approve(address(marginAccount), initUsdc);
         marginAccount.deposit(user2, address(usdc), (price*size)*10**18);
-        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION);
+        orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
         vm.stopPrank();
 
         (uint256 head, uint256 tail) = orderBook.s_sellPricePoints(1800*PRICE_PRECISION);
@@ -412,7 +412,7 @@ contract OrderBookTest is Test {
         vm.startPrank(_user);
         eth.approve(address(marginAccount), initEth);
         marginAccount.deposit(_user, address(eth), _size*10**18);
-        orderBook.addSellOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+        orderBook.addSellOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -430,7 +430,7 @@ contract OrderBookTest is Test {
         vm.startPrank(_filler);
         usdc.approve(address(marginAccount), initUsdc*times);
         marginAccount.deposit(_filler, address(usdc), times*initUsdc);
-        orderBook.addBuyOrder(1801*PRICE_PRECISION, 40*SIZE_PRECISION);
+        orderBook.addBuyOrder(1801*PRICE_PRECISION, 40*SIZE_PRECISION, false);
         vm.stopPrank();
     }
     function makeAddrAndKey(string memory name) internal virtual returns (address addr, uint256 privateKey) {
