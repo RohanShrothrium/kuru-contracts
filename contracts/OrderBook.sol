@@ -88,7 +88,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     TreeMath.TreeUint24 public s_sellTree;
 
     uint40 public s_orderIdCounter;
-
     bool marketPaused;
 
     uint96 sizePrecision;
@@ -186,6 +185,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      * @param size Size of the buy order.
      */
     function addBuyOrder(uint24 _price, uint96 size, bool _postOnly) public marketActive {
+        require(_price > 0, "OrderBook: Price too low");
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
@@ -193,14 +193,13 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         uint96 _remainingSize;
         uint24 _consumedFunds;
         (_remainingSize, _consumedFunds) = _matchAggressiveBuyWithCap(_price, size);
+        
         _consumedFunds += uint24((_remainingSize * _price)/sizePrecision);
-
+        
         _consumeFunds(quoteAsset, (((_consumedFunds) * 10**quoteAssetDecimals) / pricePrecision), msg.sender);
-
         if (_postOnly) {
             require(size == _remainingSize, "OrderBook: Post only crossed the book");
         }
-
         if (_remainingSize > 0) {
             uint40 _orderId = s_orderIdCounter;
             s_orderIdCounter = _orderId + 1;
@@ -214,7 +213,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             emit OrderCreated(_orderId + 1, msg.sender, _remainingSize, _price, true);
         }
     }
-
     /**
      * @dev Adds a sell order to the order book.
      * @param _price Price of the sell order.
@@ -224,7 +222,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
-
+        require(_price > 0, "OrderBook: Price too low");
         uint256 _tokenCredit;
         _consumeFunds(baseAsset, ((size * 10**baseAssetDecimals) / sizePrecision), msg.sender);
 
@@ -237,11 +235,9 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
         uint40 _orderId = s_orderIdCounter;
         s_orderIdCounter = _orderId + 1;
-
         // Add price to the tree and update DLL of price poit.
         TreeMath.add(s_sellTree, _price);
         uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId + 1);
-
         _addOrder(_price, size, _orderId + 1, false, _prevOrderId);
 
         emit OrderCreated(_orderId + 1, msg.sender, size, _price, false);
@@ -709,6 +705,20 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      */
     function getQuoteAssetDecimals() external view returns (uint256) {
         return quoteAssetDecimals;
+    }
+    
+    function buyOrdersLeft() external view returns (bool) {
+        if(TreeMath.findFirstRight(s_buyTree, type(uint24).max) != type(uint24).max) {
+            return true;
+        }
+        return false;
+    }
+
+    function sellOrdersLeft() external view returns (bool) {
+        if(TreeMath.findFirstLeft(s_sellTree,0) != 0) {
+            return true;
+        }
+        return false;
     }
 
     function getL2Book() external view returns (bytes memory) {

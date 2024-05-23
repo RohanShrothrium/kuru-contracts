@@ -36,16 +36,6 @@ contract OrderBookTest is Test {
         mon = new MintableERC20("MON", "MON");
         usdc = new MintableERC20("USD", "USDC");
 
-        if(address(eth) > address(mon)) {
-            (eth, mon) = _swapTokens(eth, mon);
-        }
-        if(address(mon) > address(usdc)) {
-            (mon, usdc) = _swapTokens(mon, usdc);
-        }
-        if(address(eth) > address(mon)) {
-            (eth, mon) = _swapTokens(eth, mon);
-        }
-
         router = new Router();
 
         marginAccount = new MarginAccount(address(router));

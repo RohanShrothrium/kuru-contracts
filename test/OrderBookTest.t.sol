@@ -29,11 +29,6 @@ contract OrderBookTest is Test {
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USD", "USDC");
-        if(address(eth) > address(usdc)) {
-            MintableERC20 temp = eth;
-            eth = usdc;
-            usdc = temp;
-        }
         uint96 _sizePrecision = 10**10;
         uint24 _pricePrecision = 10**2;
         uint96 _tickSize = _pricePrecision/2;

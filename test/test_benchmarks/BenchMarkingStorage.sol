@@ -33,11 +33,6 @@ contract BenchMarkTest is Test, Gas {
 
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
-        if(address(eth) > address(usdc)) {
-            MintableERC20 temp = eth;
-            eth = usdc;
-            usdc = temp;
-        }
         uint96 _tickSize = PRICE_PRECISION/2;
         uint96 _minSize = 10**5;
         uint96 _maxSize = 10**12;

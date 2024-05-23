@@ -57,11 +57,6 @@ contract Router is IRouter, OwnableUpgradeable {
     ) public returns (address proxy) {
 
         {
-            (_baseAssetAddress, _quoteAssetAddress) = _reOrder(_baseAssetAddress, _quoteAssetAddress);
-        }
-
-        
-        {
             bytes32 _salt = _getSalt(
                 _baseAssetAddress,
                 _quoteAssetAddress,
@@ -240,6 +235,9 @@ contract Router is IRouter, OwnableUpgradeable {
         uint96 _maxSize,
         uint256 _takerFeeBps
     ) internal pure returns (bytes32) {
+        {
+            (_baseAssetAddress, _quoteAssetAddress) = _reOrder(_baseAssetAddress, _quoteAssetAddress);
+        }
         return
             keccak256(
                 abi.encodePacked(
