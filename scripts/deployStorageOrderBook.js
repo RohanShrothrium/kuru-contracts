@@ -8,7 +8,7 @@ async function main() {
 
     const _sizePrecision = 10**10;
     const _pricePrecision = 10**2;
-    const _tickSize = _pricePrecision/2;
+    const _tickSize = 1;
     const _minSize = 10**5;
     const _maxSize = 10**12;
     const _takerFeeBps = 0;
@@ -28,15 +28,17 @@ async function main() {
 
     // Fund the shark account with a substantial amount of tokens
     await wbtc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"));
+    await wbtc.mint(userAddress, hre.ethers.utils.parseEther("1000000"));
     console.log("Shark WBTC balance:", (await wbtc.balanceOf(takerAddress)).toString());
 
     await usdc.mint(userAddress, hre.ethers.utils.parseEther("1000000"));
+    await usdc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"));
     console.log("Shark USDC balance:", (await usdc.balanceOf(userAddress)).toString());
 
     // Your existing deployment logic here, modified to use the deployed token addresses
     // Replace wbtcAddress and usdcAddress with the addresses of the deployed contracts
-    const wbtcAddress = wbtc.address;
-    const usdcAddress = usdc.address;
+    var wbtcAddress = wbtc.address;
+    var usdcAddress = usdc.address;
 
     // deploy Router Contract
     const Router = await hre.ethers.getContractFactory("Router");
@@ -46,11 +48,6 @@ async function main() {
     const routerAddress = router.address;
     console.log("Router deployed to:", routerAddress);
 
-    // initialize router contract
-    const routerInitTx = await router.initialize(userAddress);
-    await routerInitTx.wait();
-    console.log("Router Initialized with owner:", userAddress);
-
     // deploy Margin Account Contract
     const MarginAccount = await hre.ethers.getContractFactory("MarginAccount");
     const marginAccount = await MarginAccount.deploy(routerAddress);
@@ -59,23 +56,26 @@ async function main() {
     const marginAccountAddress = marginAccount.address;
     console.log("MarginAccountAddress deployed to:", marginAccountAddress);
 
-    // set margin account address for router
-    const setMarginTx = await router.setMarginAccount(marginAccountAddress);
-    await setMarginTx.wait();
-    console.log("Router set with margin account address:", marginAccountAddress);
-
+    if(hre.ethers.BigNumber.from(wbtcAddress).gt(hre.ethers.BigNumber.from(usdcAddress))) {
+        const temp = wbtcAddress;
+        wbtcAddress = usdcAddress;
+        usdcAddress = temp;
+    }
     // deploy CranklessOrderBook contract
-    const CranklessOrderBook = await hre.ethers.getContractFactory("CranklessStorageOrderBook");
-    const cranklessOrderBook = await CranklessOrderBook.deploy(wbtcAddress, wbtcDecimals, usdcAddress, usdcDecimals, marginAccountAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
-    await cranklessOrderBook.deployed();
+    const CranklessOrderBook = await hre.ethers.getContractFactory("OrderBook");
+    // const cranklessOrderBook = await CranklessOrderBook.deploy(wbtcAddress, wbtcDecimals, usdcAddress, usdcDecimals, marginAccountAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    const implementation = await CranklessOrderBook.deploy();
+    await implementation.deployed();
+    // Initialize Router
+    const initializeRouterTx = await router.initialize(userAddress, marginAccountAddress, implementation.address);    
+    await initializeRouterTx.wait();
+    console.log("Router initialized with \n Admin :", userAddress, "\nMargin Account: ", marginAccountAddress, "\nImplementation:", implementation.address);
 
-    const cranklessOrderBookAddress = cranklessOrderBook.address;
+    const cranklessOrderBookAddress = await router.callStatic.deployProxy(wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    const deployProxyTx = await router.deployProxy(wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    await deployProxyTx.wait();
+
     console.log("CranklessOrderBook deployed to:", cranklessOrderBookAddress);
-
-    // register wbtc-usdc market
-    const marketRegisterTx = await router.registerMarket(wbtcAddress, usdcAddress, cranklessOrderBookAddress);
-    await marketRegisterTx.wait();
-    console.log("wbtc-usdc market registered");
 
     const config = {
         "usdcAddress": usdcAddress,

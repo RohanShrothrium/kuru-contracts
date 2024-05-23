@@ -18,7 +18,6 @@ contract MarginAccount is IMarginAccount {
 
     // Native token
     address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-
     constructor(address _router) {
         routerContractAddress = _router;
     }
@@ -133,7 +132,12 @@ contract MarginAccount is IMarginAccount {
             "Insufficient balance"
         );
         balances[_accountKey(msg.sender, _token)] -= _amount;
+        if(_token == ETH) {
         payable(msg.sender).transfer(_amount);
+        } 
+        else {
+            IERC20(_token).transfer(msg.sender, _amount);
+        }
     }
 
     /**

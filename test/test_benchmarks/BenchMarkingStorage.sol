@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {CranklessStorageOrderBook} from "../../contracts/CranklessStorageOrderBook.sol";
+import {OrderBook} from "../../contracts/OrderBook.sol";
 import {MintableERC20} from "../lib/MintableERC20.sol";
 import {Router} from "../../contracts/Router.sol";
 import {MarginAccount} from "../../contracts/MarginAccount.sol";
@@ -13,7 +13,7 @@ import "forge-std/Test.sol";
 
 contract BenchMarkTest is Test, Gas {
 
-    CranklessStorageOrderBook orderBook;
+    OrderBook orderBook;
     MintableERC20 usdc;
     MintableERC20 eth;
     Router router;
@@ -39,21 +39,21 @@ contract BenchMarkTest is Test, Gas {
         uint256 _takerFeeBps = 0;
 
         router = new Router();
-        router.initialize(address(this));
         u1 = genAddress();
         u2 = genAddress();
         u3 = genAddress();
         marginAccount = new MarginAccount(address(router));
 
-        router.setMarginAccount(address(marginAccount));
+        OrderBook implementation = new OrderBook();
 
-        orderBook = new CranklessStorageOrderBook(address(eth), 18, address(usdc), 18, address(marginAccount), SIZE_PRECISION, PRICE_PRECISION, _tickSize, _minSize, _maxSize, _takerFeeBps);
+        router.initialize(address(this), address(marginAccount), address(implementation));
 
-        router.registerMarket(address(eth), address(usdc), address(orderBook));
+        address proxy = router.deployProxy(address(eth), address(usdc), SIZE_PRECISION, PRICE_PRECISION, _tickSize, _minSize, _maxSize, _takerFeeBps);
+
+        orderBook = OrderBook(proxy);
 
         eth.mint(u1, initEth);
         usdc.mint(u2, initUsdc);
-
 
 
     }
@@ -69,7 +69,7 @@ contract BenchMarkTest is Test, Gas {
 
     function _addCustomBuyOrder(address _user, uint24 _price, uint96 _size) internal {       
         vm.startPrank(_user);
-        orderBook.addBuyOrder(_price, _size);
+        orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
 
@@ -79,14 +79,14 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_maker);
             eth.approve(address(marginAccount), _size*10**18);
             marginAccount.deposit(_maker, address(eth), _size*10**18);
-            orderBook.addSellOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+            orderBook.addSellOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION, false);
             vm.stopPrank();
     }
 
 
     function _addCustomSellOrder(address _user, uint24 _price, uint96 _size) internal {
         vm.startPrank(_user);
-        orderBook.addSellOrder(_price, _size);
+        orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }
 
@@ -98,27 +98,8 @@ contract BenchMarkTest is Test, Gas {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _usdcForEachOrder);
         marginAccount.deposit(_maker, address(usdc), _usdcForEachOrder);
-        orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+        orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION, false);
         vm.stopPrank();
-    }
-
-    function testXBenchmarkBuySingleMultiplePriceSameUser() public {
-        address _user = genAddress();
-        uint96 _size = 10;
-        console.log("LIMIT BUY ORDER DIFFERENT PRICE SAME USER : ");
-        for(uint24 i; i < 10; i++) {   
-            uint24 _price = 3600 + 100*i;
-            uint256 _consumableFunds = (uint256(_price) * uint256(_size) * 10**usdc.decimals());
-            usdc.mint(_user, _consumableFunds);
-            vm.startPrank(_user);
-            usdc.approve(address(marginAccount), _consumableFunds);
-            marginAccount.deposit(_user, address(usdc), _consumableFunds);
-            startMeasuringGas("");
-            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
-            uint256 gasVar = stopMeasuringGas();
-            console.log("ITERATION ", i+1, " GAS USED: ", gasVar);
-            vm.stopPrank();
-        }
     }
 
     function testBenchmarkBuySingleMultiplePriceDifferentUser() public {
@@ -133,7 +114,7 @@ contract BenchMarkTest is Test, Gas {
             usdc.approve(address(marginAccount), _consumableFunds);
             marginAccount.deposit(_user, address(usdc), _consumableFunds);
             startMeasuringGas("");
-            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION, false);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i+1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -152,64 +133,11 @@ contract BenchMarkTest is Test, Gas {
             usdc.approve(address(marginAccount), _consumableFunds);
             marginAccount.deposit(_user, address(usdc), _consumableFunds);
             startMeasuringGas("");
-            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION, false);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i+1, " GAS USED: ", gasVar);
             vm.stopPrank();
         }
-    }
-
-    function testXBenchmarkBuyAndMatchMultipleOrders() public {
-        address _user = genAddress();
-        uint24 _price = 3600;
-        uint96 _size = 10;
-        uint96 sellSizeEth = 4*10**18;
-        uint256 _consumableFunds = (uint256(_price) * uint256(_size) * 10**usdc.decimals());
-        usdc.mint(_user, _consumableFunds);
-        for(uint i=0; i<3; i++) {
-            address _maker = genAddress();
-            eth.mint(_maker, sellSizeEth);
-            vm.startPrank(_maker);
-            eth.approve(address(marginAccount), sellSizeEth);
-            marginAccount.deposit(_maker, address(eth), sellSizeEth);
-            orderBook.addSellOrder(_price*PRICE_PRECISION, sellSizeEth*SIZE_PRECISION/10**18);
-            vm.stopPrank();
-        }
-        vm.startPrank(_user);
-        usdc.approve(address(marginAccount), _consumableFunds);
-        usdc.balanceOf(_user);
-        marginAccount.deposit(_user, address(usdc), _consumableFunds);
-        assert(usdc.balanceOf(_user) == 0);
-        orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
-        vm.stopPrank();
-        assert(usdc.balanceOf(_user) == 0);
-    }
-
-    function testXBenchmarkBuyAndMatchMultipleOrdersMultiplePrice() public {
-        address _user = genAddress();
-        uint24 _price = 3600;
-        uint96 _size = 10;
-        uint96 sellSizeEth = 4*10**18;
-        uint256 _consumableFunds = (uint256(_price) * uint256(_size) * 10**usdc.decimals());
-        usdc.mint(_user, _consumableFunds);
-        //place 3 sell orders at descending prices
-        //begin with _price and dock 1% off the price for each iteration
-        uint24 price_DEVIATION = _price/(10**2);
-        for(uint24 i = 0; i < 3; i++) {
-            address _maker = genAddress();
-            eth.mint(_maker, sellSizeEth);
-            vm.startPrank(_maker);
-            eth.approve(address(marginAccount), sellSizeEth);
-            marginAccount.deposit(_maker, address(eth), sellSizeEth);
-            orderBook.addSellOrder((_price- i*price_DEVIATION)*PRICE_PRECISION, sellSizeEth*SIZE_PRECISION/10**18);
-            vm.stopPrank();
-        }
-        vm.startPrank(_user);
-        usdc.approve(address(marginAccount), _consumableFunds);
-        marginAccount.deposit(_user, address(usdc), _consumableFunds);
-        orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
-        vm.stopPrank();
-        assert(usdc.balanceOf(_user)==0);
     }
 
     function testBenchmarkSellSingleSamePriceSameUser() public {
@@ -224,7 +152,7 @@ contract BenchMarkTest is Test, Gas {
         marginAccount.deposit(_user, address(eth), _iterations * _size * 10 ** 18);
         for(uint24 i; i < _iterations; i++){
             startMeasuringGas("");
-            orderBook.addSellOrder(_price*PRICE_PRECISION, _size * SIZE_PRECISION);
+            orderBook.addSellOrder(_price*PRICE_PRECISION, _size * SIZE_PRECISION, false);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, "GAS USED: ", gasVar);
         }
@@ -243,7 +171,7 @@ contract BenchMarkTest is Test, Gas {
         marginAccount.deposit(_user, address(eth), _iterations * _size * 10 ** eth.decimals());
         for(uint24 i; i < _iterations; i++){
             startMeasuringGas("");
-            orderBook.addSellOrder((_startingPrice + i) * PRICE_PRECISION, _size * SIZE_PRECISION);
+            orderBook.addSellOrder((_startingPrice + i) * PRICE_PRECISION, _size * SIZE_PRECISION, false);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, "GAS USED: ", gasVar);
         }
@@ -440,47 +368,6 @@ contract BenchMarkTest is Test, Gas {
         }
     }
 
-    function testXBenchmarkPlaceMultipleBuyDifferentPrices() public {
-        //We construct 3 orders from price point 3600 onwards, with a price difference of 10
-        //Size is kept constant
-        uint24[] memory _prices = new uint24[](3);
-        uint256 _totalUsdcToBeMinted;
-        uint96 _size = 10;
-        uint96[] memory _sizes = new uint96[](3);
-        for(uint24 i; i < 3; i++) {
-            _prices[i] = (3600 + i*10)*PRICE_PRECISION;
-            _sizes[i] = _size*SIZE_PRECISION;
-            _totalUsdcToBeMinted += _size*_prices[i]*10**18;
-        }
-        address _user = genAddress();
-        usdc.mint(_user, _totalUsdcToBeMinted);
-        vm.startPrank(_user);
-        usdc.approve(address(marginAccount), _totalUsdcToBeMinted);
-        marginAccount.deposit(_user, address(usdc), _totalUsdcToBeMinted);
-        orderBook.placeMultipleBuyOrders(_prices, _sizes);
-        vm.stopPrank();
-    }
-
-    function testXBenchmarkPlaceMultipleSellDifferentPrices() public {
-        //We construct 3 orders from price point 3600 onwards, with a price difference of 10
-        //Size is kept constant
-        uint24[] memory _prices = new uint24[](3);
-        uint96 _size = 10;
-        uint96[] memory _sizes = new uint96[](3);
-        for(uint24 i; i < 3; i++) {
-            _prices[i] = (3600 + i*10)*PRICE_PRECISION;
-            _sizes[i] = _size*SIZE_PRECISION;
-        }
-        address _user = genAddress();
-        uint256 _totalEthToBeMinted = 3*_size*10**18;
-        eth.mint(_user, _totalEthToBeMinted);
-        vm.startPrank(_user);
-        eth.approve(address(marginAccount), _totalEthToBeMinted);
-        marginAccount.deposit(_user, address(eth), _totalEthToBeMinted);
-        orderBook.placeMultipleSellOrders(_prices, _sizes);
-        vm.stopPrank();
-    }
-
     function testBenchmarkCancelBuyOrders() public {
         console.log("CANCEL BUY ORDERS 1LO : ");
         uint24 _price = 3600;
@@ -493,11 +380,11 @@ contract BenchMarkTest is Test, Gas {
         usdc.approve(address(marginAccount), _iterations * _usdcForEachOrder);
         marginAccount.deposit(_maker, address(usdc), _iterations * _usdcForEachOrder);
         for(uint24 i = 0; i < _iterations; i++) {
-            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION);
+            orderBook.addBuyOrder(_price*PRICE_PRECISION, _size*SIZE_PRECISION, false);
         }
         vm.stopPrank();
         for(uint24 i = 0; i < _iterations; i++) {
-            uint256[] memory _orderId = new uint256[](1);
+            uint40[] memory _orderId = new uint40[](1);
             _orderId[0] = i + 1;
             vm.startPrank(_maker);
             startMeasuringGas("");
@@ -519,11 +406,11 @@ contract BenchMarkTest is Test, Gas {
         eth.approve(address(marginAccount), _iterations * _size * 10 ** eth.decimals());
         marginAccount.deposit(_maker, address(eth), _iterations * _size * 10 ** eth.decimals());
         for(uint24 i; i < _iterations; i++) {
-            orderBook.addSellOrder(_price * PRICE_PRECISION, _size * SIZE_PRECISION);
+            orderBook.addSellOrder(_price * PRICE_PRECISION, _size * SIZE_PRECISION, false);
         }
         vm.stopPrank();
         for(uint24 i = 0; i < _iterations; i++) {
-            uint256[] memory _orderId = new uint256[](1);
+            uint40[] memory _orderId = new uint40[](1);
             _orderId[0] = i + 1;
             vm.startPrank(_maker);
             startMeasuringGas("");

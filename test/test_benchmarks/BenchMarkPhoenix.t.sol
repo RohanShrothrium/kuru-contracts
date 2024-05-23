@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {CranklessStorageOrderBook} from "../../contracts/CranklessStorageOrderBook.sol";
+import {OrderBook} from "../../contracts/OrderBook.sol";
 import {MintableERC20} from "../lib/MintableERC20.sol";
 import {Router} from "../../contracts/Router.sol";
 import {MarginAccount} from "../../contracts/MarginAccount.sol";
@@ -11,7 +11,7 @@ import {Gas} from "./gas_helpers/Gas.sol";
 import {Test, console} from "forge-std/Test.sol";
 
 contract BenchMarkTest is Test, Gas {
-    CranklessStorageOrderBook orderBook;
+    OrderBook orderBook;
     MintableERC20 usdc; 
     MintableERC20 eth;
     Router router;
@@ -31,26 +31,29 @@ contract BenchMarkTest is Test, Gas {
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
+        if(address(eth) > address(usdc)){
+            MintableERC20 temp = eth;
+            eth = usdc; 
+            usdc = temp;
+        }
         uint96 _tickSize = PRICE_PRECISION / 2;
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 12;
         uint256 _takerFeeBps = 0;
 
         router = new Router();
-        router.initialize(address(this));
         u1 = genAddress();
         u2 = genAddress();
         u3 = genAddress();
         marginAccount = new MarginAccount(address(router));
 
-        router.setMarginAccount(address(marginAccount));
+        OrderBook implementation = new OrderBook();
 
-        orderBook = new CranklessStorageOrderBook(
+        router.initialize(address(this), address(marginAccount), address(implementation));
+
+        address proxy = router.deployProxy(
             address(eth),
-            18,
             address(usdc),
-            18,
-            address(marginAccount),
             SIZE_PRECISION,
             PRICE_PRECISION,
             _tickSize,
@@ -59,7 +62,7 @@ contract BenchMarkTest is Test, Gas {
             _takerFeeBps
         );
 
-        router.registerMarket(address(eth), address(usdc), address(orderBook));
+        orderBook = OrderBook(proxy);
 
         eth.mint(u1, initEth);
         usdc.mint(u2, initUsdc);
@@ -82,7 +85,7 @@ contract BenchMarkTest is Test, Gas {
         uint96 _size
     ) internal {
         vm.startPrank(_user);
-        orderBook.addBuyOrder(_price, _size);
+        orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
 
@@ -96,7 +99,7 @@ contract BenchMarkTest is Test, Gas {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _usdcForEachOrder);
         marginAccount.deposit(_maker, address(usdc), _usdcForEachOrder);
-        orderBook.addBuyOrder(_price * PRICE_PRECISION, _size * SIZE_PRECISION);
+        orderBook.addBuyOrder(_price * PRICE_PRECISION, _size * SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
@@ -111,7 +114,8 @@ contract BenchMarkTest is Test, Gas {
         marginAccount.deposit(_maker, address(eth), _size * 10 ** 18);
         orderBook.addSellOrder(
             _price * PRICE_PRECISION,
-            _size * SIZE_PRECISION
+            _size * SIZE_PRECISION,
+            false
         );
         vm.stopPrank();
     }
@@ -122,7 +126,7 @@ contract BenchMarkTest is Test, Gas {
         uint96 _size
     ) internal {
         vm.startPrank(_user);
-        orderBook.addSellOrder(_price, _size);
+        orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }
 

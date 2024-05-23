@@ -29,9 +29,12 @@ async function main() {
     await tx.wait();
 
     // create contract instance of OrderBook from config address
-    const orderBookMaker = await hre.ethers.getContractAt("CranklessStorageOrderBook", config.cranklessOrderBookAddress);
-    const orderBookTaker = await hre.ethers.getContractAt("CranklessStorageOrderBook", config.cranklessOrderBookAddress, taker);
+    const orderBookMaker = await hre.ethers.getContractAt("OrderBook", config.cranklessOrderBookAddress);
+    const orderBookTaker = await hre.ethers.getContractAt("OrderBook", config.cranklessOrderBookAddress, taker);
 
+    // const OrderBook = await hre.ethers.getContractFactory("OrderBook");
+    // const orderBookMaker = OrderBook.attach(config.cranklessOrderBookAddress);
+    // const orderBookTaker = OrderBook.attach(config.cranklessOrderBookAddress, taker);
     // loop over 100 and place limit orders
     // prices: 1800, 1801, 1802, ... ,1899
     // orderIds: 1, 2, 3, ..., 100
@@ -42,7 +45,8 @@ async function main() {
     for (let i = 0; i < 100; i++) {
         var tx = await orderBookMaker.addBuyOrder(
             180000 + (i * 100),
-            10**8
+            10**8,
+            false
         );
         const receipt = await tx.wait();
 
@@ -78,6 +82,7 @@ async function main() {
         var tx = await orderBookMaker.addBuyOrder(
             181100,
             10**8,
+            false
         );
         const receipt = await tx.wait();
 
@@ -144,6 +149,7 @@ async function main() {
         var tx = await orderBookMaker.addBuyOrder(
             190000,
             10**8,
+            false
         );
         const receipt = await tx.wait();
 
