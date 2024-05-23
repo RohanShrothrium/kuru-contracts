@@ -48,22 +48,12 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     );
 
     /**
-     * @dev Emitted when one or more orders are updated.
-     * @param orderIds Array of order identifiers that were updated.
-     * @param updatedSizes Array of new sizes for the corresponding orders. Each size
-     * corresponds to the order ID at the same index in the `orderIds` array.
-     */
-    event OrdersUpdated(
-        uint40[] orderIds,
-        uint96[] updatedSizes
-    );
-
-    /**
      * @dev Emitted when one or more orders are completed or canceled.
      * @param orderId Array of order identifiers that were completed or canceled.
      */
     event OrdersCanceled(
-        uint40[] orderId
+        uint40[] orderId,
+        address owner
     );
 
     /***
@@ -76,6 +66,9 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      */
     event Trade(
         uint40 orderId,
+        address makerAddress,
+        bool isBuy,
+        uint24 price,
         uint96 updatedSize,
         address takerAddress,
         uint96 filledSize
@@ -276,7 +269,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             _cancelOrder(_orderIds[i]);
         }
 
-        emit OrdersCanceled(_orderIds);
+        emit OrdersCanceled(_orderIds, msg.sender);
     }
 
     /**
@@ -360,53 +353,45 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /**
-     * @dev Decreases the size of multiple orders.
-     * This function allows a user to decrease the size of multiple orders they own.
-     * It iterates over the provided order IDs and updates their sizes accordingly.
-     * @param _orderIds Array of order IDs to be decreased in size.
-     * @param _updatedSizes Array of new sizes for the orders. Each size corresponds to the order ID at the same index in the _orderIds array.
+     * @dev Batch updates orders by placing multiple buy and sell orders and canceling orders.
+     * @param buyPrices Array of prices for the buy orders.
+     * @param buySizes Array of sizes for the buy orders.
+     * @param sellPrices Array of prices for the sell orders.
+     * @param sellSizes Array of sizes for the sell orders.
+     * @param orderIdsToCancel Array of order IDs to cancel.
+     * @param postOnly Boolean indicating if the orders should be post-only.
      */
-    function decreaseOrders(uint40[] calldata _orderIds, uint96[] calldata _updatedSizes, bool _useMargin) external marketActive {
-        for (uint256 i = 0; i < _orderIds.length; i++) {
-            _decreaseOrder(_orderIds[i], _updatedSizes[i], _useMargin);
+    function batchUpdate(
+        uint24[] calldata buyPrices,
+        uint96[] calldata buySizes,
+        uint24[] calldata sellPrices,
+        uint96[] calldata sellSizes,
+        uint40[] calldata orderIdsToCancel,
+        bool postOnly
+    ) external marketActive {
+        // Ensure that the lengths of the buy prices and sizes match
+        require(buyPrices.length == buySizes.length, "OrderBook: Buy prices and sizes array length must match");
+
+        // Ensure that the lengths of the sell prices and sizes match
+        require(sellPrices.length == sellSizes.length, "OrderBook: Sell prices and sizes array length must match");
+
+        // Place multiple buy orders
+        for (uint256 i = 0; i < buyPrices.length; i++) {
+            addBuyOrder(buyPrices[i], buySizes[i], postOnly);
         }
 
-        emit OrdersUpdated(_orderIds, _updatedSizes);
-    }
-
-    /**
-     * @dev Internal function to decrease the size of a single order.
-     * This function updates the size of an order and manages the refund process.
-     * It is called by decreaseOrders for each order that needs to be updated.
-     * @param _orderId ID of the order to be decreased in size.
-     * @param _updatedSize New size for the order. Must be less than the current size.
-     */
-    function _decreaseOrder(uint40 _orderId, uint96 _updatedSize, bool _useMargin) internal {
-        Order memory _order = s_orders[_orderId];
-        _checkIfCancelledOrFilled(_orderId, _order);
-        require(msg.sender == _order.ownerAddress, "OrderBook: Only order owner can update order");
-        require(_order.size > _updatedSize, "OrderBook: can't increase order size");
-        require(_updatedSize > minSize, "Orderbook: size has to be greater than minimum");
-
-        uint96 _decreasedSize = _order.size - _updatedSize;
-
-        if (_order.isBuy) {
-            marginAccount.creditUser(
-                _order.ownerAddress,
-                address(quoteAsset),
-                ((((_decreasedSize * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision),
-                _useMargin
-            );
-        } else {
-            marginAccount.creditUser(
-                _order.ownerAddress,
-                address(baseAsset),
-                ((_decreasedSize * 10**baseAssetDecimals) / sizePrecision),
-                _useMargin
-            );
+        // Place multiple sell orders
+        for (uint256 i = 0; i < sellPrices.length; i++) {
+            addSellOrder(sellPrices[i], sellSizes[i], postOnly);
         }
 
-        s_orders[_orderId].size = _updatedSize;
+        // Cancel multiple orders
+        for (uint256 i = 0; i < orderIdsToCancel.length; i++) {
+            _cancelOrder(orderIdsToCancel[i]);
+        }
+
+        // Emit an event for the canceled orders
+        emit OrdersCanceled(orderIdsToCancel, msg.sender);
     }
 
     /**
@@ -645,7 +630,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             s_orders[_orderId].size -= _size;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
-        emit Trade(_orderId, _updatedSize, msg.sender, _size - remainingSize);
+        emit Trade(_orderId, s_orders[_orderId].ownerAddress, s_orders[_orderId].isBuy, s_orders[_orderId].price, _updatedSize, msg.sender, _size - remainingSize);
     }
 
     /**
