@@ -300,7 +300,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             marginAccount.creditUser(
                 _order.ownerAddress,
                 address(quoteAsset),
-                ((((_order.size * _order.price) * 10**quoteAssetDecimals) / pricePrecision) / sizePrecision),
+                (((uint24((_order.size * _order.price) / sizePrecision) * 10**quoteAssetDecimals) / pricePrecision)),
                 true
             );
         } else {
@@ -323,30 +323,28 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         return _order.isBuy;
     }
 
-    /// @notice Checks if an order has been cancelled before, and reverts if true
-    /// Items to check : 
-    /// 1. s_orders[id.prev].next = id
-    /// 2. if prev == NULL, check for head requirement 
-    /// 3. price point's head must be BEFORE or the SAME as order id (time priority constraint)
-    /// @param _orderId ID of the order 
-    /// @param _order Order details in memory
+    /**
+     * @notice Checks if an order has been cancelled or filled, and reverts if true.
+     * @dev Items to check:
+     *      1. The next order of the previous order in the list must be the current order.
+     *      2. If the previous order is NULL, check the head requirement.
+     *      3. The price point's head must be before or the same as the order ID (time priority constraint).
+     * @param _orderId ID of the order.
+     * @param _order Order details in memory.
+     */
     function _checkIfCancelledOrFilled(uint40 _orderId, Order memory _order) internal view {
-        if(_order.prev != OrderLinkedList.NULL) {
+        if (_order.prev != OrderLinkedList.NULL) {
             require(s_orders[_order.prev].next == _orderId, "OrderBook: Order already cancelled");
 
-            if(_order.isBuy) {
-            require(s_buyPricePoints[_order.price].head <= _orderId, "Already filled!");
+            if (_order.isBuy) {
+                require(s_buyPricePoints[_order.price].head <= _orderId, "OrderBook: Order already filled");
+            } else {
+                require(s_sellPricePoints[_order.price].head <= _orderId, "OrderBook: Order already filled");
             }
-            else {
-                require(s_sellPricePoints[_order.price].head <= _orderId, "Already filled!");
-            }
-
-        } 
-        else {
-            if(_order.isBuy) {
+        } else {
+            if (_order.isBuy) {
                 require(s_buyPricePoints[_order.price].head == _orderId, "OrderBook: Order already cancelled");
-            }
-            else {
+            } else {
                 require(s_sellPricePoints[_order.price].head == _orderId, "OrderBook: Order already cancelled");
             }
         }
@@ -493,7 +491,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             uint96 sizeFilled = sizeBefore - _size; // Calculate the filled size
             _sizeToGet += sizeFilled;
 
-            // @audit: This might make you consume lesser than what has to be consumed because of rounding down.
+            // @audit This might make you consume lesser than what has to be consumed because of rounding down.
             fundsConsumed += uint24((sizeFilled * _bestAsk)/sizePrecision);
             /// round up
             ++fundsConsumed;
@@ -554,7 +552,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      */
     function _matchAggressiveSell(uint24 _limitPrice, uint96 size, bool _useMargin) internal returns(uint96, uint256) {
-        uint96 _priceToGet = 0;
+        uint24 _priceToGet = 0;
         uint24 _bestBid = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
         uint256 _tokenCredit;
         bytes memory makerCredits;
@@ -563,7 +561,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
             bytes memory priceUpdate;
             (size, priceUpdate) = _fillSizeForPrice(s_buyTree, _bestBid, s_buyPricePoints[_bestBid], size);
-            _priceToGet += (_tmpSize - size) * _bestBid;
+            _priceToGet += uint24((_tmpSize - size) * _bestBid / sizePrecision);
 
             makerCredits = bytes.concat(makerCredits, priceUpdate);
 
@@ -571,7 +569,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         }
 
         if (_priceToGet > 0) {
-            _tokenCredit = (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (sizePrecision * pricePrecision * BPS_MULTIPLIER));
+            _tokenCredit = (((_priceToGet * 10 ** quoteAssetDecimals)) * (BPS_MULTIPLIER - takerFeeBps) / (pricePrecision * BPS_MULTIPLIER));
             marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(quoteAsset), _tokenCredit, _useMargin)));
         } else if (makerCredits.length > 0) {
             marginAccount.creditUsersEncoded(makerCredits);
@@ -623,11 +621,11 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         _orderUpdate = _creditMaker(!s_orders[_orderId].isBuy, s_orders[_orderId].ownerAddress, (remainingSize == 0) ? _size : s_orders[_orderId].size, s_orders[_orderId].price);
 
         //@audit cancel order vulnerability, check later
-        if (remainingSize == 0) {
+        if (remainingSize == 0 || (_nextHead == OrderLinkedList.NULL && s_orders[_orderId].prev == OrderLinkedList.NULL)) {
             if (_updatedSize != 0) {
                 _nextHead = _orderId;
             }
-            s_orders[_orderId].size -= _size;
+            s_orders[_orderId].size = _updatedSize;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
         emit Trade(_orderId, s_orders[_orderId].ownerAddress, s_orders[_orderId].isBuy, s_orders[_orderId].price, _updatedSize, msg.sender, _size - remainingSize);
@@ -660,8 +658,9 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * @dev Getter of market params.
      */
-    function getMarketParams() external view returns (uint24, uint96, address, uint256, address, uint256) {
-        return (pricePrecision, sizePrecision, address(baseAsset), baseAssetDecimals, address(quoteAsset), quoteAssetDecimals);
+    // TODO: Should add fees in this as well.
+    function getMarketParams() external view returns (uint24, uint96, address, uint256, address, uint256, uint96, uint256) {
+        return (pricePrecision, sizePrecision, address(baseAsset), baseAssetDecimals, address(quoteAsset), quoteAssetDecimals, minSize, takerFeeBps);
     }
 
     /**
@@ -706,49 +705,55 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         return false;
     }
 
+    /**
+     * @notice Returns the Level 2 order book data.
+     * @dev Encodes the block number, buy orders, and sell orders.
+     * @return Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.
+     */
     function getL2Book() external view returns (bytes memory) {
         bytes memory data = abi.encode(block.number);
 
-        uint24 price = TreeMath.findFirstLeft(s_buyTree, 0); // Find the smallest ID in the tree
-        while (price != type(uint24).max || price == 0) {
+        // Encode buy orders
+        uint24 price = TreeMath.findFirstLeft(s_buyTree, 0);
+        while (price != type(uint24).max && price != 0) {
             uint40 orderId = s_buyPricePoints[price].head;
-            uint96 _size = 0;
+            uint96 size = 0;
             while (orderId != 0) {
-                _size += s_orders[orderId].size;
+                size += s_orders[orderId].size;
                 orderId = s_orders[orderId].next;
             }
-
-            data = bytes.concat(data, abi.encode(price, _size));
-            // Find the next ID
+            data = bytes.concat(data, abi.encode(price, size));
             price = TreeMath.findFirstLeft(s_buyTree, price + 1);
-            if (price == 0) break; // If there is no higher ID, stop the iteration
         }
 
-        data = bytes.concat(data, abi.encode(0));
+        data = bytes.concat(data, abi.encode(0)); // Separator between buy and sell orders
 
-        price = TreeMath.findFirstLeft(s_sellTree, 0); // Find the smallest ID in the tree
-        while (price != type(uint24).max || price == 0) {
+        // Encode sell orders
+        price = TreeMath.findFirstLeft(s_sellTree, 0);
+        while (price != type(uint24).max && price != 0) {
             uint40 orderId = s_sellPricePoints[price].head;
-            uint96 _size = 0;
+            uint96 size = 0;
             while (orderId != 0) {
-                _size += s_orders[orderId].size;
+                size += s_orders[orderId].size;
                 orderId = s_orders[orderId].next;
             }
-
-            data = bytes.concat(data, abi.encode(price, _size));
-            // Find the next ID
+            data = bytes.concat(data, abi.encode(price, size));
             price = TreeMath.findFirstLeft(s_sellTree, price + 1);
-            if (price == 0) break; // If there is no higher ID, stop the iteration
         }
 
         return data;
     }
 
+    /**
+     * @notice Returns the active buy orders for a given address.
+     * @param _maker The address of the order maker.
+     * @return Encoded bytes containing the block number and order IDs of the active buy orders.
+     */
     function getActiveBuysForAddress(address _maker) external view returns (bytes memory) {
         bytes memory data = abi.encode(block.number);
 
-        uint24 price = TreeMath.findFirstLeft(s_buyTree, 0); // Find the smallest ID in the tree
-        while (price != type(uint24).max || price == 0) {
+        uint24 price = TreeMath.findFirstLeft(s_buyTree, 0);
+        while (price != type(uint24).max && price != 0) {
             uint40 orderId = s_buyPricePoints[price].head;
             while (orderId != 0) {
                 if (s_orders[orderId].ownerAddress == _maker) {
@@ -756,19 +761,22 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-
             price = TreeMath.findFirstLeft(s_buyTree, price + 1);
-            if (price == 0) break; // If there is no higher ID, stop the iteration
         }
 
         return data;
     }
 
+    /**
+     * @notice Returns the active sell orders for a given address.
+     * @param _maker The address of the order maker.
+     * @return Encoded bytes containing the block number and order IDs of the active sell orders.
+     */
     function getActiveSellsForAddress(address _maker) external view returns (bytes memory) {
         bytes memory data = abi.encode(block.number);
 
-        uint24 price = TreeMath.findFirstLeft(s_sellTree, 0); // Find the smallest ID in the tree
-        while (price != type(uint24).max || price == 0) {
+        uint24 price = TreeMath.findFirstLeft(s_sellTree, 0);
+        while (price != type(uint24).max && price != 0) {
             uint40 orderId = s_sellPricePoints[price].head;
             while (orderId != 0) {
                 if (s_orders[orderId].ownerAddress == _maker) {
@@ -776,19 +784,23 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-            // Find the next ID
             price = TreeMath.findFirstLeft(s_sellTree, price + 1);
-            if (price == 0) break; // If there is no higher ID, stop the iteration
         }
 
         return data;
     }
 
+    /**
+     * @notice Returns all active orders (both buy and sell) for a given address.
+     * @param _maker The address of the order maker.
+     * @return Encoded bytes containing the block number and order IDs of all active orders.
+     */
     function getActiveOrdersForAddress(address _maker) external view returns (bytes memory) {
         bytes memory data = abi.encode(block.number);
 
-        uint24 price = TreeMath.findFirstLeft(s_buyTree, 0); // Find the smallest ID in the tree
-        while (price != type(uint24).max || price == 0) {
+        // Get active buy orders
+        uint24 price = TreeMath.findFirstLeft(s_buyTree, 0);
+        while (price != type(uint24).max && price != 0) {
             uint40 orderId = s_buyPricePoints[price].head;
             while (orderId != 0) {
                 if (s_orders[orderId].ownerAddress == _maker) {
@@ -796,13 +808,12 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-
             price = TreeMath.findFirstLeft(s_buyTree, price + 1);
-            if (price == 0) break; // If there is no higher ID, stop the iteration
         }
 
-        price = TreeMath.findFirstLeft(s_sellTree, 0); // Find the smallest ID in the tree
-        while (price != type(uint24).max || price == 0) {
+        // Get active sell orders
+        price = TreeMath.findFirstLeft(s_sellTree, 0);
+        while (price != type(uint24).max && price != 0) {
             uint40 orderId = s_sellPricePoints[price].head;
             while (orderId != 0) {
                 if (s_orders[orderId].ownerAddress == _maker) {
@@ -810,11 +821,63 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-            // Find the next ID
             price = TreeMath.findFirstLeft(s_sellTree, price + 1);
-            if (price == 0) break; // If there is no higher ID, stop the iteration
         }
 
         return data;
     }
+
+    /**
+     * @notice Get the details of an order and its status.
+     * @param _orderId The ID of the order to retrieve.
+     * @return The order details and its status code.
+     *         Status code:
+     *         0 - Canceled order
+     *         1 - Filled order
+     *         2 - Active order
+     */
+    function getOrderDetails(uint40 _orderId) external view returns (Order memory, uint256) {
+        Order memory _order = s_orders[_orderId];
+        
+        if (_order.prev != OrderLinkedList.NULL) {
+            if (s_orders[_order.prev].next != _orderId) {
+                return (_order, 0);
+            }
+
+            if (_order.isBuy) {
+                if (s_buyPricePoints[_order.price].head > _orderId) {
+                    return (_order, 1);
+                }
+            } else {
+                if (s_sellPricePoints[_order.price].head > _orderId) {
+                    return (_order, 1);
+                }
+            }
+        } else {
+            if (_order.isBuy) {
+                if (s_buyPricePoints[_order.price].head != _orderId) {
+                    if (_order.next == OrderLinkedList.NULL && _order.size == 0) {
+                        return (_order, 1);
+                    }
+                    if (_order.next != OrderLinkedList.NULL && s_orders[_order.next].prev == _orderId) {
+                        return (_order, 1);
+                    }
+                    return (_order, 0);
+                }
+            } else {
+                if (s_sellPricePoints[_order.price].head != _orderId) {
+                    if (_order.next == OrderLinkedList.NULL && _order.size == 0) {
+                        return (_order, 1);
+                    }
+                    if (_order.next != OrderLinkedList.NULL && s_orders[_order.next].prev == _orderId) {
+                        return (_order, 1);
+                    }
+                    return (_order, 0);
+                }
+            }
+        }
+
+        return (_order, 2);
+    }
+
 }
