@@ -35,7 +35,7 @@ contract OrderBookTest is Test {
         uint96 _minSize = 10**5;
         uint96 _maxSize = 10**12;
         uint256 _takerFeeBps = 0;
-
+        OrderBook.OrderBookType _type;
         OrderBook implementation = new OrderBook();
 
         router = new Router();
@@ -44,7 +44,7 @@ contract OrderBookTest is Test {
 
         router.initialize(address(this), address(marginAccount), address(implementation));
 
-        address proxy = router.deployProxy(address(eth), address(usdc), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+        address proxy = router.deployProxy(_type, address(eth), address(usdc), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
         orderBook = OrderBook(proxy);
 
         eth.mint(user1, initEth);
@@ -335,6 +335,7 @@ contract OrderBookTest is Test {
 
         (uint40 head, uint40 tail) = orderBook.s_buyPricePoints(price*PRICE_PRECISION);
 
+        assertEq(keccak256(abi.encode(marginAccount.getBalance(user2, address(eth)))), keccak256(abi.encode(size*10**18)));
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
         assertEq(usdc.balanceOf(address(marginAccount)), 0);
         assertEq(usdc.balanceOf(user1), (price*size)*10**18);
@@ -342,6 +343,20 @@ contract OrderBookTest is Test {
 
         assertEq(head, 0);
         assertEq(tail, 0);
+    }
+
+    function testWeirdBuyBehaviour() public {
+        _addBuyOrder();
+
+        eth.mint(user2, 10*10**18);
+        
+        vm.startPrank(user2);
+        eth.approve(address(marginAccount), 10*10**18);
+        marginAccount.deposit(user2, address(eth), 10*10**18);
+        orderBook.addSellOrder(1800*PRICE_PRECISION, 10*SIZE_PRECISION, false);
+        vm.stopPrank();
+
+        assertEq(marginAccount.getBalance(user2, address(usdc)), 1800*10*10**18);
     }
 
     function testMarketSellInsifficientAllowance() public {

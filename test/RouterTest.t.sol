@@ -43,10 +43,10 @@ contract OrderBookTest is Test {
         OrderBook implementation = new OrderBook();
 
         router.initialize(address(this), address(marginAccount), address(implementation));
-
-        eth_mon = _createOrderbook(eth, mon, SIZE_PRECISION, PRICE_PRECISION);
-        mon_usdc = _createOrderbook(mon, usdc, SIZE_PRECISION, PRICE_PRECISION);
-        eth_usdc = _createOrderbook(eth, usdc, SIZE_PRECISION, PRICE_PRECISION);
+        OrderBook.OrderBookType _type;
+        eth_mon = _createOrderbook(_type, eth, mon, SIZE_PRECISION, PRICE_PRECISION);
+        mon_usdc = _createOrderbook(_type, mon, usdc, SIZE_PRECISION, PRICE_PRECISION);
+        eth_usdc = _createOrderbook(_type, eth, usdc, SIZE_PRECISION, PRICE_PRECISION);
 
         eth.mint(user1, initEth);
         usdc.mint(user2, initUsdc);
@@ -212,13 +212,14 @@ contract OrderBookTest is Test {
     }
 
 
-    function _createOrderbook(MintableERC20 _baseAsset, MintableERC20 _quoteAsset, uint96 _sizePrecision, uint24 _pricePrecision) internal returns (OrderBook) {
+    function _createOrderbook(OrderBook.OrderBookType _type, MintableERC20 _baseAsset, MintableERC20 _quoteAsset, uint96 _sizePrecision, uint24 _pricePrecision) internal returns (OrderBook) {
         uint96 _tickSize = _pricePrecision / 2;
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 15;
         uint256 _takerFeeBps = 0;
 
         address proxy = router.deployProxy(
+            _type,
             address(_baseAsset),
             address(_quoteAsset),
             _sizePrecision,

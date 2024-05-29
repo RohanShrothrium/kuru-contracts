@@ -22,9 +22,6 @@ contract BenchMarkTest is Test, Gas {
     uint24 constant PRICE_PRECISION = 10**2;
 
     address deployer;
-    address u1;
-    address u2;
-    address u3;
     uint256 initEth = 1000*10**18;
     uint256 initUsdc = 1000000*10**18;
     address lastGenAddress;
@@ -39,21 +36,15 @@ contract BenchMarkTest is Test, Gas {
         uint256 _takerFeeBps = 0;
 
         router = new Router();
-        u1 = genAddress();
-        u2 = genAddress();
-        u3 = genAddress();
         marginAccount = new MarginAccount(address(router));
 
         OrderBook implementation = new OrderBook();
 
         router.initialize(address(this), address(marginAccount), address(implementation));
-
-        address proxy = router.deployProxy(address(eth), address(usdc), SIZE_PRECISION, PRICE_PRECISION, _tickSize, _minSize, _maxSize, _takerFeeBps);
+        OrderBook.OrderBookType _type;
+        address proxy = router.deployProxy(_type, address(eth), address(usdc), SIZE_PRECISION, PRICE_PRECISION, _tickSize, _minSize, _maxSize, _takerFeeBps);
 
         orderBook = OrderBook(proxy);
-
-        eth.mint(u1, initEth);
-        usdc.mint(u2, initUsdc);
 
 
     }

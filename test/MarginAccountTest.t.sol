@@ -76,8 +76,9 @@ contract OrderBookTest is Test {
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 15;
         uint256 _takerFeeBps = 0;
-
+        OrderBook.OrderBookType _type;
         address proxy = router.deployProxy(
+            _type,
             address(_baseAsset),
             address(_quoteAsset),
             _sizePrecision,

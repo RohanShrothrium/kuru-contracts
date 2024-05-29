@@ -4,8 +4,15 @@ pragma solidity ^0.8.0;
 
 interface IOrderBook {
 
+    enum OrderBookType {
+        NO_NATIVE,
+        NATIVE_IN_BASE,
+        NATIVE_IN_QUOTE
+    }
+
     function initialize(
         address _factory,
+        OrderBookType _type,
         address _baseAssetAddress,
         uint256 _baseAssetDecimals,
         address _quoteAssetAddress,
@@ -40,12 +47,12 @@ interface IOrderBook {
     function placeAndExecuteMarketBuy(
         uint24 _quoteAmount,
         bool _isFillOrKill
-    ) external returns (uint256);
+    ) payable external returns (uint256);
 
     function placeAndExecuteMarketSell(
         uint96 _size,
         bool _isFillOrKill
-    ) external returns (uint256);
+    ) payable external returns (uint256);
 
     function getPricePrecision() external view returns (uint24);
 

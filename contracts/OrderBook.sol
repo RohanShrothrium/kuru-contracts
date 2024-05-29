@@ -74,6 +74,8 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         uint96 filledSize
     );
 
+    OrderBookType orderBookType;
+
     mapping(uint40 => Order) public s_orders;
     mapping(uint256 => OrderLinkedList.PricePoint) public s_buyPricePoints;
     mapping(uint256 => OrderLinkedList.PricePoint) public s_sellPricePoints;
@@ -124,6 +126,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      */
     function initialize(
         address _owner,
+        OrderBookType _type,
         address _baseAssetAddress,
         uint256 _baseAssetDecimals,
         address _quoteAssetAddress,
@@ -138,13 +141,14 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
         __Ownable_init();
         _transferOwnership(_owner);
+        orderBookType = _type;
         baseAsset = IERC20(_baseAssetAddress);
         quoteAsset = IERC20(_quoteAssetAddress);
 
         baseAssetDecimals = _baseAssetDecimals;
         quoteAssetDecimals = _quoteAssetDecimals;
 
-        marginAccount = MarginAccount(_marginAccountAddress);
+        marginAccount = MarginAccount(payable(_marginAccountAddress));
         // initialize contract parameters
         sizePrecision = _sizePrecision;
         pricePrecision = _pricePrecision;
@@ -427,18 +431,37 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     function placeAndExecuteMarketBuy(
         uint24 _quoteSize,
         bool _isFillOrKill
-    ) public override marketActive returns (uint256) {
+    ) payable public override marketActive returns (uint256) {
+        OrderBookType _type = orderBookType;
+        if (_type == OrderBookType.NATIVE_IN_QUOTE) {
+            require(msg.value >= (_quoteSize) * 10 ** quoteAssetDecimals / pricePrecision, "OrderBook: Native asset not enough");
+        }
+        else {
+            quoteAsset.transferFrom(msg.sender, address(marginAccount), uint256(_quoteSize * 10 ** quoteAssetDecimals / pricePrecision));
+        }
         uint256 _baseTokensCredited;
-        quoteAsset.transferFrom(msg.sender, address(marginAccount), uint256(_quoteSize * 10 ** quoteAssetDecimals / pricePrecision));
         (_quoteSize, _baseTokensCredited) = _matchAggressiveBuy(type(uint24).max, _quoteSize, false);
         if (_quoteSize > 0) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
-            marginAccount.creditUser(
-                msg.sender,
-                address(quoteAsset),
-                uint256(_quoteSize * 10 ** quoteAssetDecimals / pricePrecision),
-                false
-            );
+            if (_type == OrderBookType.NATIVE_IN_QUOTE) {
+                uint256 refund = _quoteSize * 10 ** quoteAssetDecimals / pricePrecision;
+                (bool success, ) = address(marginAccount).call{value: msg.value - refund}("");
+                require(success, "OrderBook: MarginAccount native transfer failed");
+                (success, ) = (msg.sender).call{value: refund}("");
+                require(success, "OrderBook: Refund failed");
+            }
+            else {
+                marginAccount.creditUser(
+                    msg.sender,
+                    address(quoteAsset),
+                    uint256(_quoteSize * 10 ** quoteAssetDecimals / pricePrecision),
+                    false
+                );
+            }
+        }
+        else if (_type == OrderBookType.NATIVE_IN_QUOTE) {
+            (bool success, ) = address(marginAccount).call{value: msg.value}("");
+            require(success, "OrderBook: MarginAccount native transfer failed");
         }
         return _baseTokensCredited;
     }
@@ -451,26 +474,43 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     function placeAndExecuteMarketSell(
         uint96 _size,
         bool _isFillOrKill
-    ) public marketActive returns (uint256) {
-        // Transfer the base asset from the user to the contract
-        baseAsset.transferFrom(
-            msg.sender,
-            address(marginAccount),
-            (_size * 10 ** baseAssetDecimals) / sizePrecision
-        );
+    ) payable public marketActive returns (uint256) {
+        OrderBookType _type = orderBookType;
+        if (_type == OrderBookType.NATIVE_IN_BASE) {
+            require(msg.value >= _size * 10 ** baseAssetDecimals / sizePrecision, "OrderBook: Native asset not enough");
+        }
+        else {
+            baseAsset.transferFrom(
+                msg.sender,
+                address(marginAccount),
+                (_size * 10 ** baseAssetDecimals) / sizePrecision
+            );
+        }
 
         uint256 _quoteCredited;
         (_size, _quoteCredited) = _matchAggressiveSell(0, _size, false);
 
         if (_size > 0) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
-
-            marginAccount.creditUser(
-                msg.sender,
-                address(baseAsset),
-                ((_size * 10 ** baseAssetDecimals) / sizePrecision),
-                false
-            );
+            if (_type == OrderBookType.NATIVE_IN_BASE) {
+                uint256 refund = (_size * 10 ** baseAssetDecimals) / sizePrecision;
+                (bool success, ) = address(marginAccount).call{value: msg.value - refund}("");
+                require(success, "OrderBook: MarginAccount native transfer failed");
+                (success, ) = address(msg.sender).call{value: refund}("");
+                require(success, "OrderBook: Refund failed");
+            }
+            else {
+                marginAccount.creditUser(
+                    msg.sender,
+                    address(baseAsset),
+                    ((_size * 10 ** baseAssetDecimals) / sizePrecision),
+                    false
+                );
+            } 
+        }
+        else if (_type == OrderBookType.NATIVE_IN_BASE) {
+            (bool success, ) = address(marginAccount).call{value: msg.value}("");
+            require(success, "OrderBook: MarginAccount native transfer failed");
         }
 
         return _quoteCredited;
@@ -880,4 +920,8 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         return (_order, 2);
     }
 
+<<<<<<< Updated upstream
 }
+=======
+}
+>>>>>>> Stashed changes

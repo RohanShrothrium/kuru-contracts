@@ -39,7 +39,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
     bool priceSet;
     constructor() {
         MintableERC20 tokenA = new MintableERC20("A", "A");
-        MintableERC20 tokenB = new MintableERC20("smol_toes", "SMOL");
+        MintableERC20 tokenB = new MintableERC20("B", "B");
         if(address(tokenA) > address(tokenB)) {
             quote = tokenA;
             base = tokenB;
@@ -56,8 +56,8 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         marginAccount = new MarginAccount(address(router));
         implementation = new OrderBook();
         router.initialize(address(this), address(marginAccount), address(implementation));
-
-        address proxy = router.deployProxy(address(base), address(quote), SIZE_PRECISION, PRICE_PRECISION, _tickSize, _minSize, _maxSize, _takerFeeBps);
+        OrderBook.OrderBookType _type;
+        address proxy = router.deployProxy(_type, address(base), address(quote), SIZE_PRECISION, PRICE_PRECISION, _tickSize, _minSize, _maxSize, _takerFeeBps);
         orderBook = OrderBook(proxy);
     }
 

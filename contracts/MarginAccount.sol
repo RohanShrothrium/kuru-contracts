@@ -10,7 +10,8 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 contract MarginAccount is IMarginAccount {
     // Mapping from user addresses to their ETH balance
     mapping(bytes32 => uint256) public balances;
-
+    mapping(address => bool) public inventory;
+    address[] public inventoryTokens;
     // Mapping of hash of token pairs to their market contract addresses
     mapping(address => bool) public verifiedMarket;
 
@@ -94,7 +95,13 @@ contract MarginAccount is IMarginAccount {
             if (_useMargin) {
                 balances[_accountKey(_user, _token)] += _amount;
             } else {
-                IERC20(_token).transfer(_user, _amount);
+                if (_token != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+                    IERC20(_token).transfer(_user, _amount);
+                }
+                else {
+                    (bool success, ) = _user.call{value: _amount}("");
+                    require(success, "MarginAccount: Failed to credit user native tokens");
+                }
             }
         }
 
@@ -133,7 +140,7 @@ contract MarginAccount is IMarginAccount {
         );
         balances[_accountKey(msg.sender, _token)] -= _amount;
         if(_token == ETH) {
-        payable(msg.sender).transfer(_amount);
+            payable(msg.sender).transfer(_amount);
         } 
         else {
             IERC20(_token).transfer(msg.sender, _amount);
@@ -163,4 +170,6 @@ contract MarginAccount is IMarginAccount {
     ) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(_user, _token));
     }
+
+    receive() external payable {}
 }

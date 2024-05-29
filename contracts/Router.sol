@@ -46,6 +46,7 @@ contract Router is IRouter, OwnableUpgradeable {
     }
 
     function deployProxy(
+        IOrderBook.OrderBookType _type,
         address _baseAssetAddress,
         address _quoteAssetAddress,
         uint96 _sizePrecision,
@@ -76,23 +77,26 @@ contract Router is IRouter, OwnableUpgradeable {
                 )
             );
         }
-
-        IOrderBook(proxy).initialize(
-            address(this),
-            _baseAssetAddress,
-            IERC20(_baseAssetAddress).decimals(),
-            _quoteAssetAddress,
-            IERC20(_quoteAssetAddress).decimals(),
-            marginAccountAddress,
-            _sizePrecision,
-            _pricePrecision,
-            _tickSize,
-            _minSize,
-            _maxSize,
-            _takerFeeBps
+        //@note native decimals hardcoded to 18
+        {
+            IOrderBook(proxy).initialize(
+                address(this),
+                _type,
+                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE : _baseAssetAddress,
+                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals(),
+                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE : _quoteAssetAddress,
+                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20(_quoteAssetAddress).decimals(),
+                marginAccountAddress,
+                _sizePrecision,
+                _pricePrecision,
+                _tickSize,
+                _minSize,
+                _maxSize,
+                _takerFeeBps
         );
+        }
 
-        _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy);
+        _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
 
         return proxy;
     }
@@ -155,17 +159,19 @@ contract Router is IRouter, OwnableUpgradeable {
     function _registerMarket(
         address _baseAsset,
         address _quoteAsset,
-        address _marketAddress
+        address _marketAddress,
+        OrderBook.OrderBookType _type
     ) internal {
         verifiedMarket[_marketAddress] = true;
-        IERC20(_baseAsset).approve(_marketAddress, type(uint256).max);
-        IERC20(_quoteAsset).approve(_marketAddress, type(uint256).max);
+        _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? true : IERC20(_baseAsset).approve(_marketAddress, type(uint256).max);
+        _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? true : IERC20(_quoteAsset).approve(_marketAddress, type(uint256).max);
 
         IMarginAccount(marginAccountAddress).updateMarkets(_marketAddress);
 
         emit MarketRegistered(_baseAsset, _quoteAsset, _marketAddress);
     }
 
+    //@note should change this to accomodate native
     // Perform an any-to-any swap
     function anyToAnySwap(
         address[] calldata _marketAddresses,
