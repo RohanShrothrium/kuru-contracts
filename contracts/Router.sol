@@ -160,7 +160,7 @@ contract Router is IRouter, OwnableUpgradeable {
         address _baseAsset,
         address _quoteAsset,
         address _marketAddress,
-        OrderBook.OrderBookType _type
+        IOrderBook.OrderBookType _type
     ) internal {
         verifiedMarket[_marketAddress] = true;
         _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? true : IERC20(_baseAsset).approve(_marketAddress, type(uint256).max);

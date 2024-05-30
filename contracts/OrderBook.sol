@@ -919,9 +919,4 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
         return (_order, 2);
     }
-
-<<<<<<< Updated upstream
 }
-=======
-}
->>>>>>> Stashed changes
