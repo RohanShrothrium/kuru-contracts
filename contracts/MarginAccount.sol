@@ -11,7 +11,6 @@ contract MarginAccount is IMarginAccount {
     // Mapping from user addresses to their ETH balance
     mapping(bytes32 => uint256) public balances;
     mapping(address => bool) public inventory;
-    address[] public inventoryTokens;
     // Mapping of hash of token pairs to their market contract addresses
     mapping(address => bool) public verifiedMarket;
 
@@ -19,6 +18,10 @@ contract MarginAccount is IMarginAccount {
 
     // Native token
     address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
+    event Deposit(address owner, address token, uint256 amount);
+    event Withdrawal(address owner, address token, uint256 amount);
+    
     constructor(address _router) {
         routerContractAddress = _router;
     }
@@ -126,6 +129,8 @@ contract MarginAccount is IMarginAccount {
             IERC20(_token).transferFrom(msg.sender, address(this), _amount);
             balances[_accountKey(_user, _token)] += _amount;
         }
+
+        emit Deposit(_user, _token, _amount);
     }
 
     /**
@@ -140,11 +145,14 @@ contract MarginAccount is IMarginAccount {
         );
         balances[_accountKey(msg.sender, _token)] -= _amount;
         if(_token == ETH) {
-            payable(msg.sender).transfer(_amount);
+            (bool _success, ) = (msg.sender).call{value: _amount}("");
+            require(_success, "MarginAccount: Native fund withdrawal failed");
         } 
         else {
             IERC20(_token).transfer(msg.sender, _amount);
         }
+
+        emit Withdrawal(msg.sender, _token, _amount);
     }
 
     /**

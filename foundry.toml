@@ -1,0 +1,3 @@
+[fuzz]
+runs = 100
+seed = '0x4444'

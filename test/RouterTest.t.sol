@@ -233,7 +233,7 @@ contract OrderBookTest is Test {
         return OrderBook(proxy);
     }
 
-    function _swapTokens(MintableERC20 tokenA, MintableERC20 tokenB) internal returns (MintableERC20, MintableERC20) {
+    function _swapTokens(MintableERC20 tokenA, MintableERC20 tokenB) internal pure returns (MintableERC20, MintableERC20) {
         MintableERC20 temp = tokenA;
         tokenA = tokenB;
         tokenB = temp;
