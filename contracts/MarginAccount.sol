@@ -10,7 +10,7 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 contract MarginAccount is IMarginAccount {
     // Mapping from user addresses to their ETH balance
     mapping(bytes32 => uint256) public balances;
-    mapping(address => bool) public inventory;
+
     // Mapping of hash of token pairs to their market contract addresses
     mapping(address => bool) public verifiedMarket;
 
