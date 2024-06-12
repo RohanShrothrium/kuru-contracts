@@ -1,6 +1,10 @@
 const hre = require("hardhat");
 const fs = require('fs');
 
+function Enum(...options) {
+    return Object.fromEntries(options.map((key, i) => [key, hre.ethers.BigNumber.from(i)]));
+}
+
 async function main() {
     // contract addresses
     const wbtcDecimals = 18;
@@ -70,9 +74,9 @@ async function main() {
     const initializeRouterTx = await router.initialize(userAddress, marginAccountAddress, implementation.address);    
     await initializeRouterTx.wait();
     console.log("Router initialized with \n Admin :", userAddress, "\nMargin Account: ", marginAccountAddress, "\nImplementation:", implementation.address);
-
-    const cranklessOrderBookAddress = await router.callStatic.deployProxy(wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
-    const deployProxyTx = await router.deployProxy(wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    
+    const cranklessOrderBookAddress = await router.callStatic.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    const deployProxyTx = await router.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
     await deployProxyTx.wait();
 
     console.log("CranklessOrderBook deployed to:", cranklessOrderBookAddress);

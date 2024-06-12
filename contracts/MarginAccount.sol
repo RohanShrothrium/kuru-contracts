@@ -18,6 +18,10 @@ contract MarginAccount is IMarginAccount {
 
     // Native token
     address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
+    event Deposit(address owner, address token, uint256 amount);
+    event Withdrawal(address owner, address token, uint256 amount);
+    
     constructor(address _router) {
         routerContractAddress = _router;
     }
@@ -94,7 +98,13 @@ contract MarginAccount is IMarginAccount {
             if (_useMargin) {
                 balances[_accountKey(_user, _token)] += _amount;
             } else {
-                IERC20(_token).transfer(_user, _amount);
+                if (_token != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+                    IERC20(_token).transfer(_user, _amount);
+                }
+                else {
+                    (bool success, ) = _user.call{value: _amount}("");
+                    require(success, "MarginAccount: Failed to credit user native tokens");
+                }
             }
         }
 
@@ -119,6 +129,8 @@ contract MarginAccount is IMarginAccount {
             IERC20(_token).transferFrom(msg.sender, address(this), _amount);
             balances[_accountKey(_user, _token)] += _amount;
         }
+
+        emit Deposit(_user, _token, _amount);
     }
 
     /**
@@ -133,11 +145,14 @@ contract MarginAccount is IMarginAccount {
         );
         balances[_accountKey(msg.sender, _token)] -= _amount;
         if(_token == ETH) {
-        payable(msg.sender).transfer(_amount);
+            (bool _success, ) = (msg.sender).call{value: _amount}("");
+            require(_success, "MarginAccount: Native fund withdrawal failed");
         } 
         else {
             IERC20(_token).transfer(msg.sender, _amount);
         }
+
+        emit Withdrawal(msg.sender, _token, _amount);
     }
 
     /**
@@ -163,4 +178,6 @@ contract MarginAccount is IMarginAccount {
     ) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(_user, _token));
     }
+
+    receive() external payable {}
 }

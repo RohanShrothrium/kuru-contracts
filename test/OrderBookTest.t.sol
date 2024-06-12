@@ -35,7 +35,7 @@ contract OrderBookTest is Test {
         uint96 _minSize = 10**5;
         uint96 _maxSize = 10**12;
         uint256 _takerFeeBps = 0;
-
+        OrderBook.OrderBookType _type;
         OrderBook implementation = new OrderBook();
 
         router = new Router();
@@ -44,7 +44,7 @@ contract OrderBookTest is Test {
 
         router.initialize(address(this), address(marginAccount), address(implementation));
 
-        address proxy = router.deployProxy(address(eth), address(usdc), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+        address proxy = router.deployProxy(_type, address(eth), address(usdc), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
         orderBook = OrderBook(proxy);
 
         eth.mint(user1, initEth);
@@ -118,16 +118,6 @@ contract OrderBookTest is Test {
         vm.stopPrank();
     }
 
-    // function testAddBuyOrderInsufficientAllowanceFail() public {
-    //     uint24 price = 1800;
-    //     uint96 size = 10;
-
-    //     vm.startPrank(user2);
-    //     vm.expectRevert("MarginAccoiunt: Insufficient Balance");
-    //     orderBook.addBuyOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
-    //     vm.stopPrank();
-    // }
-
     function testAddBuyOrderExceedsBalanceFail() public {
         uint24 price = 1800;
         uint96 size = 10;
@@ -183,16 +173,6 @@ contract OrderBookTest is Test {
         orderBook.addSellOrder(price, size*SIZE_PRECISION, false);
         vm.stopPrank();
     }
-
-    // function testAddSellOrderInsufficientAllowanceFail() public {
-    //     uint24 price = 1800;
-    //     uint96 size = 10;
-
-    //     vm.startPrank(user1);
-    //     vm.expectRevert("ERC20: insufficient allowance");
-    //     orderBook.addSellOrder(price*PRICE_PRECISION, size*SIZE_PRECISION, false);
-    //     vm.stopPrank();
-    // }
 
     function testAddSellOrderExceedsBalanceFail() public {
         uint24 price = 1800;
@@ -335,6 +315,7 @@ contract OrderBookTest is Test {
 
         (uint40 head, uint40 tail) = orderBook.s_buyPricePoints(price*PRICE_PRECISION);
 
+        assertEq(keccak256(abi.encode(marginAccount.getBalance(user2, address(eth)))), keccak256(abi.encode(size*10**18)));
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
         assertEq(usdc.balanceOf(address(marginAccount)), 0);
         assertEq(usdc.balanceOf(user1), (price*size)*10**18);
@@ -342,6 +323,20 @@ contract OrderBookTest is Test {
 
         assertEq(head, 0);
         assertEq(tail, 0);
+    }
+
+    function testWeirdBuyBehaviour() public {
+        _addBuyOrder();
+
+        eth.mint(user2, 10*10**18);
+        
+        vm.startPrank(user2);
+        eth.approve(address(marginAccount), 10*10**18);
+        marginAccount.deposit(user2, address(eth), 10*10**18);
+        orderBook.addSellOrder(1800*PRICE_PRECISION, 10*SIZE_PRECISION, false);
+        vm.stopPrank();
+
+        assertEq(marginAccount.getBalance(user2, address(usdc)), 1800*10*10**18);
     }
 
     function testMarketSellInsifficientAllowance() public {
@@ -392,7 +387,6 @@ contract OrderBookTest is Test {
         (uint256 head, uint256 tail) = orderBook.s_sellPricePoints(1800*PRICE_PRECISION);
 
         assertEq(usdc.balanceOf(user2), initUsdc - (price*size)*10**18);
-        // assertEq(marginAccount.balances(keccak256(abi.encodePacked(user2, address(usdc)))), 10**18);
         assertEq(usdc.balanceOf(address(marginAccount)), (1801*uint256(size))*10**18);
         assertEq(marginAccount.balances(keccak256(abi.encodePacked(user2, address(eth)))), size*10**18);
 
@@ -401,9 +395,7 @@ contract OrderBookTest is Test {
     }
 
     function _addCustomSellOrder(uint24 _price, uint96 _size, address _user) internal {
-        // vm.startPrank(deployer);
         eth.mint(_user, initEth);
-        // vm.stopPrank();
         vm.startPrank(_user);
         eth.approve(address(marginAccount), initEth);
         marginAccount.deposit(_user, address(eth), _size*10**18);
@@ -412,16 +404,12 @@ contract OrderBookTest is Test {
     }
 
     function test_brutalizedBuyOrderFill() public {
-        // uint times = bound(_someValue, 1, 30);
         uint times = 5;
-        // emit TImes(times);
         for(uint i; i<times; i++) {
             _addCustomSellOrder(1800, 10, address(uint160(i+50)));
         }
         address _filler = makeAddr("FILLER");
-        // vm.startPrank(deployer);
         usdc.mint(_filler, initUsdc*times);
-        // vm.stopPrank();
         vm.startPrank(_filler);
         usdc.approve(address(marginAccount), initUsdc*times);
         marginAccount.deposit(_filler, address(usdc), times*initUsdc);

@@ -2,6 +2,10 @@ const hre = require("hardhat");
 const fs = require('fs');
 const config = require("../config.json");
 
+function Enum(...options) {
+    return Object.fromEntries(options.map((key, i) => [key, hre.ethers.BigNumber.from(i)]));
+}
+
 async function main() {
     const currentProvider = new hre.ethers.providers.JsonRpcProvider("http://localhost:8545");
     const deployerPvtKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -22,8 +26,8 @@ async function main() {
     var largerFlag = hre.ethers.BigNumber.from(wbtcAddress).gt(hre.ethers.BigNumber.from(usdcAddress));
 
     const router = await hre.ethers.getContractAt("Router", config.routerAddress, deployer);
-    const cranklessOrderBookAddress = await router.callStatic.deployProxy(largerFlag ? usdcAddress : wbtcAddress, largerFlag ? wbtcAddress : usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
-    const deployProxyTx = await router.deployProxy(wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    const cranklessOrderBookAddress = await router.callStatic.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, largerFlag ? usdcAddress : wbtcAddress, largerFlag ? wbtcAddress : usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    const deployProxyTx = await router.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
     await deployProxyTx.wait();
 
     console.log("CranklessOrderBook deployed to:", cranklessOrderBookAddress);
