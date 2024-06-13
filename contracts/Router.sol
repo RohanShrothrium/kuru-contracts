@@ -56,11 +56,11 @@ contract Router is IRouter, OwnableUpgradeable {
         uint96 _maxSize,
         uint256 _takerFeeBps
     ) public returns (address proxy) {
-
+        
         {
             bytes32 _salt = _getSalt(
-                _baseAssetAddress,
-                _quoteAssetAddress,
+                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE : _baseAssetAddress,
+                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE : _quoteAssetAddress,
                 _sizePrecision,
                 _pricePrecision,
                 _tickSize,

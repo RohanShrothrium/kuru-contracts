@@ -225,7 +225,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
         (size, _tokenCredit) = _matchAggressiveSell(_price, size, true);
         if (_postOnly) {
-            require(_tokenCredit > 0, "OrderBook: Post only crossed the book");
+            require(_tokenCredit == 0, "OrderBook: Post only crossed the book");
         }
 
         if (size == 0) return;
