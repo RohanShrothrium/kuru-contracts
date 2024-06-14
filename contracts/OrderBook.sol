@@ -95,6 +95,9 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
     // TODO: might have to be public
     uint256 takerFeeBps;
+    uint256 makerFeeBps;
+    uint256 quoteFeeCollected;
+    uint256 baseFeeCollected;
     // TODO: add maker fee
 
     IERC20 baseAsset;
@@ -138,10 +141,12 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         uint96 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
-        uint256 _takerFeeBps) public initializer {
+        uint256 _takerFeeBps,
+        uint256 _makerFeeBps) public initializer {
 
         __Ownable_init();
         _transferOwnership(_owner);
+        require(_makerFeeBps <= _takerFeeBps, "OrderBook: Maker fee should be lower than taker fee");
         orderBookType = _type;
         baseAsset = IERC20(_baseAssetAddress);
         quoteAsset = IERC20(_quoteAssetAddress);
@@ -157,6 +162,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         minSize = _minSize;
         maxSize = _maxSize;
         takerFeeBps = _takerFeeBps;
+        makerFeeBps = _makerFeeBps;
     }
 
 
@@ -518,6 +524,18 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         require(_success, "OrderBook: Refund failed");
     }
 
+    /**
+    * @dev Calls the creditFee function in MarginAccount
+    * @notice Anyone can call this function
+     */
+    function collectFees() external {
+        uint256 _baseFeeCollected = baseFeeCollected;
+        uint256 _quoteFeeCollected = quoteFeeCollected;
+        baseFeeCollected = 0;
+        quoteFeeCollected = 0;
+        marginAccount.creditFee(address(baseAsset), _baseFeeCollected, address(quoteAsset), _quoteFeeCollected);
+    }
+
     function _matchAggressiveBuyWithCap(uint24 _limitPrice, uint96 _size) internal returns(uint96, uint24) {
         uint96 _sizeToGet;
         uint24 _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
@@ -541,8 +559,13 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         }
 
         if (_sizeToGet > 0) {
-            uint256 _tokenCredit = ((((_sizeToGet) * (BPS_MULTIPLIER - takerFeeBps)) / BPS_MULTIPLIER ) * 10**baseAssetDecimals) / sizePrecision;
-            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit, true)));
+            uint256 _tokenCredit = (_sizeToGet * 10**baseAssetDecimals) / sizePrecision;
+            uint256 _feeDebit;
+            if (takerFeeBps > 0) {
+                _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, takerFeeBps, BPS_MULTIPLIER);
+                baseFeeCollected += ((_feeDebit * (takerFeeBps - makerFeeBps)) / takerFeeBps);
+            }
+            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit - _feeDebit, true)));
         } else if (makerCredits.length > 0) {
             marginAccount.creditUsersEncoded(makerCredits);
         }
@@ -577,8 +600,14 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         }
 
         if (_sizeToGet > 0) {
-            _tokenCredit = ((_sizeToGet * (BPS_MULTIPLIER - takerFeeBps)) / (BPS_MULTIPLIER)) * 10**baseAssetDecimals / sizePrecision;
-            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit, _useMargin)));
+            _tokenCredit = ((_sizeToGet) * 10**baseAssetDecimals) / sizePrecision;
+            uint256 _feeDebit;
+            uint256 _takerFeeBps = takerFeeBps;
+            if (_takerFeeBps > 0) {
+                _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, _takerFeeBps, BPS_MULTIPLIER);
+                baseFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
+            }
+            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit - _feeDebit, _useMargin)));
         } else if (makerCredits.length > 0) {
             marginAccount.creditUsersEncoded(makerCredits);
         }
@@ -610,8 +639,14 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         }
 
         if (_priceToGet > 0) {
-            _tokenCredit = ((_priceToGet * (BPS_MULTIPLIER - takerFeeBps) / BPS_MULTIPLIER) * 10**quoteAssetDecimals) / pricePrecision;
-            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(quoteAsset), _tokenCredit, _useMargin)));
+            _tokenCredit = ((_priceToGet) * 10**quoteAssetDecimals) / pricePrecision;
+            uint256 _feeDebit;
+            uint256 _takerFeeBps = takerFeeBps;
+            if (_takerFeeBps > 0) {
+                _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, _takerFeeBps, BPS_MULTIPLIER);
+                quoteFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
+            }
+            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(quoteAsset), _tokenCredit - _feeDebit, _useMargin)));
         } else if (makerCredits.length > 0) {
             marginAccount.creditUsersEncoded(makerCredits);
         }
@@ -696,8 +731,18 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     function _creditMaker(bool _isMarketBuy, address _ownerAddress, uint96 _size, uint24 _price) internal view returns (bytes memory) {
         address creditAsset = _isMarketBuy ? address(quoteAsset) : address(baseAsset);
         uint256 amount = _isMarketBuy ? _amountPayable(_size, _price) : ((_size * 10**baseAssetDecimals) / sizePrecision);
+        uint256 feeRebate;
+        address feeAsset;
+        if (_isMarketBuy) {
+            feeAsset = address(baseAsset);
+            feeRebate = (((_size * 10**baseAssetDecimals) / sizePrecision) * makerFeeBps) / BPS_MULTIPLIER;
+        }
+        else {
+            feeAsset = address(quoteAsset);
+            feeRebate = (_amountPayable(_size, _price) * makerFeeBps) / BPS_MULTIPLIER;
+        }
 
-        return abi.encode(_ownerAddress, creditAsset, amount, true);
+        return abi.encode(_ownerAddress, creditAsset, amount, true, _ownerAddress, feeAsset, feeRebate, true);
     }
 
     /**

@@ -54,7 +54,8 @@ contract Router is IRouter, OwnableUpgradeable {
         uint96 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
-        uint256 _takerFeeBps
+        uint256 _takerFeeBps,
+        uint256 _makerFeeBps
     ) public returns (address proxy) {
         
         {
@@ -66,7 +67,8 @@ contract Router is IRouter, OwnableUpgradeable {
                 _tickSize,
                 _minSize,
                 _maxSize,
-                _takerFeeBps
+                _takerFeeBps,
+                _makerFeeBps
             );
             proxy = Create2.deploy(
                 0,
@@ -92,7 +94,8 @@ contract Router is IRouter, OwnableUpgradeable {
                 _tickSize,
                 _minSize,
                 _maxSize,
-                _takerFeeBps
+                _takerFeeBps,
+                _makerFeeBps
         );
         }
 
@@ -114,6 +117,7 @@ contract Router is IRouter, OwnableUpgradeable {
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
+        uint256 _makerFeeBps,
         address oldImplementation,
         bool old
     ) public view returns (address proxy) {
@@ -125,7 +129,8 @@ contract Router is IRouter, OwnableUpgradeable {
             _tickSize,
             _minSize,
             _maxSize,
-            _takerFeeBps
+            _takerFeeBps,
+            _makerFeeBps
         );
         proxy = Create2.computeAddress(
             _salt,
@@ -239,7 +244,8 @@ contract Router is IRouter, OwnableUpgradeable {
         uint96 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
-        uint256 _takerFeeBps
+        uint256 _takerFeeBps,
+        uint256 _makerFeeBps
     ) internal pure returns (bytes32) {
         {
             (_baseAssetAddress, _quoteAssetAddress) = _reOrder(_baseAssetAddress, _quoteAssetAddress);
@@ -254,7 +260,8 @@ contract Router is IRouter, OwnableUpgradeable {
                     _tickSize,
                     _minSize,
                     _maxSize,
-                    _takerFeeBps
+                    _takerFeeBps,
+                    _makerFeeBps
                 )
             );
     }

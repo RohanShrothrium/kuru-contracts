@@ -15,15 +15,16 @@ contract MarginAccount is IMarginAccount {
     mapping(address => bool) public verifiedMarket;
 
     address immutable routerContractAddress;
-
+    address feeCollector;
     // Native token
     address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     event Deposit(address owner, address token, uint256 amount);
     event Withdrawal(address owner, address token, uint256 amount);
-    
-    constructor(address _router) {
+
+    constructor(address _router, address _feeCollector) {
         routerContractAddress = _router;
+        feeCollector = _feeCollector;
     }
 
     modifier onlyRouter() {
@@ -37,6 +38,20 @@ contract MarginAccount is IMarginAccount {
      */
     function updateMarkets(address _marketAddress) external onlyRouter {
         verifiedMarket[_marketAddress] = true;
+    }
+
+    /**
+    @dev This function allows a verified market to register fee collected
+    @param _assetA Address of first asset
+    @param _feeA Fee amount of _assetA to be credited
+    @param _assetB Address of second asset
+    @param _feeB Fee amount of _assetB to be credited
+     */
+    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external returns (bool) {
+        require(verifiedMarket[msg.sender], "MarginAccount: Only verified markets can credit fee");
+
+        balances[_accountKey(feeCollector, _assetA)] += _feeA;
+        balances[_accountKey(feeCollector, _assetB)] += _feeB;
     }
 
     /**

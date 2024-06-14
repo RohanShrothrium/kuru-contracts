@@ -19,6 +19,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
     uint96 _minSize;
     uint96 _maxSize;
     uint96 _takerFeeBps;
+    uint256 _makerFeeBps;
     uint24 _maxPrice;
     OrderBook orderBook;
     Router router;
@@ -38,17 +39,17 @@ contract OrderBookTest is Test, PropertiesAsserts {
         _minSize = 2 * 10 ** 8;
         _maxSize = 10**12;
         _maxPrice = type(uint24).max / 100;
-        _takerFeeBps = 0;
+        _takerFeeBps = 50;
         OrderBook.OrderBookType _type;
         OrderBook implementation = new OrderBook();
 
         router = new Router();
 
-        marginAccount = new MarginAccount(address(router));
+        marginAccount = new MarginAccount(address(router), address(router));
 
         router.initialize(address(this), address(marginAccount), address(implementation));
 
-        address proxy = router.deployProxy(_type, address(eth), address(usdc), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+        address proxy = router.deployProxy(_type, address(eth), address(usdc), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps);
         orderBook = OrderBook(proxy);
     }
     
@@ -229,10 +230,14 @@ contract OrderBookTest is Test, PropertiesAsserts {
 
         address _maker = _addBuyOrder(address(0), _price, _size, 0, false);
         _addSellOrder(_maker, _price, _size, false);
-        uint256 _usdcAfterFee = uint256((uint24((_price * _size) / SIZE_PRECISION)) * (10**4 - _takerFeeBps) / 10 ** 4) * 10 ** usdc.decimals() / PRICE_PRECISION;
+        uint256 _usdcWithoutFee = uint256((uint24((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
+        uint256 _usdcFee = FixedPointMathLib.mulDivUp(_usdcWithoutFee, _takerFeeBps, 10**4);
+        uint256 _usdcAfterFee = _usdcWithoutFee - _usdcFee;
         uint256 _eth = (_size) * 10 ** eth.decimals() / SIZE_PRECISION;
+        orderBook.collectFees();
         assertEq(marginAccount.getBalance(_maker, address(eth)), _eth);
         assertEq(marginAccount.getBalance(_maker, address(usdc)), _usdcAfterFee);
+        assertEq(marginAccount.getBalance(address(router), address(usdc)), _usdcFee);
     }
 
     function testSellAndBuyEqualMatch(uint24 _price, uint96 _size) public {
@@ -241,9 +246,13 @@ contract OrderBookTest is Test, PropertiesAsserts {
         address _maker = _addSellOrder(address(0), _price, _size, false);
         address _taker = _addBuyOrder(address(0), _price, _size, 1, false);
         uint256 _usdc = uint256(uint24((_price * _size) / SIZE_PRECISION)) * 10 ** usdc.decimals() / PRICE_PRECISION;
-        uint256 _ethAfterFee = ((_size * (10 ** 4 - _takerFeeBps)) / 10 ** 4) * 10 ** eth.decimals() / SIZE_PRECISION;
+        uint256 _ethWithoutFee = (_size) * 10 ** eth.decimals() / SIZE_PRECISION;
+        uint256 _ethFee = FixedPointMathLib.mulDivUp(_ethWithoutFee, _takerFeeBps, 10**4);
+        uint256 _ethAfterFee = _ethWithoutFee - _ethFee;
+        orderBook.collectFees();
         assertEq(marginAccount.getBalance(_taker, address(eth)), _ethAfterFee);
         assertEq(marginAccount.getBalance(_maker, address(usdc)), _usdc);
+        assertEq(marginAccount.getBalance(address(router), address(eth)), _ethFee);
     }
 
     function testCancelBuyOrder(uint24 _price, uint96 _size) public {
@@ -295,8 +304,10 @@ contract OrderBookTest is Test, PropertiesAsserts {
         uint24 _amountB = mulDivUp(_priceB, _sizeB);
 
         //Expected size credited for market order from each sell order
-        uint96 _sizeCreditA = (_sizeA * (10 ** 4 - _takerFeeBps)) / 10 ** 4;
-        uint96 _sizeCreditB = (_sizeB * (10 ** 4 - _takerFeeBps)) / 10 ** 4;
+        uint96 _sizeCreditAFee = uint96(FixedPointMathLib.mulDivUp(_sizeA, _takerFeeBps, 10**4));
+        uint96 _sizeCreditA = _sizeA - _sizeCreditAFee;
+        uint96 _sizeCreditBFee = uint96(FixedPointMathLib.mulDivUp(_sizeB, _takerFeeBps, 10**4));
+        uint96 _sizeCreditB = _sizeB - _sizeCreditBFee;
 
         //Maximum tolerance in credited base tokens from market buy
         uint96 _toleranceInBase = SIZE_PRECISION / uint96(_priceB);
@@ -313,10 +324,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
         orderBook.placeAndExecuteMarketBuy(_totalAmount, false);
         vm.stopPrank();
 
+        orderBook.collectFees();
         assertGte(eth.balanceOf(_taker), ((_sizeCreditA + _sizeCreditB - _toleranceInBase) * 10 ** eth.decimals() / SIZE_PRECISION), "Too much size lost");
         assertGte(marginAccount.getBalance(_makerA, address(usdc)), ((_amountA * 10 ** decimals) / PRICE_PRECISION) - _toleranceInQuote, "Too less quote credited A");
         assertGte(marginAccount.getBalance(_makerB, address(usdc)), ((_amountB * 10 ** decimals) / PRICE_PRECISION) - _toleranceInQuote, "Too less quote credited B");
         assertLte(usdc.balanceOf(_taker), 2 * _toleranceInQuote, "Too less quote debited");
+        assertApproxEqAbs(marginAccount.getBalance(address(router), address(eth)), ((_sizeCreditAFee + _sizeCreditBFee) * 10**(eth.decimals())) / SIZE_PRECISION, 10**18);
     }   
 
     function testMarketBuyPartialFill(uint24 _price, uint96 _size) public {
@@ -327,7 +340,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         uint24 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
         uint24 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
         uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
-        uint96 _creditSize = (_size * (10**4 - _takerFeeBps)) / 10**4;
+        uint96 _creditSize = _size - uint96(FixedPointMathLib.mulDivUp(_size, _takerFeeBps, 10**4));
 
         address _taker = genAddress();
         usdc.mint(_taker, (_quoteExtra * 10**_decimals) / PRICE_PRECISION);
@@ -338,7 +351,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
 
         assertGte(usdc.balanceOf(_taker), (100 * 10**_decimals) / PRICE_PRECISION, "Too less refund credit");
         assertLte(usdc.balanceOf(_taker), (101 * 10**_decimals) / PRICE_PRECISION, "Too much refund credit");
-        assertGte(eth.balanceOf(_taker), (_creditSize - _toleranceInBase) * 10**(eth.decimals()) / SIZE_PRECISION, "Too less size credit");
+        if(_creditSize > _toleranceInBase) { //sometimes creditsize is lower than tolerance
+            assertGte(eth.balanceOf(_taker), (_creditSize - _toleranceInBase) * 10**(eth.decimals()) / SIZE_PRECISION, "Too less size credit");
+        }
         assertGte(marginAccount.getBalance(_maker, address(usdc)), (_quoteTokens - 1) * 10**_decimals / PRICE_PRECISION, "Too less quote credit");
     }
 
@@ -386,7 +401,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         address _makerB = _addBuyOrder(address(0), _priceB, _sizeB, 0, false);
 
         uint256 _expectedQuote = _amountPayableInQuote(_priceA, _sizeA) + _amountPayableInQuote(_priceB, _sizeB);
-        _expectedQuote = (_expectedQuote * (10**4 - _takerFeeBps)) / 10**4; //with fee
+        _expectedQuote -= FixedPointMathLib.mulDivUp(_expectedQuote, _takerFeeBps, 10**4);
 
         console.log(mulDivUp(_priceA, _sizeA));
         console.log(mulDivUp(_priceB, _sizeB));
@@ -400,9 +415,11 @@ contract OrderBookTest is Test, PropertiesAsserts {
         orderBook.placeAndExecuteMarketSell((_sizeA + _sizeB), true);
         vm.stopPrank();
 
+        orderBook.collectFees();
         assertGte(usdc.balanceOf(_taker), _expectedQuote - _quoteTolerance, "Too less quote credit");
         assertGte(marginAccount.getBalance(_makerA, address(eth)), ((_sizeA - 1) * 10**_decimals) / SIZE_PRECISION, "Too less size credit A");
         assertGte(marginAccount.getBalance(_makerB, address(eth)), ((_sizeB - 1) * 10**_decimals) / SIZE_PRECISION, "Too less size credit B");
+        assertGte(marginAccount.getBalance(address(router), address(usdc)), FixedPointMathLib.mulDivUp(_expectedQuote, _takerFeeBps, 10**4), "Fee collection failed");
     }
     
     function testMarketSellPartialFill(uint24 _price, uint96 _size) public {
@@ -412,7 +429,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         address _maker = _addBuyOrder(address(0), _price, _size, 0, false);
 
         uint256 _expectedQuote = _amountPayableInQuote(_price, _size);
-        _expectedQuote = (_expectedQuote * (10**4 - _takerFeeBps)) / 10**4;
+        _expectedQuote -= FixedPointMathLib.mulDivUp(_expectedQuote, _takerFeeBps, 10**4);
         uint256 _quoteTolerance = 10**(usdc.decimals()) / PRICE_PRECISION;
         uint256 _sizeForSale = ((_size + 10**6) * 10**_decimals) / SIZE_PRECISION; //extra 10**6 size for partial fill
 
@@ -423,9 +440,13 @@ contract OrderBookTest is Test, PropertiesAsserts {
         orderBook.placeAndExecuteMarketSell(_size, false);
         vm.stopPrank();
 
-        assertGte(usdc.balanceOf(_taker), _expectedQuote - _quoteTolerance, "Too less quote credit");
+        orderBook.collectFees();
+        if (_expectedQuote > _quoteTolerance) { //sometimes tolerance is higher than expected quote
+            assertGte(usdc.balanceOf(_taker), _expectedQuote - _quoteTolerance, "Too less quote credit");
+        }
         assertGte(marginAccount.getBalance(_maker, address(eth)), (_size * 10**_decimals) / SIZE_PRECISION, "Too less size credit");
         assertGte(eth.balanceOf(_taker), (10**6 * 10**_decimals) / SIZE_PRECISION, "Too much size spent");
+        assertGte(marginAccount.getBalance(address(router), address(usdc)), FixedPointMathLib.mulDivUp(_expectedQuote, _takerFeeBps, 10**4), "Fee collection failed");
     }
 
     function testMarketSellRevertFillOrKill(uint24 _price, uint96 _size) public {
