@@ -52,6 +52,8 @@ contract MarginAccount is IMarginAccount {
 
         balances[_accountKey(feeCollector, _assetA)] += _feeA;
         balances[_accountKey(feeCollector, _assetB)] += _feeB;
+
+        return true;
     }
 
     /**
