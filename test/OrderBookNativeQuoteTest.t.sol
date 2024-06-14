@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
+import {FixedPointMathLib} from "../contracts/libraries/FixedPointMathLib.sol";
 import {IOrderBook} from "../contracts/interfaces/IOrderBook.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
@@ -70,14 +71,14 @@ contract OrderBookTest is Test, PropertiesAsserts {
     }
 
     function _amountPayableInQuote(uint24 _price, uint96 _size) internal returns (uint256) {
-        return ((uint256(uint24((_price * _size) / SIZE_PRECISION)) * 10**nativeDecimals)) / PRICE_PRECISION;
+        return (((uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10**nativeDecimals)) / PRICE_PRECISION;
     }
 
     function _addBuyOrder(address _maker, uint24 _price, uint96 _size, uint24 extra, bool _postOnly) internal returns (address) {
         if (_maker == address(0)) {
             _maker = genAddress();
         }
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION)) + extra) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _amount = (uint256(mulDivUp(_price, _size)) + extra) * 10**nativeDecimals / PRICE_PRECISION;
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(usdc), _amount);
@@ -106,7 +107,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addBuyOrder(address(0), _price, _size, 0, false);
-        uint256 _amount = uint256((uint24(_price * _size / SIZE_PRECISION))) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _amount = uint256((mulDivUp(_price, _size))) * 10**nativeDecimals / PRICE_PRECISION;
 
         assertEq(marginAccount.getBalance(_maker, address(usdc)), 0);
         assertEq(address(marginAccount).balance, _amount);
@@ -123,7 +124,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         _addSellOrder(address(0), _price + _tickSize, _size, false);
 
         address _maker = _addBuyOrder(address(0), _price, _size, 0, true);
-        uint256 _amount = uint256((uint24(_price * _size / SIZE_PRECISION))) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _amount = uint256((mulDivUp(_price, _size))) * 10**nativeDecimals / PRICE_PRECISION;
         assertEq(marginAccount.getBalance(_maker, address(usdc)), 0);
         assertEq(address(marginAccount).balance, _amount);
         assertEq(_maker.balance, 0);
@@ -137,7 +138,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         
         address _maker = genAddress();
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION)) - 1) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _amount = (uint256(mulDivUp(_price, _size)) - 1) * 10**nativeDecimals / PRICE_PRECISION;
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(usdc), _amount);
@@ -155,7 +156,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
 
         uint96 _buySize = _size; //extra size of 1 than the sell order
         address _maker = genAddress();
-        uint256 _amount = (uint256(uint24((_price * _buySize) / SIZE_PRECISION)) + 1) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _amount = (uint256(mulDivUp(_price, _buySize)) + 1) * 10**nativeDecimals / PRICE_PRECISION;
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(usdc), _amount);
@@ -169,7 +170,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
 
         address _maker = genAddress();
         //minting 1 price precision less here
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION)) - 1) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _amount = (uint256(mulDivUp(_price, _size)) - 1) * 10**nativeDecimals / PRICE_PRECISION;
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(usdc), _amount);
@@ -225,7 +226,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
 
         address _maker = _addBuyOrder(address(0), _price, _size, 0, false);
         _addSellOrder(_maker, _price, _size, false);
-        uint256 _usdcAfterFee = uint256((uint24(_price * _size / SIZE_PRECISION)) * (10**4 - _takerFeeBps) / 10 ** 4) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _usdcAfterFee = uint256((uint24((_price * _size) / SIZE_PRECISION)) * (10**4 - _takerFeeBps) / 10**4) * 10**nativeDecimals / PRICE_PRECISION;
         uint256 _eth = (_size) * 10**eth.decimals() / SIZE_PRECISION;
         assertEq(marginAccount.getBalance(_maker, address(eth)), _eth);
         assertEq(marginAccount.getBalance(_maker, address(usdc)), _usdcAfterFee);
@@ -236,7 +237,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
         address _taker = _addBuyOrder(address(0), _price, _size, 1, false);
-        uint256 _usdc = uint256(uint24(_price * _size / SIZE_PRECISION)) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _usdc = (uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10**nativeDecimals / PRICE_PRECISION;
         uint256 _ethAfterFee = ((_size * (10**4 - _takerFeeBps)) / 10**4) * 10**eth.decimals() / SIZE_PRECISION;
         assertEq(marginAccount.getBalance(_taker, address(eth)), _ethAfterFee);
         assertEq(marginAccount.getBalance(_maker, address(usdc)), _usdc);
@@ -252,7 +253,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         orderBook.batchCancelOrders(_cancelId);
         vm.stopPrank();
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION)) * 10**nativeDecimals) / PRICE_PRECISION;
         assertEq(marginAccount.getBalance(_maker, address(usdc)), _amount);
         vm.prank(_maker);
         marginAccount.withdraw(_amount, address(usdc));
@@ -287,8 +288,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         address _makerB = _addSellOrder(address(0), _priceB, _sizeB, false);
 
         //Expected quote tokens to be supplied for filling each sell order
-        uint24 _amountA = uint24((_priceA * _sizeA) / SIZE_PRECISION);
-        uint24 _amountB = uint24((_priceB * _sizeB) / SIZE_PRECISION);
+        uint24 _amountA = mulDivUp(_priceA, _sizeA);
+        uint24 _amountB = mulDivUp(_priceB, _sizeB);
 
         //Expected size credited for market order from each sell order
         uint96 _sizeCreditA = (_sizeA * (10**4 - _takerFeeBps)) / 10**4;
@@ -300,12 +301,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
         //Maximum tolerance in credited quote tokens (1 price precision)
         uint256 _toleranceInQuote = 10**decimals / PRICE_PRECISION;
 
-        uint24 _totalAmount = _amountA + _amountB + 1;
+        uint24 _totalAmount = _amountA + _amountB;
 
         address _taker = genAddress();
         vm.deal(_taker, (_totalAmount * 10**nativeDecimals) / PRICE_PRECISION);
         vm.startPrank(_taker);
-        orderBook.placeAndExecuteMarketBuy{value: (_totalAmount * 10**decimals) / PRICE_PRECISION}(_totalAmount, true);
+        orderBook.placeAndExecuteMarketBuy{value: (_totalAmount * 10**decimals) / PRICE_PRECISION}(_totalAmount, false);
         vm.stopPrank();
 
         assertGte(eth.balanceOf(_taker), ((_sizeCreditA + _sizeCreditB - _toleranceInBase) * 10**eth.decimals() / SIZE_PRECISION), "Too much size lost");
@@ -319,7 +320,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
-        uint24 _quoteTokens = uint24((_price * _size) / SIZE_PRECISION); //Quote tokens needed to fill
+        uint24 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
         uint24 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
         uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
         uint96 _creditSize = (_size * (10**4 - _takerFeeBps)) / 10**4;
@@ -341,7 +342,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
-        uint24 _quoteTokens = uint24((_price * _size) / SIZE_PRECISION); //Quote tokens needed to fill
+        uint24 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
         uint24 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
         uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
 
@@ -358,7 +359,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
-        uint24 _quoteTokens = uint24((_price * _size) / SIZE_PRECISION); //Quote tokens needed to fill
+        uint24 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
         uint24 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
         uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
 
@@ -381,8 +382,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         uint256 _expectedQuote = _amountPayableInQuote(_priceA, _sizeA) + _amountPayableInQuote(_priceB, _sizeB);
         _expectedQuote = (_expectedQuote * (10**4 - _takerFeeBps)) / 10**4; //with fee
 
-        console.log(uint24((_priceA * _sizeA) / SIZE_PRECISION));
-        console.log(uint24((_priceB * _sizeB) / SIZE_PRECISION));
+        console.log(mulDivUp(_priceA, _sizeA));
+        console.log(mulDivUp(_priceB, _sizeB));
         //quote tolerance is tokens equal to 1 price precision
         uint256 _quoteTolerance = 10**nativeDecimals / PRICE_PRECISION;
         uint256 _sizeForSale = ((_sizeA + _sizeB) * 10**_decimals / SIZE_PRECISION);
@@ -487,7 +488,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         _size = _minSize - 1;
 
         address _maker = genAddress();
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _amount = (uint256(mulDivUp(_price, _size))) * 10**nativeDecimals / PRICE_PRECISION;
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(usdc), _amount);
@@ -501,7 +502,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         _size = _maxSize + 1;
 
         address _maker = genAddress();
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _amount = (uint256(mulDivUp(_price, _size))) * 10**nativeDecimals / PRICE_PRECISION;
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(usdc), _amount);
@@ -515,7 +516,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         _price -= 1; //wrong tick size
 
         address _maker = genAddress();
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _amount = (uint256(mulDivUp(_price, _size))) * 10**nativeDecimals / PRICE_PRECISION;
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(usdc), _amount);
@@ -529,7 +530,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         _price = 0;
 
         address _maker = genAddress();
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10**nativeDecimals / PRICE_PRECISION;
+        uint256 _amount = (uint256(mulDivUp(_price, _size))) * 10**nativeDecimals / PRICE_PRECISION;
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(usdc), _amount);
@@ -600,5 +601,13 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.expectRevert("OrderBook: Price too low");
         orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
+    }
+
+    function mulDivUp(uint24 _price, uint96 _size) internal returns (uint24) {
+        uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, SIZE_PRECISION);
+        if (_result >= type(uint24).max) {
+            revert("OrderBook: Too much size being filled");
+        }
+        return uint24(_result);
     }
 }

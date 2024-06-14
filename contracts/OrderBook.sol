@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 // ============ Library Imports ============
 import {OrderLinkedList} from "./libraries/OrderLinkedList.sol";
 import {TreeMath} from "./libraries/TreeMath.sol";
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // ============ Internal Interfaces Imports ============
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
@@ -191,7 +192,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         uint24 _consumedFunds;
         (_remainingSize, _consumedFunds) = _matchAggressiveBuyWithCap(_price, size);
         
-        _consumedFunds += uint24((_remainingSize * _price)/sizePrecision);
+        _consumedFunds += mulDivUp(_price, _remainingSize);
         
         _consumeFunds(quoteAsset, (((_consumedFunds) * 10**quoteAssetDecimals) / pricePrecision), msg.sender);
         if (_postOnly) {
@@ -533,9 +534,9 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             _sizeToGet += sizeFilled;
 
             // @audit This might make you consume lesser than what has to be consumed because of rounding down.
-            fundsConsumed += uint24((sizeFilled * _bestAsk)/sizePrecision);
+            fundsConsumed += mulDivUp(_bestAsk, sizeFilled);
             /// round up
-            ++fundsConsumed;
+            // ++fundsConsumed;
             makerCredits = bytes.concat(makerCredits, priceUpdate);
             
             _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
@@ -572,7 +573,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             _sizeToGet -= _size;
             makerCredits = bytes.concat(makerCredits, priceUpdate);
 
-            _quoteSize = uint24(_size * _bestAsk / sizePrecision);
+            _quoteSize = uint24((_bestAsk * _size) / sizePrecision);
             
             _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
         }
@@ -671,6 +672,19 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         }
         // What if the whole book gets filled or the whole price point gets filled up?
         emit Trade(_orderId, s_orders[_orderId].ownerAddress, s_orders[_orderId].isBuy, s_orders[_orderId].price, _updatedSize, msg.sender, _size - remainingSize);
+    }
+
+    /**
+    * internal helper function to calculate quote amounts with correct math
+    * @param _price The price of the order.
+    * @param _size The size of the order
+     */
+    function mulDivUp(uint24 _price, uint96 _size) internal returns (uint24) {
+        uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, sizePrecision);
+        if (_result >= type(uint24).max) {
+            revert("OrderBook: Too much size being filled");
+        }
+        return uint24(_result);
     }
 
     /**
