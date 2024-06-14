@@ -191,7 +191,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         uint96 _remainingSize;
         uint24 _consumedFunds;
         (_remainingSize, _consumedFunds) = _matchAggressiveBuyWithCap(_price, size);
-        
+
         _consumedFunds += mulDivUp(_price, _remainingSize);
         
         _consumeFunds(quoteAsset, (((_consumedFunds) * 10**quoteAssetDecimals) / pricePrecision), msg.sender);
@@ -535,8 +535,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
             // @audit This might make you consume lesser than what has to be consumed because of rounding down.
             fundsConsumed += mulDivUp(_bestAsk, sizeFilled);
-            /// round up
-            // ++fundsConsumed;
             makerCredits = bytes.concat(makerCredits, priceUpdate);
             
             _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
@@ -679,7 +677,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     * @param _price The price of the order.
     * @param _size The size of the order
      */
-    function mulDivUp(uint24 _price, uint96 _size) internal returns (uint24) {
+    function mulDivUp(uint24 _price, uint96 _size) internal view returns (uint24) {
         uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, sizePrecision);
         if (_result >= type(uint24).max) {
             revert("OrderBook: Too much size being filled");
@@ -779,7 +777,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 orderId = s_orders[orderId].next;
             }
             data = bytes.concat(data, abi.encode(price, size));
-            price = TreeMath.findFirstLeft(s_buyTree, price + 1);
+            price = TreeMath.findFirstLeft(s_buyTree, price);
         }
 
         data = bytes.concat(data, abi.encode(0)); // Separator between buy and sell orders
@@ -794,7 +792,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 orderId = s_orders[orderId].next;
             }
             data = bytes.concat(data, abi.encode(price, size));
-            price = TreeMath.findFirstLeft(s_sellTree, price + 1);
+            price = TreeMath.findFirstLeft(s_sellTree, price);
         }
 
         return data;
@@ -817,7 +815,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-            price = TreeMath.findFirstLeft(s_buyTree, price + 1);
+            price = TreeMath.findFirstLeft(s_buyTree, price);
         }
 
         return data;
@@ -840,7 +838,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-            price = TreeMath.findFirstLeft(s_sellTree, price + 1);
+            price = TreeMath.findFirstLeft(s_sellTree, price);
         }
 
         return data;
@@ -864,7 +862,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-            price = TreeMath.findFirstLeft(s_buyTree, price + 1);
+            price = TreeMath.findFirstLeft(s_buyTree, price);
         }
 
         // Get active sell orders
@@ -877,7 +875,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-            price = TreeMath.findFirstLeft(s_sellTree, price + 1);
+            price = TreeMath.findFirstLeft(s_sellTree, price);
         }
 
         return data;
