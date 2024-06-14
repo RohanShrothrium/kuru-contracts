@@ -191,7 +191,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         uint24 _consumedFunds;
         (_remainingSize, _consumedFunds) = _matchAggressiveBuyWithCap(_price, size);
         
-        _consumedFunds += uint24((_remainingSize * _price)/sizePrecision);
+        _consumedFunds += uint24((_remainingSize * _price) / sizePrecision);
         
         _consumeFunds(quoteAsset, (((_consumedFunds) * 10**quoteAssetDecimals) / pricePrecision), msg.sender);
         if (_postOnly) {
@@ -765,7 +765,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 orderId = s_orders[orderId].next;
             }
             data = bytes.concat(data, abi.encode(price, size));
-            price = TreeMath.findFirstLeft(s_buyTree, price + 1);
+            price = TreeMath.findFirstLeft(s_buyTree, price);
         }
 
         data = bytes.concat(data, abi.encode(0)); // Separator between buy and sell orders
@@ -780,7 +780,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 orderId = s_orders[orderId].next;
             }
             data = bytes.concat(data, abi.encode(price, size));
-            price = TreeMath.findFirstLeft(s_sellTree, price + 1);
+            price = TreeMath.findFirstLeft(s_sellTree, price);
         }
 
         return data;
@@ -803,7 +803,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-            price = TreeMath.findFirstLeft(s_buyTree, price + 1);
+            price = TreeMath.findFirstLeft(s_buyTree, price);
         }
 
         return data;
@@ -826,7 +826,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-            price = TreeMath.findFirstLeft(s_sellTree, price + 1);
+            price = TreeMath.findFirstLeft(s_sellTree, price);
         }
 
         return data;
@@ -850,7 +850,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-            price = TreeMath.findFirstLeft(s_buyTree, price + 1);
+            price = TreeMath.findFirstLeft(s_buyTree, price);
         }
 
         // Get active sell orders
@@ -863,7 +863,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 }
                 orderId = s_orders[orderId].next;
             }
-            price = TreeMath.findFirstLeft(s_sellTree, price + 1);
+            price = TreeMath.findFirstLeft(s_sellTree, price);
         }
 
         return data;
