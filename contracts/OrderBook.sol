@@ -733,6 +733,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         uint256 amount = _isMarketBuy ? _amountPayable(_size, _price) : ((_size * 10**baseAssetDecimals) / sizePrecision);
         uint256 feeRebate;
         address feeAsset;
+        bytes memory returnData;
         if (_isMarketBuy) {
             feeAsset = address(baseAsset);
             feeRebate = (((_size * 10**baseAssetDecimals) / sizePrecision) * makerFeeBps) / BPS_MULTIPLIER;
@@ -741,8 +742,11 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             feeAsset = address(quoteAsset);
             feeRebate = (_amountPayable(_size, _price) * makerFeeBps) / BPS_MULTIPLIER;
         }
+        if(feeRebate > 0) {
+            returnData = abi.encode(_ownerAddress, feeAsset, feeRebate, true);
+        }
 
-        return abi.encode(_ownerAddress, creditAsset, amount, true, _ownerAddress, feeAsset, feeRebate, true);
+        return bytes.concat(returnData, abi.encode(_ownerAddress, creditAsset, amount, true));
     }
 
     /**
