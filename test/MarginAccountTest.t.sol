@@ -33,7 +33,7 @@ contract OrderBookTest is Test {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USD", "USDC");
 
-        marginAccount = new MarginAccount(address(this));
+        marginAccount = new MarginAccount(address(this), address(this));
 
         eth.mint(user1, initEth);
         usdc.mint(user2, initUsdc);
@@ -76,6 +76,7 @@ contract OrderBookTest is Test {
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 15;
         uint256 _takerFeeBps = 0;
+        uint256 _makerFeeBps = 0;
         OrderBook.OrderBookType _type;
         address proxy = router.deployProxy(
             _type,
@@ -86,7 +87,8 @@ contract OrderBookTest is Test {
             _tickSize,
             _minSize,
             _maxSize,
-            _takerFeeBps
+            _takerFeeBps,
+            _makerFeeBps
         );
 
         return OrderBook(proxy);

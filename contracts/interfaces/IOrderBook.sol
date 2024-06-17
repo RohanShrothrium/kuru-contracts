@@ -23,7 +23,8 @@ interface IOrderBook {
         uint96 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
-        uint256 _takerFeeBps
+        uint256 _takerFeeBps,
+        uint256 _makerFeeBps
     ) external;
 
     function addBuyOrder(uint24 _price, uint96 size, bool _postOnly) external;

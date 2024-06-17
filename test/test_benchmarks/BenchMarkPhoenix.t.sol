@@ -35,12 +35,12 @@ contract BenchMarkTest is Test, Gas {
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 12;
         uint256 _takerFeeBps = 0;
-
+        uint256 _makerFeeBps = 0;
         router = new Router();
         u1 = genAddress();
         u2 = genAddress();
         u3 = genAddress();
-        marginAccount = new MarginAccount(address(router));
+        marginAccount = new MarginAccount(address(router), address(router));
 
         OrderBook implementation = new OrderBook();
 
@@ -55,7 +55,8 @@ contract BenchMarkTest is Test, Gas {
             _tickSize,
             _minSize,
             _maxSize,
-            _takerFeeBps
+            _takerFeeBps,
+            _makerFeeBps
         );
 
         orderBook = OrderBook(proxy);

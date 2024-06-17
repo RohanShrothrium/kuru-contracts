@@ -34,15 +34,15 @@ contract BenchMarkTest is Test, Gas {
         uint96 _minSize = 10**5;
         uint96 _maxSize = 10**12;
         uint256 _takerFeeBps = 0;
-
+        uint256 _makerFeeBps = 0;
         router = new Router();
-        marginAccount = new MarginAccount(address(router));
+        marginAccount = new MarginAccount(address(router), address(router));
 
         OrderBook implementation = new OrderBook();
 
         router.initialize(address(this), address(marginAccount), address(implementation));
         OrderBook.OrderBookType _type;
-        address proxy = router.deployProxy(_type, address(eth), address(usdc), SIZE_PRECISION, PRICE_PRECISION, _tickSize, _minSize, _maxSize, _takerFeeBps);
+        address proxy = router.deployProxy(_type, address(eth), address(usdc), SIZE_PRECISION, PRICE_PRECISION, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps);
 
         orderBook = OrderBook(proxy);
 

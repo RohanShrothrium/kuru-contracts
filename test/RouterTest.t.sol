@@ -38,7 +38,7 @@ contract OrderBookTest is Test {
 
         router = new Router();
 
-        marginAccount = new MarginAccount(address(router));
+        marginAccount = new MarginAccount(address(router), address(router));
 
         OrderBook implementation = new OrderBook();
 
@@ -217,7 +217,7 @@ contract OrderBookTest is Test {
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 15;
         uint256 _takerFeeBps = 0;
-
+        uint256 _makerFeeBps = 0;
         address proxy = router.deployProxy(
             _type,
             address(_baseAsset),
@@ -227,7 +227,8 @@ contract OrderBookTest is Test {
             _tickSize,
             _minSize,
             _maxSize,
-            _takerFeeBps
+            _takerFeeBps,
+            _makerFeeBps
         );
 
         return OrderBook(proxy);
