@@ -19,7 +19,7 @@ contract Router is IRouter, OwnableUpgradeable {
     mapping(address => bool) public verifiedMarket;
 
     // used to create base/native and native/quote markets
-    address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address private constant NATIVE = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     address orderBookImplementation;
     address marginAccountAddress;
@@ -45,6 +45,20 @@ contract Router is IRouter, OwnableUpgradeable {
         orderBookImplementation = _implementation;
     }
 
+    /**
+    * @dev Deploys an OrderBook proxy for a set of given parameters
+    * @param _type The type of OrderBook which can be NO_NATIVE, NATIVE_IN_BASE or NATIVE_IN_QUOTE
+    * @param _baseAssetAddress The base asset address. Can be address 0 if _type is NATIVE_IN_BASE
+    * @param _quoteAssetAddress The quote asset address. Can be address 0 if _type is NATIVE_IN_QUOTE
+    * @param _sizePrecision The size precision of the asset pair
+    * @param _pricePrecision The price precision of the asset pair
+    * @param _tickSize The tick size of the price
+    * @param _minSize The minimum size an order must have to be placed
+    * @param _maxSize The maximum size an order can have to be placed
+    * @param _takerFeeBps The taker fee in bips per second.
+    * @param _makerFeeBps The maker fee in bips per second. The maker fee must be lower than the taker fee.
+      */
+
     function deployProxy(
         IOrderBook.OrderBookType _type,
         address _baseAssetAddress,
@@ -60,8 +74,8 @@ contract Router is IRouter, OwnableUpgradeable {
         
         {
             bytes32 _salt = _getSalt(
-                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE : _baseAssetAddress,
-                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE : _quoteAssetAddress,
+                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? NATIVE : _baseAssetAddress,
+                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? NATIVE : _quoteAssetAddress,
                 _sizePrecision,
                 _pricePrecision,
                 _tickSize,
@@ -84,9 +98,9 @@ contract Router is IRouter, OwnableUpgradeable {
             IOrderBook(proxy).initialize(
                 address(this),
                 _type,
-                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE : _baseAssetAddress,
+                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? NATIVE : _baseAssetAddress,
                 _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals(),
-                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE : _quoteAssetAddress,
+                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? NATIVE : _quoteAssetAddress,
                 _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20(_quoteAssetAddress).decimals(),
                 marginAccountAddress,
                 _sizePrecision,
@@ -102,10 +116,6 @@ contract Router is IRouter, OwnableUpgradeable {
         _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
 
         return proxy;
-    }
-
-    function _reOrder(address _tokenA, address _tokenB) internal pure returns (address _baseAsset, address _quoteAsset) {
-        (_baseAsset, _quoteAsset) = (_tokenA > _tokenB) ? (_tokenB, _tokenA) : (_tokenA, _tokenB);
     }
 
     function computeAddress(
@@ -146,6 +156,10 @@ contract Router is IRouter, OwnableUpgradeable {
         );
     }
 
+    /**
+    * @dev Function to upgrade the orderbook implementation. Can only be called by owner
+    * @param newImplementation The new deployed orderbook implementation
+     */
     function upgradeImplementation(
         address newImplementation
     ) external onlyOwner {
@@ -153,6 +167,10 @@ contract Router is IRouter, OwnableUpgradeable {
         orderBookImplementation = newImplementation;
     }
 
+    /**
+    * @dev This function lets anyone batch upgrade orderbooks if a new implementation is available 
+    * @param proxies The proxies which are to be upgraded to the latest orderbook implementation
+    */
     function upgradeMultipleProxies(address[] memory proxies) public {
         for (uint i = 0; i < proxies.length; i++) {
             (bool success, ) = proxies[i].call(abi.encodeWithSelector(0x3659cfe6, orderBookImplementation));
@@ -264,5 +282,9 @@ contract Router is IRouter, OwnableUpgradeable {
                     _makerFeeBps
                 )
             );
+    }
+
+    function _reOrder(address _tokenA, address _tokenB) internal pure returns (address _baseAsset, address _quoteAsset) {
+        (_baseAsset, _quoteAsset) = (_tokenA > _tokenB) ? (_tokenB, _tokenA) : (_tokenA, _tokenB);
     }
 }

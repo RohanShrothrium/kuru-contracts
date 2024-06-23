@@ -238,6 +238,10 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertEq(marginAccount.getBalance(_maker, address(eth)), _eth);
         assertEq(marginAccount.getBalance(_maker, address(usdc)), _usdcAfterFee);
         assertEq(marginAccount.getBalance(address(router), address(usdc)), _usdcFee);
+        uint256 _usdcUtilized = marginAccount.getBalance(address(router), address(usdc)) + marginAccount.getBalance(_maker, address(usdc));
+        uint256 _usdcMinted = FixedPointMathLib.mulDivUp(_price, _size, SIZE_PRECISION) * 10**usdc.decimals() / PRICE_PRECISION;
+        uint256 _usdcWasted = _usdcMinted - _usdcUtilized;
+        console.log("Wasted: ", _usdcWasted);
     }
 
     function testSellAndBuyEqualMatch(uint24 _price, uint96 _size) public {
@@ -355,6 +359,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
             assertGte(eth.balanceOf(_taker), (_creditSize - _toleranceInBase) * 10**(eth.decimals()) / SIZE_PRECISION, "Too less size credit");
         }
         assertGte(marginAccount.getBalance(_maker, address(usdc)), (_quoteTokens - 1) * 10**_decimals / PRICE_PRECISION, "Too less quote credit");
+        orderBook.collectFees();
+        uint256 _ethMinted = (_size * 10**eth.decimals()) / SIZE_PRECISION;
+        uint256 _ethTaker = eth.balanceOf(_taker);
+        uint256 _ethFee = marginAccount.getBalance(address(router), address(eth));
+        uint256 _ethWasted = _ethMinted - (_ethTaker + _ethFee);
+        console.log("Market Buy Partial Fill Eth wasted: ", _ethWasted);
     }
 
     function testMarketBuyRevertFillOrKill(uint24 _price, uint96 _size) public {
