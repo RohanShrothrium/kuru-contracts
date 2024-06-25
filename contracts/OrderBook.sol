@@ -178,8 +178,9 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * @dev Allows admin to pause the market.
      */
-    function pauseMarkets() external onlyOwner {
-        marketPaused = true;
+    function toggleMarkets(bool _state) external onlyOwner {
+        require(_state != marketPaused, "OrderBook: Markets are already in requested state!");
+        marketPaused = _state;
     }
 
     /**
@@ -193,6 +194,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
         
+        //The buy order is filled aggressively and the leftover size is added as a limit buy order
         (uint96 _remainingSize, uint24 _consumedFunds) = _matchAggressiveBuyWithCap(_price, size);
 
         _consumedFunds += _calculateFundsConsumed(_price, _remainingSize);
@@ -228,6 +230,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         _consumeFunds(baseAsset, ((size * 10**baseAssetDecimals) / sizePrecision), msg.sender);
 
         uint256 _tokenCredit;
+        //The sell order is matched and filled aggressively and remaining size is added as limit sell order
         (size, _tokenCredit) = _matchAggressiveSell(_price, size, true);
         if (_postOnly) {
             require(_tokenCredit == 0, "OrderBook: Post only crossed the book");
@@ -298,10 +301,12 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         }
 
         if (_order.isBuy) {
+            //If cancelled order is the head of corresponding price point, we need to update to new head
             if(_orderId == s_buyPricePoints[_order.price].head) {
                 OrderLinkedList.updateHead(s_buyPricePoints[_order.price], _order.next);
             }
             OrderLinkedList.deleteOrder(s_buyPricePoints[_order.price], _order.prev, _order.next);
+            //If there are no more orders remaining in price point, we can remove the price point
             if (_order.prev == _order.next) {
                 TreeMath.remove(s_buyTree, _order.price);
             }
@@ -345,6 +350,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         if (_order.prev != OrderLinkedList.NULL) {
             require(s_orders[_order.prev].next == _orderId, "OrderBook: Order already cancelled");
             if (_order.isBuy) {
+                //Since all orders are filled FCFS in each price point, if head > order id, it means order id was already filled
                 require(s_buyPricePoints[_order.price].head <= _orderId, "OrderBook: Order already filled");
             } else {
                 require(s_sellPricePoints[_order.price].head <= _orderId, "OrderBook: Order already filled");
@@ -448,6 +454,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         if (_quoteSize > 0) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
             if (_type == OrderBookType.NATIVE_IN_QUOTE) {
+                //There are no more writes to the state after this, so read only reentrancies should be avoided
                 uint256 _refund = _quoteSize * 10**quoteAssetDecimals / pricePrecision;
                 _handleNativeMarketRefundTransfer(_refund);
             }
@@ -544,7 +551,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         while (_sizeToBeFilled > 0 && _bestAsk <= _limitPrice && _bestAsk != 0) {
             bytes memory priceUpdate;
             uint96 sizeToBeFilledBefore = _sizeToBeFilled; // Capture the size before filling
-
+            // _sizeToBeFilled always signifies size left to be filled
             (_sizeToBeFilled, priceUpdate) = _fillSizeForPrice(s_sellTree, _bestAsk, s_sellPricePoints[_bestAsk], _sizeToBeFilled);
 
             uint96 sizeFilled = sizeToBeFilledBefore - _sizeToBeFilled; // Calculate the filled size
@@ -561,6 +568,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             uint256 _feeDebit;
             if (takerFeeBps > 0) {
                 _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, takerFeeBps, BPS_MULTIPLIER);
+                //Calculate what ratio of fee goes to the protocol
                 baseFeeCollected += ((_feeDebit * (takerFeeBps - makerFeeBps)) / takerFeeBps);
             }
             marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit - _feeDebit, true)));
@@ -584,18 +592,18 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         uint256 _tokenCredit;
         bytes memory makerCredits;
         while (_quoteSize > 0 && _bestAsk <= _limitPrice && _bestAsk != 0) {
-            uint96 _sizeFillableAtPrice = _quoteSize * sizePrecision / _bestAsk;
+            //Calculate base size fillable by current unconsumed quote size for a particular price
+            uint96 _sizeFillableAtPriceLeft = _quoteSize * sizePrecision / _bestAsk;
             
             bytes memory priceUpdate;
 
-            uint96 _sizeFillableAtPriceBefore = _sizeFillableAtPrice; //save old size to be filled
-            uint96 _sizeFillableAtPriceLeft;
-            (_sizeFillableAtPriceLeft, priceUpdate) = _fillSizeForPrice(s_sellTree, _bestAsk, s_sellPricePoints[_bestAsk], _sizeFillableAtPrice);
+            uint96 _sizeFillableAtPriceBefore = _sizeFillableAtPriceLeft; //save old size to be filled
+            //The unfilled size is returned here, from which we can calculate filled size
+            (_sizeFillableAtPriceLeft, priceUpdate) = _fillSizeForPrice(s_sellTree, _bestAsk, s_sellPricePoints[_bestAsk], _sizeFillableAtPriceLeft);
             _sizeToCreditTaker += (_sizeFillableAtPriceBefore - _sizeFillableAtPriceLeft); //add size filled already at price
-            _sizeFillableAtPrice = _sizeFillableAtPriceLeft;
             makerCredits = bytes.concat(makerCredits, priceUpdate);
-
-            _quoteSize = uint24((_bestAsk * _sizeFillableAtPrice) / sizePrecision);
+            //Calculate current quote size left with size that can be filled at current price point
+            _quoteSize = uint24((_bestAsk * _sizeFillableAtPriceLeft) / sizePrecision);
             
             _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
         }
@@ -606,6 +614,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             uint256 _takerFeeBps = takerFeeBps;
             if (_takerFeeBps > 0) {
                 _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, _takerFeeBps, BPS_MULTIPLIER);
+                //Calculate protocol fee part of total fee
                 baseFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
             }
             marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit - _feeDebit, _useMargin)));
@@ -619,22 +628,22 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * 
      * @param _limitPrice Price of the sell order.
-     * @param _sizeToBeFilled Size of the sell order.
+     * @param _sizeToBeFilledLeft Size of the sell order.
      * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      */
-    function _matchAggressiveSell(uint24 _limitPrice, uint96 _sizeToBeFilled, bool _useMargin) internal returns(uint96, uint256) {
+    function _matchAggressiveSell(uint24 _limitPrice, uint96 _sizeToBeFilledLeft, bool _useMargin) internal returns(uint96, uint256) {
         uint24 _quoteCreditTaker = 0;
         uint24 _bestBid = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
         uint256 _tokenCredit;
         bytes memory makerCredits;
-        while (_sizeToBeFilled > 0 && _bestBid >= _limitPrice && _bestBid != type(uint24).max) {
-            uint96 _sizeToBeFilledBefore = _sizeToBeFilled; //save size left to fill
+        while (_sizeToBeFilledLeft > 0 && _bestBid >= _limitPrice && _bestBid != type(uint24).max) {
+            uint96 _sizeToBeFilledBefore = _sizeToBeFilledLeft; //save size left to fill
 
             bytes memory priceUpdate;
-            uint96 _sizeToBeFilledLeft;
-            (_sizeToBeFilledLeft, priceUpdate) = _fillSizeForPrice(s_buyTree, _bestBid, s_buyPricePoints[_bestBid], _sizeToBeFilled);
+            //The function returns unfilled size, from which we can calculate filled size
+            (_sizeToBeFilledLeft, priceUpdate) = _fillSizeForPrice(s_buyTree, _bestBid, s_buyPricePoints[_bestBid], _sizeToBeFilledLeft);
+            //Calculate the quote size which needs to be credited for the size that was filled at the particular price point
             _quoteCreditTaker += uint24((_sizeToBeFilledBefore - _sizeToBeFilledLeft) * _bestBid / sizePrecision);
-            _sizeToBeFilled = _sizeToBeFilledLeft;
 
             makerCredits = bytes.concat(makerCredits, priceUpdate);
 
@@ -647,6 +656,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             uint256 _takerFeeBps = takerFeeBps;
             if (_takerFeeBps > 0) {
                 _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, _takerFeeBps, BPS_MULTIPLIER);
+                //Calculate protocol fee part of total fee
                 quoteFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
             }
             marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(quoteAsset), _tokenCredit - _feeDebit, _useMargin)));
@@ -654,7 +664,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             marginAccount.creditUsersEncoded(makerCredits);
         }
 
-        return (_sizeToBeFilled, _tokenCredit);
+        return (_sizeToBeFilledLeft, _tokenCredit);
     }
 
     /**
@@ -668,8 +678,11 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         remainingSize = _size;
         uint40 _orderId = _pricePoint.head;
         while (remainingSize > 0 && _orderId != OrderLinkedList.NULL) {
+            //orderUpdate contains byte encoded data for token credit to be executed by Margin Account
             bytes memory orderUpdate;
+            //_orderId returned contains the next order in line to be filled
             (remainingSize, _orderId, orderUpdate) = _fillOrder(_orderId, remainingSize);
+            //prepare into a single bytes encoding to be batched as a single call to margin account
             makerCredits = bytes.concat(makerCredits, orderUpdate);
         }
         OrderLinkedList.updateHead(_pricePoint, _orderId);
@@ -689,9 +702,11 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     function _fillOrder(uint40 _orderId, uint96 _sizeToBeFilled) internal returns (uint96 remainingSize, uint40 _nextHead, bytes memory _orderUpdate) {
         _nextHead = s_orders[_orderId].next;
         uint96 _orderSize = s_orders[_orderId].size;
+        //remaining size is 0 if current order can fully fill required size
         remainingSize = (_sizeToBeFilled > _orderSize) ? (_sizeToBeFilled - _orderSize) : 0;
         uint96 _updatedSize;
         if(remainingSize == 0) {
+            //if order is partially filled, update its size
             _updatedSize = _orderSize - _sizeToBeFilled;
         }
         _orderUpdate = _creditMaker(!s_orders[_orderId].isBuy, s_orders[_orderId].ownerAddress, (remainingSize == 0) ? _sizeToBeFilled : s_orders[_orderId].size, s_orders[_orderId].price);
@@ -741,6 +756,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             feeAsset = address(quoteAsset);
             feeRebate = (_amountPayable(_size, _price) * makerFeeBps) / BPS_MULTIPLIER;
         }
+        //feeRebate only exists if makerFeeBps > 0
         if(feeRebate > 0) {
             returnData = abi.encode(_ownerAddress, feeAsset, feeRebate, true);
         }
