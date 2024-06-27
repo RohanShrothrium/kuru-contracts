@@ -24,7 +24,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
     OrderBook orderBook;
     Router router;
     MarginAccount marginAccount;
-    address eth = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address eth = 0x0000000000000000000000000000000000000000;
     uint256 ethDecimals = 18;
     MintableERC20 usdc;
     uint256 SEED = 2;
@@ -49,7 +49,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
 
         router.initialize(address(this), address(marginAccount), address(implementation));
 
-        address proxy = router.deployProxy(_type, address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE), address(usdc), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps);
+        address proxy = router.deployProxy(_type, address(0x0000000000000000000000000000000000000000), address(usdc), _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps);
         orderBook = OrderBook(proxy);
     }
     

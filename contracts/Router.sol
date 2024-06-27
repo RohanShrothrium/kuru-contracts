@@ -19,7 +19,7 @@ contract Router is IRouter, OwnableUpgradeable {
     mapping(address => bool) public verifiedMarket;
 
     // used to create base/native and native/quote markets
-    address private constant NATIVE = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address private constant NATIVE = 0x0000000000000000000000000000000000000000;
 
     address orderBookImplementation;
     address marginAccountAddress;
@@ -199,6 +199,7 @@ contract Router is IRouter, OwnableUpgradeable {
     function anyToAnySwap(
         address[] calldata _marketAddresses,
         bool[] calldata _isBuy,
+        bool[] calldata _nativeSend,
         address _debitToken,
         address _creditToken,
         uint256 _amount,
@@ -217,12 +218,13 @@ contract Router is IRouter, OwnableUpgradeable {
             address _currentMarket = _marketAddresses[i];
             require(verifiedMarket[_currentMarket], "Router: Invalid market!");
             IOrderBook market = IOrderBook(_currentMarket);
+            uint256 _value = _nativeSend[i] ? _amount : 0;
             _amountOut = _isBuy[i]
-                ? market.placeAndExecuteMarketBuy(
+                ? (market.placeAndExecuteMarketBuy{value: _value}(
                    uint24( _amountToSize(_amount, true, market)),
                     true
-                )
-                : market.placeAndExecuteMarketSell(
+                ))
+                : market.placeAndExecuteMarketSell{value: _value}(
                     _amountToSize(_amount, false, market),
                     true
                 );

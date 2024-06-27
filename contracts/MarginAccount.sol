@@ -17,7 +17,7 @@ contract MarginAccount is IMarginAccount {
     address immutable routerContractAddress;
     address feeCollector;
     // Native token
-    address private constant NATIVE = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address private constant NATIVE = 0x0000000000000000000000000000000000000000;
 
     event Deposit(address owner, address token, uint256 amount);
     event Withdrawal(address owner, address token, uint256 amount);
