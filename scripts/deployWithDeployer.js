@@ -1,8 +1,17 @@
 const hre = require("hardhat");
 const fs = require('fs');
 
+var configFileName = "devnet.config.json";
+
+const args = process.argv.slice(2);
+const devnetName = args[0];
+
+if (devnetName !== "") {
+    configFileName = `${devnetName}_${configFileName}`;
+}
+
 async function main() {
-    const currentProvider = new hre.ethers.providers.JsonRpcProvider("http://localhost:8545");
+    const currentProvider = new hre.ethers.providers.JsonRpcProvider("https://devnet1.monad.xyz/rpc/WbScX50z7Xsvsuk6UB1uMci8Ekee3PJqhBZ2RRx0xSjyqx9hjipbfMh60vr7a1gS");
     const deployerPvtKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     const deployer = new hre.ethers.Wallet(deployerPvtKey, currentProvider);
 
@@ -49,7 +58,7 @@ async function main() {
 
     // deploy Margin Account Contract
     const MarginAccount = await hre.ethers.getContractFactory("MarginAccount", deployer);
-    const marginAccount = await MarginAccount.deploy(routerAddress);
+    const marginAccount = await MarginAccount.deploy(routerAddress, userAddress);
     await marginAccount.deployed();
 
     const marginAccountAddress = marginAccount.address;
@@ -72,7 +81,7 @@ async function main() {
         "routerAddress": routerAddress,
         "marginAccountAddress": marginAccountAddress,
     }
-    fs.writeFileSync("config.json", JSON.stringify(config));
+    fs.writeFileSync(configFileName, JSON.stringify(config));
 }
 
 main().catch((error) => {
