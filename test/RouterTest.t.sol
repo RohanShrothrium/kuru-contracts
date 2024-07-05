@@ -123,7 +123,10 @@ contract OrderBookTest is Test {
         bool[] memory isBuy = new bool[](2);
         isBuy[0] = false;
         isBuy[1] = false;
-        router.anyToAnySwap(markets, isBuy, address(eth), address(usdc), 3 * 10 ** 18, 5400 * 10 ** 18);
+        bool[] memory isNativeSend = new bool[](2);
+        isNativeSend[0] = false;
+        isNativeSend[1] = false;
+        router.anyToAnySwap(markets, isBuy, isNativeSend, address(eth), address(usdc), 3 * 10 ** 18, 5400 * 10 ** 18);
         vm.stopPrank();
         assertEq(usdc.balanceOf(routerUser) - _previousBalance, 5400 * 10 ** 18);
 
@@ -137,7 +140,7 @@ contract OrderBookTest is Test {
         markets[1] = address(eth_mon);
         isBuy[0] = true;
         isBuy[1] = true;
-        router.anyToAnySwap(markets, isBuy, address(usdc), address(eth), 5000 * 10 ** 18, 2 * 10 ** 18);
+        router.anyToAnySwap(markets, isBuy, isNativeSend, address(usdc), address(eth), 5000 * 10 ** 18, 2 * 10 ** 18);
         vm.stopPrank();
         assertEq(eth.balanceOf(routerUser) - _previousBalance, 5 * 10 ** 18);
 
@@ -161,8 +164,11 @@ contract OrderBookTest is Test {
         bool[] memory isBuy = new bool[](2);
         isBuy[0] = false;
         isBuy[1] = false;
+        bool[] memory isNativeSend = new bool[](2);
+        isNativeSend[0] = false;
+        isNativeSend[1] = false;
         vm.expectRevert("Router: Slippage exceeds expected value!");
-        router.anyToAnySwap(markets, isBuy, address(eth), address(usdc), 3 * 10 ** 18, 5600 * 10 ** 18);
+        router.anyToAnySwap(markets, isBuy, isNativeSend, address(eth), address(usdc), 3 * 10 ** 18, 5600 * 10 ** 18);
         vm.stopPrank();
     }
 
@@ -184,8 +190,11 @@ contract OrderBookTest is Test {
         bool[] memory isBuy = new bool[](2);
         isBuy[0] = false;
         isBuy[1] = false;
+        bool[] memory isNativeSend = new bool[](2);
+        isNativeSend[0] = false;
+        isNativeSend[1] = false;
         vm.expectRevert("Router: Invalid market!");
-        router.anyToAnySwap(markets, isBuy, address(eth), address(usdc), 3 * 10 ** 18, 5400 * 10 ** 18);
+        router.anyToAnySwap(markets, isBuy, isNativeSend, address(eth), address(usdc), 3 * 10 ** 18, 5400 * 10 ** 18);
         vm.stopPrank();
     }
 
@@ -206,8 +215,10 @@ contract OrderBookTest is Test {
         markets[1] = address(mon_usdc);
         bool[] memory isBuy = new bool[](1);
         isBuy[0] = false;
+        bool[] memory isNativeSend = new bool[](1);
+        isNativeSend[0] = false;
         vm.expectRevert("Router: Sizes length mismatch");
-        router.anyToAnySwap(markets, isBuy, address(eth), address(usdc), 3 * 10 ** 18, 5400 * 10 ** 18);
+        router.anyToAnySwap(markets, isBuy, isNativeSend, address(eth), address(usdc), 3 * 10 ** 18, 5400 * 10 ** 18);
         vm.stopPrank();
     }
 

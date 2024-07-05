@@ -58,7 +58,7 @@ contract OrderBookTest is Test {
     }
 
     function testNativeDepositWithdraw() public {
-        address _native = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+        address _native = 0x0000000000000000000000000000000000000000;
         address _userAddress = address(123);
         vm.deal(_userAddress, 100 ether);
         vm.startPrank(_userAddress);

@@ -8,7 +8,7 @@ import {IERC20} from "./libraries/IERC20.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 contract MarginAccount is IMarginAccount {
-    // Mapping from user addresses to their ETH balance
+    // Mapping from user addresses to their NATIVE balance
     mapping(bytes32 => uint256) public balances;
 
     // Mapping of hash of token pairs to their market contract addresses
@@ -17,7 +17,7 @@ contract MarginAccount is IMarginAccount {
     address immutable routerContractAddress;
     address feeCollector;
     // Native token
-    address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address private constant NATIVE = 0x0000000000000000000000000000000000000000;
 
     event Deposit(address owner, address token, uint256 amount);
     event Withdrawal(address owner, address token, uint256 amount);
@@ -115,7 +115,7 @@ contract MarginAccount is IMarginAccount {
             if (_useMargin) {
                 balances[_accountKey(_user, _token)] += _amount;
             } else {
-                if (_token != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+                if (_token != NATIVE) {
                     IERC20(_token).transfer(_user, _amount);
                 }
                 else {
@@ -139,9 +139,9 @@ contract MarginAccount is IMarginAccount {
         address _token,
         uint256 _amount
     ) external payable {
-        if (_token == ETH) {
+        if (_token == NATIVE) {
             require(msg.value == _amount, "MarginAccount: amount and value mismatch");
-            balances[_accountKey(_user, ETH)] += _amount;
+            balances[_accountKey(_user, NATIVE)] += _amount;
         } else {
             IERC20(_token).transferFrom(msg.sender, address(this), _amount);
             balances[_accountKey(_user, _token)] += _amount;
@@ -161,7 +161,7 @@ contract MarginAccount is IMarginAccount {
             "Insufficient balance"
         );
         balances[_accountKey(msg.sender, _token)] -= _amount;
-        if(_token == ETH) {
+        if(_token == NATIVE) {
             (bool _success, ) = (msg.sender).call{value: _amount}("");
             require(_success, "MarginAccount: Native fund withdrawal failed");
         } 

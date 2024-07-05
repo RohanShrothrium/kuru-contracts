@@ -16,6 +16,7 @@ async function main() {
     const _minSize = 10**5;
     const _maxSize = 10**12;
     const _takerFeeBps = 0;
+    const _makerFeeBps = 0;
 
     const [deployer, taker] = await hre.ethers.getSigners();
     const userAddress = deployer.address;
@@ -54,7 +55,7 @@ async function main() {
 
     // deploy Margin Account Contract
     const MarginAccount = await hre.ethers.getContractFactory("MarginAccount");
-    const marginAccount = await MarginAccount.deploy(routerAddress);
+    const marginAccount = await MarginAccount.deploy(routerAddress, userAddress);
     await marginAccount.deployed();
 
     const marginAccountAddress = marginAccount.address;
@@ -75,8 +76,8 @@ async function main() {
     await initializeRouterTx.wait();
     console.log("Router initialized with \n Admin :", userAddress, "\nMargin Account: ", marginAccountAddress, "\nImplementation:", implementation.address);
     
-    const cranklessOrderBookAddress = await router.callStatic.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
-    const deployProxyTx = await router.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
+    const cranklessOrderBookAddress = await router.callStatic.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps);
+    const deployProxyTx = await router.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps);
     await deployProxyTx.wait();
 
     console.log("CranklessOrderBook deployed to:", cranklessOrderBookAddress);
