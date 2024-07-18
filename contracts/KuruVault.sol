@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+import {IOrderBook} from "./interfaces/IOrderBook.sol";
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
@@ -14,6 +15,10 @@ contract MultiAssetKuruVault is ERC4626 {
     // Base and quote assets
     ERC20 public immutable baseAsset;
     ERC20 public immutable quoteAsset;
+
+    IOrderBook public immutable market;
+    uint96 sizePrecision;
+    uint24 pricePrecision;
 
     // State variables to keep track of epochs and TVL for each asset
     uint256 public currentEpoch;
@@ -26,11 +31,18 @@ contract MultiAssetKuruVault is ERC4626 {
     constructor(
         ERC20 _baseAsset,
         ERC20 _quoteAsset,
+        address _marketAddress,
+        uint96 _sizePrecision,
+        uint24 _pricePrecision,
         string memory _name,
         string memory _symbol
     ) ERC4626(_baseAsset) ERC20(_name, _symbol) {
         baseAsset = _baseAsset;
         quoteAsset = _quoteAsset;
+
+        market = IOrderBook(_marketAddress);
+        pricePrecision = _pricePrecision;
+        sizePrecision = _sizePrecision;
     }
 
     // Function to update the TVL at the end of each epoch for both assets
@@ -43,21 +55,25 @@ contract MultiAssetKuruVault is ERC4626 {
 
     // Placeholder function to get the value of base asset in quote asset terms
     function baseInQuote(uint256 baseAmount) public view returns (uint256) {
-        // Placeholder implementation
-        // TODO: Replace with actual oracle call or market price retrieval
-        return baseAmount;
+        // TODO: Should this be oracle price or this?
+        (uint24 _bestBid, uint24 _bestAsk) = market.bestBidAsk();
+        uint24 _price = (_bestBid + _bestAsk) / 2;
+
+        return baseAmount.mulDivDown(_price, pricePrecision);
     }
 
     // Placeholder function to get the value of quote asset in base asset terms
     function quoteInBase(uint256 quoteAmount) public view returns (uint256) {
-        // Placeholder implementation
-        // TODO: Replace with actual oracle call or market price retrieval
-        return quoteAmount;
+        // TODO: Should this be oracle price or this?
+        (uint24 _bestBid, uint24 _bestAsk) = market.bestBidAsk();
+        uint24 _price = (_bestBid + _bestAsk) / 2;
+
+        return quoteAmount.mulDivDown(pricePrecision, _price);
     }
 
-    // Override totalAssets to return the combined TVL of the latest epoch
+    // Override totalAssets to return the combined TVL of the latest epoch in base assets
     function totalAssets() public view override returns (uint256) {
-        return baseInQuote(baseAssetEpochTVL[currentEpoch - 1]) + quoteAssetEpochTVL[currentEpoch - 1];
+        return baseAssetEpochTVL[currentEpoch - 1] + quoteInBase(quoteAssetEpochTVL[currentEpoch - 1]);
     }
 
     // Function to deposit both assets into the vault
@@ -77,9 +93,9 @@ contract MultiAssetKuruVault is ERC4626 {
             actualQuoteAmount = baseValueInQuote;
         }
         
-        uint256 totalValueInQuote = baseInQuote(actualBaseAmount) + actualQuoteAmount;
+        uint256 totalValueInBase = actualBaseAmount + quoteInBase(actualQuoteAmount);
         
-        shares = previewDeposit(totalValueInQuote);
+        shares = previewDeposit(totalValueInBase);
         require(shares > 0, "ZERO_SHARES");
 
         baseAsset.safeTransferFrom(_msgSender(), address(this), actualBaseAmount);
@@ -87,29 +103,29 @@ contract MultiAssetKuruVault is ERC4626 {
 
         _mint(receiver, shares);
 
-        emit Deposit(_msgSender(), receiver, totalValueInQuote, shares);
+        emit Deposit(_msgSender(), receiver, totalValueInBase, shares);
 
-        afterDeposit(totalValueInQuote, shares);
+        afterDeposit(totalValueInBase, shares);
     }
 
     // Override mint to use the epoch TVL for calculations
-    function mint(uint256 shares, address receiver) public override returns (uint256 totalValueInQuote) {
+    function mint(uint256 shares, address receiver) public override returns (uint256 totalValueInBase) {
         require(currentEpoch > 0, "Epoch not initialized");
 
-        totalValueInQuote = previewMint(shares);
-        uint256 halfValueInQuote = totalValueInQuote / 2;
+        totalValueInBase = previewMint(shares);
+        uint256 halfValueInBase = totalValueInBase / 2;
 
-        uint256 baseAmount = quoteInBase(halfValueInQuote);
-        uint256 quoteAmount = halfValueInQuote;
+        uint256 baseAmount = halfValueInBase;
+        uint256 quoteAmount = baseInQuote(halfValueInBase);
 
         baseAsset.safeTransferFrom(_msgSender(), address(this), baseAmount);
         quoteAsset.safeTransferFrom(_msgSender(), address(this), quoteAmount);
 
         _mint(receiver, shares);
 
-        emit Deposit(_msgSender(), receiver, totalValueInQuote, shares);
+        emit Deposit(_msgSender(), receiver, totalValueInBase, shares);
 
-        afterDeposit(totalValueInQuote, shares);
+        afterDeposit(totalValueInBase, shares);
     }
 
     /**
@@ -129,8 +145,8 @@ contract MultiAssetKuruVault is ERC4626 {
         uint256 halfAssets = assets / 2;
 
         // Calculate the base amount equivalent to half the quote assets
-        uint256 baseAmount = quoteInBase(halfAssets);
-        uint256 quoteAmount = halfAssets;
+        uint256 baseAmount = halfAssets;
+        uint256 quoteAmount = baseInQuote(halfAssets);
 
         // Ensure proper allowances
         if (_msgSender() != owner) {
@@ -163,8 +179,8 @@ contract MultiAssetKuruVault is ERC4626 {
         assets = previewRedeem(shares);
 
         uint256 halfAssets = assets / 2;
-        uint256 baseAmount = quoteInBase(halfAssets);
-        uint256 quoteAmount = halfAssets;
+        uint256 baseAmount = halfAssets;
+        uint256 quoteAmount = baseInQuote(halfAssets);
 
         if (_msgSender() != owner) {
             _spendAllowance(owner, _msgSender(), shares);

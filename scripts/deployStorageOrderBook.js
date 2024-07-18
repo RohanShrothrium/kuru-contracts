@@ -90,6 +90,35 @@ async function main() {
         "cranklessOrderBookAddress": cranklessOrderBookAddress
     }
     fs.writeFileSync("config.json", JSON.stringify(config));
+
+    // deploy Router Contract
+    const KuruAmmVault = await hre.ethers.getContractFactory("KuruAMMVault");
+    const kuruAmmVault = await KuruAmmVault.deploy(wbtcAddress, usdcAddress, marginAccountAddress, cranklessOrderBookAddress, "WBTC-USDC", "k-WBTC-USDC");
+    await kuruAmmVault.deployed();
+    console.log("KuruAmmVault deployed to: ", kuruAmmVault.address);
+
+    const market = await hre.ethers.getContractAt(
+		"OrderBook",
+		cranklessOrderBookAddress
+	);
+
+    const setVaultTx = await market.setAmmVault(kuruAmmVault.address);
+    await setVaultTx.wait();
+
+    var tx = await wbtc.approve(
+        kuruAmmVault.address,
+        hre.ethers.utils.parseEther("100000"),
+    );
+    await tx.wait();
+
+    var tx = await usdc.approve(
+        kuruAmmVault.address,
+        hre.ethers.utils.parseEther("100000"),
+    );
+    await tx.wait();
+
+    const vaultDepositTx = await kuruAmmVault.deposit(hre.ethers.utils.parseEther("100000"), hre.ethers.utils.parseEther("100000"), userAddress);
+    await vaultDepositTx.wait();
 }
 
 main().catch((error) => {

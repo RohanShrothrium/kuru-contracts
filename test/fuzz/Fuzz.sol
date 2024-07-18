@@ -48,7 +48,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
             base = tokenA;
         }
 
-        uint96 _tickSize = PRICE_PRECISION/2;
+        uint24 _tickSize = PRICE_PRECISION/2;
 
         uint256 _takerFeeBps = 0;
         uint256 _makerFeeBps = 0;
@@ -111,9 +111,9 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
 
         }
         else if (MODE == Fuzz_Mode.CLEAR_OUT) {
-            if(!orderBook.buyOrdersLeft() && !orderBook.sellOrdersLeft()) {
+            (uint24 _bastBid, uint24 _bastAsk) = orderBook.bestBidAsk();
+            if(_bastBid == type(uint24).max && _bastAsk == 0) {
                 MODE = Fuzz_Mode.WITHDRAW;
-
             }
             else {
                 if(isBuy) {

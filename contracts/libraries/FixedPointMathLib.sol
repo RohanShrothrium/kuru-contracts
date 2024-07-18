@@ -68,6 +68,18 @@ library FixedPointMathLib {
         }
     }
 
+    function mulDivRound(uint256 value, uint256 multiplier, uint256 divisor) internal pure returns (uint256) {
+        return (value * multiplier + divisor / 2) / divisor;
+    }
+
+    function min(uint24 a, uint24 b) internal pure returns (uint24) {
+        return a < b ? a : b;
+    }
+
+    function max(uint24 a, uint24 b) internal pure returns (uint24) {
+        return a > b ? a : b;
+    }
+
     function rpow(
         uint256 x,
         uint256 n,

@@ -1,0 +1,160 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import { IOrderBook } from "./interfaces/IOrderBook.sol";
+
+contract HyperliquidityStrategy {
+    IOrderBook public market;
+    uint96 public orderSz;
+
+    uint24 public ourBestBid;
+    uint24 public ourLowestBid;
+    uint24 public ourBestAsk;
+    uint24 public ourHighestAsk;
+    uint24 maxBidSkew;
+    uint24 maxAskSkew;
+
+    uint256 minPrices;
+    uint256 bidSkew;
+    uint256 askSkew;
+
+    constructor(address _orderBook, uint24 _startPx, uint96 _orderSz) {
+        market = IOrderBook(_orderBook);
+        ourBestBid = _startPx;
+        orderSz = _orderSz;
+    }
+
+    modifier _onlyMarket() {
+        require(msg.sender == address(market), "Vault: Auth");
+        _;
+    }
+
+    function initialize(uint256 minOrders) external {
+        uint24 buyPrice = ourBestBid;
+        uint24 sellPrice = uint24(mulDivRound(uint256(ourBestBid), 1003, 1000));
+        ourBestAsk = sellPrice;
+
+        uint24[] memory buyPrices = new uint24[](minOrders);
+        uint96[] memory buySizes = new uint96[](minOrders);
+        uint24[] memory sellPrices = new uint24[](minOrders);
+        uint96[] memory sellSizes = new uint96[](minOrders);
+        uint40[] memory orderIdsToCancel = new uint40[](0);
+
+        for (uint256 i = 0; i < minOrders; i++) {
+            // Collect buy order data
+            buyPrices[i] = buyPrice;
+            buySizes[i] = orderSz;
+            buyPrice = uint24(mulDivRound(uint256(buyPrice), 1000, 1003));
+
+            // Collect sell order data
+            sellPrices[i] = sellPrice;
+            sellSizes[i] = orderSz;
+            sellPrice = uint24(mulDivRound(uint256(sellPrice), 1003, 1000));
+        }
+
+        // Place batch orders
+        market.batchUpdate(buyPrices, buySizes, sellPrices, sellSizes, orderIdsToCancel , true);
+
+        ourLowestBid = buyPrices[minOrders - 1];
+        ourHighestAsk = sellPrices[minOrders - 1];
+
+        minPrices = minOrders;
+    }
+
+    function extend(uint256 numOrders) external {
+        uint24 buyPrice = ourLowestBid;
+        uint24 sellPrice = ourHighestAsk;
+
+        uint24[] memory buyPrices = new uint24[](numOrders);
+        uint96[] memory buySizes = new uint96[](numOrders);
+        uint24[] memory sellPrices = new uint24[](numOrders);
+        uint96[] memory sellSizes = new uint96[](numOrders);
+        uint40[] memory orderIdsToCancel = new uint40[](0);
+
+        for (uint256 i = 0; i < numOrders; i++) {
+            // Collect buy order data
+            buyPrice = uint24(mulDivRound(uint256(buyPrice), 1000, 1003));
+            buyPrices[i] = buyPrice;
+            buySizes[i] = orderSz;
+
+            // Collect sell order data
+            sellPrice = uint24(mulDivRound(uint256(sellPrice), 1003, 1000));
+            sellPrices[i] = sellPrice;
+            sellSizes[i] = orderSz;
+        }
+
+        // Place batch orders
+        market.batchUpdate(buyPrices, buySizes, sellPrices, sellSizes, orderIdsToCancel , true);
+
+        // Update the best bid and ask prices after extending
+        ourLowestBid = buyPrices[numOrders - 1];
+        ourHighestAsk = sellPrices[numOrders - 1];
+
+        minPrices += numOrders;
+    }
+
+    function rebalance(uint24 _extremePrice, uint256 _pricesMoved, bool _isBuy) external _onlyMarket {
+        uint24 _ourBestAsk = ourBestAsk;
+        uint24 _ourBestBid = ourBestBid;
+
+        uint24[] memory buyPrices = new uint24[](_pricesMoved);
+        uint96[] memory buySizes = new uint96[](_pricesMoved);
+        uint24[] memory sellPrices = new uint24[](_pricesMoved);
+        uint96[] memory sellSizes = new uint96[](_pricesMoved);
+        uint40[] memory orderIdsToCancel = new uint40[](0);
+
+        uint256 _index = 0;
+        if (_isBuy) {
+            uint24 _ourHighestAsk = ourHighestAsk;
+
+            while (_extremePrice >= _ourBestAsk) {
+                _ourHighestAsk = uint24(mulDivRound(uint256(_ourHighestAsk), 1003, 1000));
+
+                // Add buy and sell orders to arrays
+                buyPrices[_index] = _ourBestAsk;
+                buySizes[_index] = orderSz;
+                sellPrices[_index] = _ourHighestAsk;
+                sellSizes[_index] = orderSz;
+                _index++;
+
+                _ourBestBid = _ourBestAsk;
+                _ourBestAsk = uint24(mulDivRound(uint256(_ourBestAsk), 1003, 1000));
+            }
+
+            // Place batch orders
+            market.batchUpdate(buyPrices, buySizes, sellPrices, sellSizes, orderIdsToCancel, true);
+
+            ourHighestAsk = _ourHighestAsk;
+            askSkew += _index;
+        } else {
+            uint24 _ourLowestBid = ourLowestBid;
+
+            while (_extremePrice <= _ourBestBid) {
+                _ourLowestBid = uint24(mulDivRound(uint256(_ourLowestBid), 1000, 1003));
+
+                // Add buy and sell orders to arrays
+                sellPrices[_index] = _ourBestBid;
+                sellSizes[_index] = orderSz;
+                buyPrices[_index] = _ourLowestBid;
+                buySizes[_index] = orderSz;
+                _index++;
+
+                _ourBestAsk = _ourBestBid;
+                _ourBestBid = uint24(mulDivRound(uint256(_ourBestAsk), 1000, 1003));
+            }
+
+            // Place batch orders
+            market.batchUpdate(buyPrices, buySizes, sellPrices, sellSizes, orderIdsToCancel, true);
+
+            ourLowestBid = _ourLowestBid;
+            bidSkew += _index;
+        }
+
+        ourBestAsk = _ourBestAsk;
+        ourBestBid = _ourBestBid;
+    }
+
+    function mulDivRound(uint256 value, uint256 multiplier, uint256 divisor) internal pure returns (uint256) {
+        return (value * multiplier + divisor / 2) / divisor;
+    }
+}

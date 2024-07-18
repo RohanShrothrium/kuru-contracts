@@ -3,12 +3,60 @@
 pragma solidity ^0.8.0;
 
 interface IOrderBook {
-
     enum OrderBookType {
         NO_NATIVE,
         NATIVE_IN_BASE,
         NATIVE_IN_QUOTE
     }
+
+    struct Order {
+        address ownerAddress;
+        uint96 size;
+        uint40 prev;
+        uint40 next;
+        uint24 price;
+        bool isBuy;
+    }
+
+    /**
+     * @dev Emitted when a new order is created.
+     * @param orderId Unique identifier for the newly created order.
+     * @param owner Address of the user who created the order.
+     * @param price Price point of the order in the specified precision.
+     * @param size Size of the order in the specified precision.
+     * @param isBuy Boolean indicating if the order is a buy (true) or sell (false) order.
+     */
+    event OrderCreated(
+        uint40 orderId,
+        address owner,
+        uint96 size,
+        uint24 price,
+        bool isBuy
+    );
+
+    /**
+     * @dev Emitted when one or more orders are completed or canceled.
+     * @param orderId Array of order identifiers that were completed or canceled.
+     */
+    event OrdersCanceled(uint40[] orderId, address owner);
+
+    /***
+     * @dev Emitted when a trade goes through.
+     * @param orderId Order Id of the order that was filled.
+     * PS. All data regarding the original order can be found out from the order ID
+     * @param updatedSize New size of the order
+     * @param takerAddress Address of the taker.
+     * @param filledSize Size taken by the taker.
+     */
+    event Trade(
+        uint40 orderId,
+        address makerAddress,
+        bool isBuy,
+        uint24 price,
+        uint96 updatedSize,
+        address takerAddress,
+        uint96 filledSize
+    );
 
     function initialize(
         address _factory,
@@ -20,7 +68,7 @@ interface IOrderBook {
         address _marginAccountAddress,
         uint96 _sizePrecision,
         uint24 _pricePrecision,
-        uint96 _tickSize,
+        uint24 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
@@ -32,6 +80,15 @@ interface IOrderBook {
     function addSellOrder(uint24 _price, uint96 size, bool _postOnly) external;
 
     function batchCancelOrders(uint40[] calldata _orderIds) external;
+
+    function batchUpdate(
+        uint24[] calldata buyPrices,
+        uint96[] calldata buySizes,
+        uint24[] calldata sellPrices,
+        uint96[] calldata sellSizes,
+        uint40[] calldata orderIdsToCancel,
+        bool postOnly
+    ) external;
 
     function placeMultipleBuyOrders(
         uint24[] memory _prices,
@@ -48,18 +105,16 @@ interface IOrderBook {
     function placeAndExecuteMarketBuy(
         uint24 _quoteAmount,
         bool _isFillOrKill
-    ) payable external returns (uint256);
+    ) external payable returns (uint256);
 
     function placeAndExecuteMarketSell(
         uint96 _size,
         bool _isFillOrKill
-    ) payable external returns (uint256);
+    ) external payable returns (uint256);
 
-    function getPricePrecision() external view returns (uint24);
+    function bestBidAsk() external view returns (uint24, uint24);
 
-    function getSizePrecision() external view returns (uint96);
+    function updateVaultOrdSz(uint96 _size) external;
 
-    function getBaseAssetDecimals() external view returns (uint256);
-
-    function getQuoteAssetDecimals() external view returns (uint256);
+    function getMarketParams() external view returns (uint24, uint96, address, uint256, address, uint256, uint24, uint96, uint96, uint256, uint256);
 }

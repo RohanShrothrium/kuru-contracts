@@ -12,69 +12,13 @@ import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
 // ============ Internal Contracts Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
-import {MarginAccount} from  "./MarginAccount.sol";
+import {IMarginAccount} from  "./interfaces/IMarginAccount.sol";
 
 // ============ External Imports ============
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-
-// size is 10**10
-// price is 10**2
-contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
-    
-   struct Order {
-        address ownerAddress;
-        uint96 size;
-        uint40 prev;
-        uint40 next;
-        uint24 price;
-        bool isBuy;
-    }
-
-    /**
-     * @dev Emitted when a new order is created.
-     * @param orderId Unique identifier for the newly created order.
-     * @param owner Address of the user who created the order.
-     * @param price Price point of the order in the specified precision.
-     * @param size Size of the order in the specified precision.
-     * @param isBuy Boolean indicating if the order is a buy (true) or sell (false) order.
-     */
-    event OrderCreated(
-        uint40 orderId,
-        address owner,
-        uint96 size,
-        uint24 price,
-        bool isBuy
-    );
-
-    /**
-     * @dev Emitted when one or more orders are completed or canceled.
-     * @param orderId Array of order identifiers that were completed or canceled.
-     */
-    event OrdersCanceled(
-        uint40[] orderId,
-        address owner
-    );
-
-    /***
-     * @dev Emitted when a trade goes through.
-     * @param orderId Order Id of the order that was filled.
-     * PS. All data regarding the original order can be found out from the order ID
-     * @param updatedSize New size of the order
-     * @param takerAddress Address of the taker.
-     * @param filledSize Size taken by the taker.
-     */
-    event Trade(
-        uint40 orderId,
-        address makerAddress,
-        bool isBuy,
-        uint24 price,
-        uint96 updatedSize,
-        address takerAddress,
-        uint96 filledSize
-    );
-
+contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {    
     OrderBookType orderBookType;
 
     mapping(uint40 => Order) public s_orders;
@@ -89,7 +33,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     uint96 sizePrecision;
     uint24 pricePrecision;
 
-    uint96 tickSize;
+    uint24 tickSize;
     uint96 minSize;
     uint96 maxSize;
 
@@ -101,10 +45,17 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
     IERC20 baseAsset;
     IERC20 quoteAsset;
-    MarginAccount marginAccount;
+    IMarginAccount marginAccount;
 
     uint256 baseAssetDecimals;
     uint256 quoteAssetDecimals;
+
+    address kuruAmmVault;
+    uint24 vaultBestBid;
+    uint96 bidPartiallyFilledSize;
+    uint24 vaultBestAsk;
+    uint96 askPartiallyFilledSize;
+    uint96 vaultOrderSize;
 
     uint256 constant BPS_MULTIPLIER = 10000;
 
@@ -117,6 +68,11 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
     modifier marketActive() {
         require(!marketPaused, "OrderBook: market is paused");
+        _;
+    }
+
+    modifier onlyVault() {
+        require(msg.sender == kuruAmmVault, "OrderBook: Only Vault");
         _;
     }
 
@@ -137,7 +93,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         address _marginAccountAddress,
         uint96 _sizePrecision,
         uint24 _pricePrecision,
-        uint96 _tickSize,
+        uint24 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
@@ -153,7 +109,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         baseAssetDecimals = _baseAssetDecimals;
         quoteAssetDecimals = _quoteAssetDecimals;
 
-        marginAccount = MarginAccount(payable(_marginAccountAddress));
+        marginAccount = IMarginAccount(payable(_marginAccountAddress));
         // initialize contract parameters
         sizePrecision = _sizePrecision;
         pricePrecision = _pricePrecision;
@@ -162,6 +118,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         maxSize = _maxSize;
         takerFeeBps = _takerFeeBps;
         makerFeeBps = _makerFeeBps;
+        vaultBestAsk = type(uint24).max;
     }
 
 
@@ -184,6 +141,27 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /**
+     * @dev Allows admin to Initialize the AMM Vault.
+     */
+    function setAmmVault(address _kuruAmmVault) external onlyOwner {
+        kuruAmmVault = _kuruAmmVault;
+    }
+
+    /**
+     * @dev Allows admin to Initialize the AMM Vault.
+     */
+    function disableAmmVault() external onlyOwner {
+        kuruAmmVault = address(0);
+    }
+
+    /**
+     * @dev Called by the vault to update the order size when withdraws and deposits happen.
+     */
+    function updateVaultOrdSz(uint96 _size) external onlyVault {
+        vaultOrderSize = _size;
+    }
+
+    /**
      * @dev Adds a buy order to the order book.
      * @param _price Price of the buy order.
      * @param size Size of the buy order.
@@ -198,7 +176,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         (uint96 _remainingSize, uint24 _consumedFunds) = _matchAggressiveBuyWithCap(_price, size);
 
         _consumedFunds += _calculateFundsConsumed(_price, _remainingSize);
-        
+
         _consumeFunds(quoteAsset, (((_consumedFunds) * 10**quoteAssetDecimals) / pricePrecision), msg.sender);
         if (_postOnly) {
             require(size == _remainingSize, "OrderBook: Post only crossed the book");
@@ -216,6 +194,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             emit OrderCreated(_orderId, msg.sender, _remainingSize, _price, true);
         }
     }
+
     /**
      * @dev Adds a sell order to the order book.
      * @param _price Price of the sell order.
@@ -389,11 +368,13 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
         // Place multiple buy orders
         for (uint256 i = 0; i < buyPrices.length; i++) {
+            if (buyPrices[i] == 0) break;
             addBuyOrder(buyPrices[i], buySizes[i], postOnly);
         }
 
         // Place multiple sell orders
         for (uint256 i = 0; i < sellPrices.length; i++) {
+            if (sellPrices[i] == 0) break;
             addSellOrder(sellPrices[i], sellSizes[i], postOnly);
         }
 
@@ -544,7 +525,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
     function _matchAggressiveBuyWithCap(uint24 _limitPrice, uint96 _sizeToBeFilled) internal returns(uint96, uint24) {
         uint96 _sizeToCreditTaker;
-        uint24 _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
+        uint24 _bestAsk = FixedPointMathLib.min(TreeMath.findFirstLeft(s_sellTree, 0), vaultBestAsk);
         uint24 fundsConsumed;
 
         bytes memory makerCredits;
@@ -552,15 +533,22 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             bytes memory priceUpdate;
             uint96 sizeToBeFilledBefore = _sizeToBeFilled; // Capture the size before filling
             // _sizeToBeFilled always signifies size left to be filled
-            (_sizeToBeFilled, priceUpdate) = _fillSizeForPrice(s_sellTree, _bestAsk, s_sellPricePoints[_bestAsk], _sizeToBeFilled);
+            (_sizeToBeFilled, priceUpdate) = vaultBestAsk == _bestAsk && vaultOrderSize > 0
+                ? _fillVaultForBuy(_sizeToBeFilled, _bestAsk)
+                : _fillSizeForPrice(
+                    s_sellTree,
+                    _bestAsk,
+                    s_sellPricePoints[_bestAsk],
+                    _sizeToBeFilled
+                );
 
             uint96 sizeFilled = sizeToBeFilledBefore - _sizeToBeFilled; // Calculate the filled size
             _sizeToCreditTaker += sizeFilled;
 
             fundsConsumed += _calculateFundsConsumed(_bestAsk, sizeFilled);
             makerCredits = bytes.concat(makerCredits, priceUpdate);
-            
-            _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
+
+            _bestAsk = FixedPointMathLib.min(TreeMath.findFirstLeft(s_sellTree, 0), vaultBestAsk);
         }
 
         if (_sizeToCreditTaker > 0) {
@@ -568,7 +556,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             uint256 _feeDebit;
             if (takerFeeBps > 0) {
                 _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, takerFeeBps, BPS_MULTIPLIER);
-                //Calculate what ratio of fee goes to the protocol
+                // Calculate what ratio of fee goes to the protocol
                 baseFeeCollected += ((_feeDebit * (takerFeeBps - makerFeeBps)) / takerFeeBps);
             }
             marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit - _feeDebit, true)));
@@ -588,7 +576,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      */
     function _matchAggressiveBuy(uint24 _limitPrice, uint24 _quoteSize, bool _useMargin) internal returns(uint24, uint256) {
         uint96 _sizeToCreditTaker;
-        uint24 _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
+        uint24 _bestAsk = FixedPointMathLib.min(TreeMath.findFirstLeft(s_sellTree, 0), vaultBestAsk);
         uint256 _tokenCredit;
         bytes memory makerCredits;
         while (_quoteSize > 0 && _bestAsk <= _limitPrice && _bestAsk != 0) {
@@ -598,14 +586,22 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             bytes memory priceUpdate;
 
             uint96 _sizeFillableAtPriceBefore = _sizeFillableAtPriceLeft; //save old size to be filled
-            //The unfilled size is returned here, from which we can calculate filled size
-            (_sizeFillableAtPriceLeft, priceUpdate) = _fillSizeForPrice(s_sellTree, _bestAsk, s_sellPricePoints[_bestAsk], _sizeFillableAtPriceLeft);
+            // The unfilled size is returned here, from which we can calculate filled size
+            (_sizeFillableAtPriceLeft, priceUpdate) = vaultBestAsk == _bestAsk && vaultOrderSize > 0
+                ? _fillVaultForBuy(_sizeFillableAtPriceLeft, _bestAsk)
+                : _fillSizeForPrice(
+                    s_sellTree,
+                    _bestAsk,
+                    s_sellPricePoints[_bestAsk],
+                    _sizeFillableAtPriceLeft
+                );
+
             _sizeToCreditTaker += (_sizeFillableAtPriceBefore - _sizeFillableAtPriceLeft); //add size filled already at price
             makerCredits = bytes.concat(makerCredits, priceUpdate);
-            //Calculate current quote size left with size that can be filled at current price point
+            // Calculate current quote size left with size that can be filled at current price point
             _quoteSize = uint24((_bestAsk * _sizeFillableAtPriceLeft) / sizePrecision);
-            
-            _bestAsk = TreeMath.findFirstLeft(s_sellTree, 0);
+
+            _bestAsk = FixedPointMathLib.min(TreeMath.findFirstLeft(s_sellTree, 0), vaultBestAsk);
         }
 
         if (_sizeToCreditTaker > 0) {
@@ -614,7 +610,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             uint256 _takerFeeBps = takerFeeBps;
             if (_takerFeeBps > 0) {
                 _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, _takerFeeBps, BPS_MULTIPLIER);
-                //Calculate protocol fee part of total fee
+                // Calculate protocol fee part of total fee
                 baseFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
             }
             marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit - _feeDebit, _useMargin)));
@@ -633,21 +629,23 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      */
     function _matchAggressiveSell(uint24 _limitPrice, uint96 _sizeToBeFilledLeft, bool _useMargin) internal returns(uint96, uint256) {
         uint24 _quoteCreditTaker = 0;
-        uint24 _bestBid = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
+        uint24 _bestBid = FixedPointMathLib.max(TreeMath.findFirstRight(s_buyTree, type(uint24).max), vaultBestBid);
         uint256 _tokenCredit;
         bytes memory makerCredits;
         while (_sizeToBeFilledLeft > 0 && _bestBid >= _limitPrice && _bestBid != type(uint24).max) {
             uint96 _sizeToBeFilledBefore = _sizeToBeFilledLeft; //save size left to fill
 
             bytes memory priceUpdate;
-            //The function returns unfilled size, from which we can calculate filled size
-            (_sizeToBeFilledLeft, priceUpdate) = _fillSizeForPrice(s_buyTree, _bestBid, s_buyPricePoints[_bestBid], _sizeToBeFilledLeft);
-            //Calculate the quote size which needs to be credited for the size that was filled at the particular price point
+            // The function returns unfilled size, from which we can calculate filled size
+            (_sizeToBeFilledLeft, priceUpdate) = vaultBestBid == _bestBid && vaultOrderSize > 0
+                ? _fillVaultForSell(_sizeToBeFilledLeft, _bestBid)
+                : _fillSizeForPrice(s_buyTree, _bestBid, s_buyPricePoints[_bestBid], _sizeToBeFilledLeft);
+            // Calculate the quote size which needs to be credited for the size that was filled at the particular price point
             _quoteCreditTaker += uint24((_sizeToBeFilledBefore - _sizeToBeFilledLeft) * _bestBid / sizePrecision);
 
             makerCredits = bytes.concat(makerCredits, priceUpdate);
 
-            _bestBid = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
+            _bestBid = FixedPointMathLib.max(TreeMath.findFirstRight(s_buyTree, type(uint24).max), vaultBestBid);
         }
 
         if (_quoteCreditTaker > 0) {
@@ -689,6 +687,40 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         if (_orderId == OrderLinkedList.NULL) {
             TreeMath.remove(_tree, _price);
         }
+    }
+
+    function _fillVaultForBuy(uint96 _size, uint24 _price) internal returns (uint96 remainingSize, bytes memory makerCredits) {
+        uint96 _fillSize;
+        uint96 availableSize = vaultOrderSize - askPartiallyFilledSize;
+        _fillSize = _size < availableSize ? _size : availableSize;
+        
+        // Update askPartiallyFilledSize
+        if (_size < availableSize) {
+            askPartiallyFilledSize += _size;
+        } else {
+            askPartiallyFilledSize = 0;
+            vaultBestAsk = uint24(FixedPointMathLib.mulDivRound(_price, 1003, 1000));
+        }
+
+        remainingSize = _size - _fillSize;
+        makerCredits = _creditMaker(false, kuruAmmVault, _fillSize, _price);
+    }
+
+    function _fillVaultForSell(uint96 _size, uint24 _price) internal returns (uint96 remainingSize, bytes memory makerCredits) {
+        uint96 _fillSize;
+        uint96 availableSize = vaultOrderSize - bidPartiallyFilledSize;
+            _fillSize = _size < availableSize ? _size : availableSize;
+            
+            // Update bidPartiallyFilledSize
+            if (_size < availableSize) {
+                bidPartiallyFilledSize += uint24(_size);
+            } else {
+                bidPartiallyFilledSize = 0;
+                vaultBestBid = uint24(FixedPointMathLib.mulDivRound(_price, 1000, 1003));
+            }
+
+            remainingSize = _size - _fillSize;
+            makerCredits = _creditMaker(false, kuruAmmVault, _fillSize, _price);
     }
 
     /**
@@ -776,51 +808,30 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * @dev Getter of market params.
      */
-    // TODO: Should add fees in this as well.
-    function getMarketParams() external view returns (uint24, uint96, address, uint256, address, uint256, uint96, uint256) {
-        return (pricePrecision, sizePrecision, address(baseAsset), baseAssetDecimals, address(quoteAsset), quoteAssetDecimals, minSize, takerFeeBps);
+    function getMarketParams() external view returns (uint24, uint96, address, uint256, address, uint256, uint24, uint96, uint96, uint256, uint256) {
+        return (
+            pricePrecision,
+            sizePrecision,
+            address(baseAsset),
+            baseAssetDecimals,
+            address(quoteAsset),
+            quoteAssetDecimals,
+            tickSize,
+            minSize,
+            maxSize,
+            takerFeeBps,
+            makerFeeBps
+        );
     }
 
     /**
-     * @dev Getter function to fetch price precision.
+     * @dev Returns the best bid and the best ask of the market.
      */
-    function getPricePrecision() external view returns (uint24) {
-        return pricePrecision;
-    }
-
-    /**
-     * @dev Getter function to fetch size precision.
-     */
-    function getSizePrecision() external view returns (uint96) {
-        return sizePrecision;
-    }
-
-    /**
-     * @dev Getter function to fetch decimals of base asset.
-     */
-    function getBaseAssetDecimals() external view returns (uint256) {
-        return baseAssetDecimals;
-    }
-
-    /**
-     * @dev Getter function to fetch decimals of quote asset.
-     */
-    function getQuoteAssetDecimals() external view returns (uint256) {
-        return quoteAssetDecimals;
-    }
-    
-    function buyOrdersLeft() external view returns (bool) {
-        if(TreeMath.findFirstRight(s_buyTree, type(uint24).max) != type(uint24).max) {
-            return true;
-        }
-        return false;
-    }
-
-    function sellOrdersLeft() external view returns (bool) {
-        if(TreeMath.findFirstLeft(s_sellTree,0) != 0) {
-            return true;
-        }
-        return false;
+    function bestBidAsk() external view returns (uint24, uint24) {
+        return (
+            TreeMath.findFirstRight(s_buyTree, type(uint24).max),
+            TreeMath.findFirstLeft(s_sellTree, 0)
+        );
     }
 
     /**
@@ -856,52 +867,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 orderId = s_orders[orderId].next;
             }
             data = bytes.concat(data, abi.encode(price, size));
-            price = TreeMath.findFirstLeft(s_sellTree, price);
-        }
-
-        return data;
-    }
-
-    /**
-     * @notice Returns the active buy orders for a given address.
-     * @param _maker The address of the order maker.
-     * @return Encoded bytes containing the block number and order IDs of the active buy orders.
-     */
-    function getActiveBuysForAddress(address _maker) external view returns (bytes memory) {
-        bytes memory data = abi.encode(block.number);
-
-        uint24 price = TreeMath.findFirstLeft(s_buyTree, 0);
-        while (price != type(uint24).max && price != 0) {
-            uint40 orderId = s_buyPricePoints[price].head;
-            while (orderId != 0) {
-                if (s_orders[orderId].ownerAddress == _maker) {
-                    data = bytes.concat(data, abi.encode(orderId));
-                }
-                orderId = s_orders[orderId].next;
-            }
-            price = TreeMath.findFirstLeft(s_buyTree, price);
-        }
-
-        return data;
-    }
-
-    /**
-     * @notice Returns the active sell orders for a given address.
-     * @param _maker The address of the order maker.
-     * @return Encoded bytes containing the block number and order IDs of the active sell orders.
-     */
-    function getActiveSellsForAddress(address _maker) external view returns (bytes memory) {
-        bytes memory data = abi.encode(block.number);
-
-        uint24 price = TreeMath.findFirstLeft(s_sellTree, 0);
-        while (price != type(uint24).max && price != 0) {
-            uint40 orderId = s_sellPricePoints[price].head;
-            while (orderId != 0) {
-                if (s_orders[orderId].ownerAddress == _maker) {
-                    data = bytes.concat(data, abi.encode(orderId));
-                }
-                orderId = s_orders[orderId].next;
-            }
             price = TreeMath.findFirstLeft(s_sellTree, price);
         }
 

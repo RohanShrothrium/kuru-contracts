@@ -16,14 +16,13 @@ import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 
 contract Router is IRouter, OwnableUpgradeable {
     // Mapping of hash of token pairs to their market contract addresses
-    mapping(address => bool) public verifiedMarket;
+    mapping(address => MarketParams) public verifiedMarket;
 
     // used to create base/native and native/quote markets
     address private constant NATIVE = 0x0000000000000000000000000000000000000000;
 
     address orderBookImplementation;
     address marginAccountAddress;
-
 
     // Event for market registration
     event MarketRegistered(
@@ -46,26 +45,25 @@ contract Router is IRouter, OwnableUpgradeable {
     }
 
     /**
-    * @dev Deploys an OrderBook proxy for a set of given parameters
-    * @param _type The type of OrderBook which can be NO_NATIVE, NATIVE_IN_BASE or NATIVE_IN_QUOTE
-    * @param _baseAssetAddress The base asset address. Can be address 0 if _type is NATIVE_IN_BASE
-    * @param _quoteAssetAddress The quote asset address. Can be address 0 if _type is NATIVE_IN_QUOTE
-    * @param _sizePrecision The size precision of the asset pair
-    * @param _pricePrecision The price precision of the asset pair
-    * @param _tickSize The tick size of the price
-    * @param _minSize The minimum size an order must have to be placed
-    * @param _maxSize The maximum size an order can have to be placed
-    * @param _takerFeeBps The taker fee in bips per second.
-    * @param _makerFeeBps The maker fee in bips per second. The maker fee must be lower than the taker fee.
-      */
-
+     * @dev Deploys an OrderBook proxy for a set of given parameters
+     * @param _type The type of OrderBook which can be NO_NATIVE, NATIVE_IN_BASE or NATIVE_IN_QUOTE
+     * @param _baseAssetAddress The base asset address. Can be address 0 if _type is NATIVE_IN_BASE
+     * @param _quoteAssetAddress The quote asset address. Can be address 0 if _type is NATIVE_IN_QUOTE
+     * @param _sizePrecision The size precision of the asset pair
+     * @param _pricePrecision The price precision of the asset pair
+     * @param _tickSize The tick size of the price
+     * @param _minSize The minimum size an order must have to be placed
+     * @param _maxSize The maximum size an order can have to be placed
+     * @param _takerFeeBps The taker fee in bips per second.
+     * @param _makerFeeBps The maker fee in bips per second. The maker fee must be lower than the taker fee.
+     */
     function deployProxy(
         IOrderBook.OrderBookType _type,
         address _baseAssetAddress,
         address _quoteAssetAddress,
         uint96 _sizePrecision,
         uint24 _pricePrecision,
-        uint96 _tickSize,
+        uint24 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
@@ -93,15 +91,17 @@ contract Router is IRouter, OwnableUpgradeable {
                 )
             );
         }
-        //@note native decimals hardcoded to 18
+        uint256 _baseAssetDecimals = _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
+        uint256 _quoteAssetDecimals = _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20(_quoteAssetAddress).decimals();
+        // @note native decimals hardcoded to 18
         {
             IOrderBook(proxy).initialize(
-                address(this),
+                owner(),
                 _type,
                 _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? NATIVE : _baseAssetAddress,
-                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals(),
+                _baseAssetDecimals,
                 _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? NATIVE : _quoteAssetAddress,
-                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20(_quoteAssetAddress).decimals(),
+                _quoteAssetDecimals,
                 marginAccountAddress,
                 _sizePrecision,
                 _pricePrecision,
@@ -110,8 +110,22 @@ contract Router is IRouter, OwnableUpgradeable {
                 _maxSize,
                 _takerFeeBps,
                 _makerFeeBps
-        );
+            );
         }
+
+        verifiedMarket[proxy] = MarketParams(
+            _pricePrecision,
+            _sizePrecision,
+            _baseAssetAddress,
+            _baseAssetDecimals,
+            _quoteAssetAddress,
+            _quoteAssetDecimals,
+            _tickSize,
+            _minSize,
+            _maxSize,
+            _takerFeeBps,
+            _makerFeeBps
+        );
 
         _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
 
@@ -123,7 +137,7 @@ contract Router is IRouter, OwnableUpgradeable {
         address _quoteAssetAddress,
         uint96 _sizePrecision,
         uint24 _pricePrecision,
-        uint96 _tickSize,
+        uint24 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
@@ -185,7 +199,6 @@ contract Router is IRouter, OwnableUpgradeable {
         address _marketAddress,
         IOrderBook.OrderBookType _type
     ) internal {
-        verifiedMarket[_marketAddress] = true;
         _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? true : IERC20(_baseAsset).approve(_marketAddress, type(uint256).max);
         _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? true : IERC20(_quoteAsset).approve(_marketAddress, type(uint256).max);
 
@@ -213,19 +226,35 @@ contract Router is IRouter, OwnableUpgradeable {
 
         IERC20(_debitToken).transferFrom(msg.sender, address(this), _amount);
 
-        // TODO: This is wrong logic, this has to be fixed. Proceeds from one round should be used for the other.
         for (uint i = 0; i < _marketAddresses.length; i++) {
             address _currentMarket = _marketAddresses[i];
-            require(verifiedMarket[_currentMarket], "Router: Invalid market!");
+            MarketParams memory _marketParams = verifiedMarket[_currentMarket];
+            require(_marketParams.pricePrecision > 0, "Router: Invalid market!");
             IOrderBook market = IOrderBook(_currentMarket);
             uint256 _value = _nativeSend[i] ? _amount : 0;
             _amountOut = _isBuy[i]
                 ? (market.placeAndExecuteMarketBuy{value: _value}(
-                   uint24( _amountToSize(_amount, true, market)),
+                    uint24(
+                        _amountToSize(
+                            _amount,
+                            true,
+                            _marketParams.pricePrecision,
+                            _marketParams.sizePrecision,
+                            _marketParams.quoteAssetDecimals,
+                            _marketParams.baseAssetDecimals
+                        )
+                    ),
                     true
                 ))
                 : market.placeAndExecuteMarketSell{value: _value}(
-                    _amountToSize(_amount, false, market),
+                    _amountToSize(
+                        _amount,
+                        false,
+                        _marketParams.pricePrecision,
+                        _marketParams.sizePrecision,
+                        _marketParams.quoteAssetDecimals,
+                        _marketParams.baseAssetDecimals
+                    ),
                     true
                 );
         
@@ -242,17 +271,20 @@ contract Router is IRouter, OwnableUpgradeable {
     function _amountToSize(
         uint256 _amount,
         bool _isBuy,
-        IOrderBook market
-    ) internal view returns (uint96) {
+        uint24 pricePrecision,
+        uint96 sizePrecision,
+        uint256 baseAssetDecimals,
+        uint256 quoteAssetDecimals
+    ) internal pure returns (uint96) {
         return
             _isBuy
                 ? uint24(
-                    (_amount * market.getPricePrecision()) /
-                        10 ** market.getQuoteAssetDecimals()
+                    (_amount * pricePrecision) /
+                        10 ** quoteAssetDecimals
                 )
                 : uint96(
-                    (_amount * market.getSizePrecision()) /
-                        10 ** market.getBaseAssetDecimals()
+                    (_amount * sizePrecision) /
+                        10 ** baseAssetDecimals
                 );
     }
 
@@ -261,7 +293,7 @@ contract Router is IRouter, OwnableUpgradeable {
         address _quoteAssetAddress,
         uint96 _sizePrecision,
         uint24 _pricePrecision,
-        uint96 _tickSize,
+        uint24 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,

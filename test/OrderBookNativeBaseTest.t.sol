@@ -377,10 +377,8 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         uint256 _decimals = usdc.decimals(); //caching to avoid startPrank glitch
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
-        address _maker = _addSellOrder(address(0), _price, _size, false);
         uint24 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
         uint24 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
-        uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
 
         address _taker = genAddress();
         usdc.mint(_taker, (_quoteExtra * 10**_decimals) / PRICE_PRECISION);
@@ -395,10 +393,8 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         uint256 _decimals = usdc.decimals(); //caching to avoid startPrank glitch
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
-        address _maker = _addSellOrder(address(0), _price, _size, false);
         uint24 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
         uint24 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
-        uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
 
         address _taker = genAddress();
         usdc.mint(_taker, (_quoteExtra * 10**_decimals) / PRICE_PRECISION);
@@ -418,7 +414,6 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         uint256 _expectedRebateA = (_expectedQuoteA * _makerFeeBps) / 10**4;
         address _makerB = _addBuyOrder(address(0), _priceB, _sizeB, 0, false);
         uint256 _expectedQuoteB = _amountPayableInQuote(_priceB, _sizeB);
-        uint256 _expectedRebateB = (_expectedQuoteB * _makerFeeBps) / 10**4;
 
         uint256 _expectedQuote = _expectedQuoteA + _expectedQuoteB;
         (uint256 _protocolFee, ) = _calculateFeePortions(_expectedQuote);
@@ -475,10 +470,6 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         uint256 _decimals = ethDecimals;
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
-        address _maker = _addBuyOrder(address(0), _price, _size, 0, false);
-
-        uint256 _expectedQuote = _amountPayableInQuote(_price, _size);
-        uint256 _quoteTolerance = 10**(usdc.decimals()) / PRICE_PRECISION;
         uint256 _sizeForSale = ((_size + 10**6) * 10**_decimals) / SIZE_PRECISION; //extra 10**6 size for partial fill
 
         address _taker = genAddress();
@@ -493,10 +484,6 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         uint256 _decimals = ethDecimals;
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
-        address _maker = _addBuyOrder(address(0), _price, _size, 0, false);
-
-        uint256 _expectedQuote = _amountPayableInQuote(_price, _size);
-        uint256 _quoteTolerance = 10**(usdc.decimals()) / PRICE_PRECISION;
         uint256 _sizeForSale = ((_size + 10**6) * 10**_decimals) / SIZE_PRECISION; 
 
         address _taker = genAddress();
