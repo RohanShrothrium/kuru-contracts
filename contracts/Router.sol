@@ -9,6 +9,9 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 // ============ Internal Library Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
 
+// ============ Internal Contract Imports ============
+import {KuruAMMVault} from "./KuruAMMVault.sol";
+
 // ============ External Imports ============
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -91,6 +94,7 @@ contract Router is IRouter, OwnableUpgradeable {
                 )
             );
         }
+        KuruAMMVault _kuruAmmVault = _deployKuruAMMVault(_baseAssetAddress, _quoteAssetAddress, proxy);
         uint256 _baseAssetDecimals = _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
         uint256 _quoteAssetDecimals = _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20(_quoteAssetAddress).decimals();
         // @note native decimals hardcoded to 18
@@ -109,7 +113,8 @@ contract Router is IRouter, OwnableUpgradeable {
                 _minSize,
                 _maxSize,
                 _takerFeeBps,
-                _makerFeeBps
+                _makerFeeBps,
+                address(_kuruAmmVault)
             );
         }
 
@@ -126,6 +131,8 @@ contract Router is IRouter, OwnableUpgradeable {
             _takerFeeBps,
             _makerFeeBps
         );
+
+        KuruAMMVault(_kuruAmmVault).setMarketParams();
 
         _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
 
@@ -320,5 +327,22 @@ contract Router is IRouter, OwnableUpgradeable {
 
     function _reOrder(address _tokenA, address _tokenB) internal pure returns (address _baseAsset, address _quoteAsset) {
         (_baseAsset, _quoteAsset) = (_tokenA > _tokenB) ? (_tokenB, _tokenA) : (_tokenA, _tokenB);
+    }
+
+    function _deployKuruAMMVault(
+        address _token1Address,
+        address _token2Address,
+        address _marketAddress
+    ) internal returns(KuruAMMVault) {
+        KuruAMMVault _vault = new KuruAMMVault(
+            _token1Address,
+            _token2Address,
+            marginAccountAddress,
+            _marketAddress,
+            "",
+            ""
+        );
+
+        return _vault;
     }
 }

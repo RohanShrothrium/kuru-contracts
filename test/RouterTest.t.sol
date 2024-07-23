@@ -76,7 +76,7 @@ contract OrderBookTest is Test {
         vm.startPrank(_maker);
         token.approve(address(marginAccount), _tokenForEachOrder);
         marginAccount.deposit(_maker, address(token), _tokenForEachOrder);
-        (uint24 _pricePrecision, uint96 _sizePrecision, , , , , , ,) = orderBook.getMarketParams();
+        (uint24 _pricePrecision, uint96 _sizePrecision, , , , , , , , ,) = orderBook.getMarketParams();
         orderBook.addBuyOrder(_price * _pricePrecision, _size * _sizePrecision, false);
         vm.stopPrank();
     }
@@ -92,7 +92,7 @@ contract OrderBookTest is Test {
         vm.startPrank(_maker);
         token.approve(address(marginAccount), _size * 10 ** token.decimals());
         marginAccount.deposit(_maker, address(token), _size * 10 ** token.decimals());
-        (uint24 _pricePrecision, uint96 _sizePrecision, , , , , , ,) = orderBook.getMarketParams();
+        (uint24 _pricePrecision, uint96 _sizePrecision, , , , , , , , ,) = orderBook.getMarketParams();
         orderBook.addSellOrder(
             _price * _pricePrecision,
             _size * _sizePrecision,

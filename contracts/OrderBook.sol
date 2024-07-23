@@ -97,7 +97,9 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
-        uint256 _makerFeeBps) public initializer {
+        uint256 _makerFeeBps,
+        address _kuruAmmVault
+    ) public initializer {
 
         __Ownable_init();
         _transferOwnership(_owner);
@@ -118,6 +120,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         maxSize = _maxSize;
         takerFeeBps = _takerFeeBps;
         makerFeeBps = _makerFeeBps;
+        kuruAmmVault = _kuruAmmVault;
         vaultBestAsk = type(uint24).max;
     }
 
@@ -141,24 +144,17 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /**
-     * @dev Allows admin to Initialize the AMM Vault.
-     */
-    function setAmmVault(address _kuruAmmVault) external onlyOwner {
-        kuruAmmVault = _kuruAmmVault;
-    }
-
-    /**
-     * @dev Allows admin to Initialize the AMM Vault.
-     */
-    function disableAmmVault() external onlyOwner {
-        kuruAmmVault = address(0);
-    }
-
-    /**
      * @dev Called by the vault to update the order size when withdraws and deposits happen.
      */
-    function updateVaultOrdSz(uint96 _size) external onlyVault {
+    function updateVaultOrdSz(uint96 _size, uint24 _askPrice, uint24 _bidPrice) external onlyVault {
         vaultOrderSize = _size;
+
+        if (vaultBestAsk == type(uint24).max) {
+            vaultBestAsk = _askPrice;
+        }
+        if (vaultBestBid == 0) {
+            vaultBestBid = _bidPrice;
+        }
     }
 
     /**
@@ -509,6 +505,8 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     function _handleNativeMarketRefundTransfer(uint256 _refund) internal {
         (bool _success, ) = address(marginAccount).call{value: msg.value - _refund}("");
         require(_success, "OrderBook: MarginAccount native transfer failed");
+
+        // @audit: Does this lead to bugs?
         (_success, ) = address(msg.sender).call{value: _refund}("");
         require(_success, "OrderBook: Refund failed");
     }
@@ -525,7 +523,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
     function _matchAggressiveBuyWithCap(uint24 _limitPrice, uint96 _sizeToBeFilled) internal returns(uint96, uint24) {
         uint96 _sizeToCreditTaker;
-        uint24 _bestAsk = FixedPointMathLib.min(TreeMath.findFirstLeft(s_sellTree, 0), vaultBestAsk);
+        uint24 _bestAsk = bestAsk();
         uint24 fundsConsumed;
 
         bytes memory makerCredits;
@@ -548,7 +546,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             fundsConsumed += _calculateFundsConsumed(_bestAsk, sizeFilled);
             makerCredits = bytes.concat(makerCredits, priceUpdate);
 
-            _bestAsk = FixedPointMathLib.min(TreeMath.findFirstLeft(s_sellTree, 0), vaultBestAsk);
+            _bestAsk = bestAsk();
         }
 
         if (_sizeToCreditTaker > 0) {
@@ -576,7 +574,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      */
     function _matchAggressiveBuy(uint24 _limitPrice, uint24 _quoteSize, bool _useMargin) internal returns(uint24, uint256) {
         uint96 _sizeToCreditTaker;
-        uint24 _bestAsk = FixedPointMathLib.min(TreeMath.findFirstLeft(s_sellTree, 0), vaultBestAsk);
+        uint24 _bestAsk = bestAsk();
         uint256 _tokenCredit;
         bytes memory makerCredits;
         while (_quoteSize > 0 && _bestAsk <= _limitPrice && _bestAsk != 0) {
@@ -601,7 +599,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             // Calculate current quote size left with size that can be filled at current price point
             _quoteSize = uint24((_bestAsk * _sizeFillableAtPriceLeft) / sizePrecision);
 
-            _bestAsk = FixedPointMathLib.min(TreeMath.findFirstLeft(s_sellTree, 0), vaultBestAsk);
+            _bestAsk = bestAsk();
         }
 
         if (_sizeToCreditTaker > 0) {
@@ -629,7 +627,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
      */
     function _matchAggressiveSell(uint24 _limitPrice, uint96 _sizeToBeFilledLeft, bool _useMargin) internal returns(uint96, uint256) {
         uint24 _quoteCreditTaker = 0;
-        uint24 _bestBid = FixedPointMathLib.max(TreeMath.findFirstRight(s_buyTree, type(uint24).max), vaultBestBid);
+        uint24 _bestBid = bestBid();
         uint256 _tokenCredit;
         bytes memory makerCredits;
         while (_sizeToBeFilledLeft > 0 && _bestBid >= _limitPrice && _bestBid != type(uint24).max) {
@@ -645,7 +643,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
             makerCredits = bytes.concat(makerCredits, priceUpdate);
 
-            _bestBid = FixedPointMathLib.max(TreeMath.findFirstRight(s_buyTree, type(uint24).max), vaultBestBid);
+            _bestBid = bestBid();
         }
 
         if (_quoteCreditTaker > 0) {
@@ -690,16 +688,17 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _fillVaultForBuy(uint96 _size, uint24 _price) internal returns (uint96 remainingSize, bytes memory makerCredits) {
-        uint96 _fillSize;
         uint96 availableSize = vaultOrderSize - askPartiallyFilledSize;
-        _fillSize = _size < availableSize ? _size : availableSize;
-        
-        // Update askPartiallyFilledSize
+        uint96 _fillSize = _size < availableSize ? _size : availableSize;
+
         if (_size < availableSize) {
             askPartiallyFilledSize += _size;
         } else {
             askPartiallyFilledSize = 0;
-            vaultBestAsk = uint24(FixedPointMathLib.mulDivRound(_price, 1003, 1000));
+            vaultOrderSize = uint96((uint256(vaultOrderSize) * 2000 + 2002) / 2003);
+            vaultBestAsk = uint24((uint256(_price) * 1003 + 999) / 1000);
+            bidPartiallyFilledSize = uint24((uint256(bidPartiallyFilledSize) * 1000 + 1002) / 1003);
+            vaultBestBid = _price;
         }
 
         remainingSize = _size - _fillSize;
@@ -707,20 +706,22 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _fillVaultForSell(uint96 _size, uint24 _price) internal returns (uint96 remainingSize, bytes memory makerCredits) {
-        uint96 _fillSize;
         uint96 availableSize = vaultOrderSize - bidPartiallyFilledSize;
-            _fillSize = _size < availableSize ? _size : availableSize;
-            
-            // Update bidPartiallyFilledSize
-            if (_size < availableSize) {
-                bidPartiallyFilledSize += uint24(_size);
-            } else {
-                bidPartiallyFilledSize = 0;
-                vaultBestBid = uint24(FixedPointMathLib.mulDivRound(_price, 1000, 1003));
-            }
+        uint96 _fillSize = _size < availableSize ? _size : availableSize;
 
-            remainingSize = _size - _fillSize;
-            makerCredits = _creditMaker(false, kuruAmmVault, _fillSize, _price);
+        if (_size < availableSize) {
+            bidPartiallyFilledSize += uint24(_size);
+        } else {
+            uint24 _updatedPartialFill = uint24((uint256(askPartiallyFilledSize) * 1003 + 999) / 1000);
+            bidPartiallyFilledSize = 0;
+            vaultOrderSize = uint96((uint256(vaultOrderSize) * 2003 + 2002) / 2000);
+            vaultBestBid = uint24((uint256(_price) * 1000 + 1002) / 1003);
+            askPartiallyFilledSize = _updatedPartialFill > vaultOrderSize ? vaultOrderSize - 1 : _updatedPartialFill;
+            vaultBestAsk = _price;
+        }
+
+        remainingSize = _size - _fillSize;
+        makerCredits = _creditMaker(false, kuruAmmVault, _fillSize, _price);
     }
 
     /**
@@ -824,13 +825,43 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         );
     }
 
+    function getVaultParams()
+        external
+        view
+        returns (address, uint24, uint96, uint24, uint96, uint96)
+    {
+        return (
+            kuruAmmVault,
+            vaultBestBid,
+            bidPartiallyFilledSize,
+            vaultBestAsk,
+            askPartiallyFilledSize,
+            vaultOrderSize
+        );
+    }
+
+    function bestAsk() internal view returns(uint24) {
+        uint24 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0);
+        return (firstLeft == 0) ? 
+            ((vaultBestAsk == type(uint24).max) ? 0 : vaultBestAsk) : 
+            FixedPointMathLib.min(firstLeft, vaultBestAsk);
+    }
+
+    function bestBid() internal view returns(uint24) {
+        uint24 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
+        return (firstRight == type(uint24).max) ? 
+            ((vaultBestBid == 0) ? type(uint24).max : vaultBestBid) : 
+            FixedPointMathLib.max(firstRight, vaultBestBid);
+
+    }
+
     /**
      * @dev Returns the best bid and the best ask of the market.
      */
     function bestBidAsk() external view returns (uint24, uint24) {
         return (
-            TreeMath.findFirstRight(s_buyTree, type(uint24).max),
-            TreeMath.findFirstLeft(s_sellTree, 0)
+            bestBid(),
+            bestAsk()
         );
     }
 

@@ -1,51 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
+
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 import {IKuruAMMVault} from "./interfaces/IKuruAMMVault.sol";
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
-/**
- * @dev Implementation of the ERC4626 "Tokenized Vault Standard" as defined in
- * https://eips.ethereum.org/EIPS/eip-4626[EIP-4626].
- *
- * This extension allows the minting and burning of "shares" (represented using the ERC20 inheritance) in exchange for
- * underlying "assets" through standardized {deposit}, {mint}, {redeem}, and {burn} workflows. This contract extends
- * the ERC20 standard.
- */
-contract KuruAMMVault is ERC20 {
+contract KuruAMMVault is ERC20, IKuruAMMVault {
     using SafeTransferLib for ERC20;
     using Math for uint256;
 
     address private immutable token1;
     uint256 private immutable token1Decimals;
-    uint256 private immutable token2Decimals;
+
     address private immutable token2;
+    uint256 private immutable token2Decimals;
+
     IMarginAccount private immutable marginAccount;
     IOrderBook private immutable market;
 
     MarketParams private marketParams;
-
-    event Deposit(address indexed from, address indexed to, uint256 amount1, uint256 amount2, uint256 shares);
-    event Withdraw(address indexed from, address indexed to, address indexed owner, uint256 amount1, uint256 amount2, uint256 shares);
-
-    struct MarketParams {
-        uint24 pricePrecision;
-        uint96 sizePrecision;
-        address baseAssetAddress;
-        uint256 baseAssetDecimals;
-        address quoteAssetAddress;
-        uint256 quoteAssetDecimals;
-        uint24 tickSize;
-        uint96 minSize;
-        uint96 maxSize;
-        uint256 takerFeeBps;
-        uint256 makerFeeBps;
-    }
 
     constructor(
         address token1_,
@@ -62,163 +41,246 @@ contract KuruAMMVault is ERC20 {
         marginAccount = IMarginAccount(_marginAccount);
         market = IOrderBook(_market);
 
-        (
-            uint24 _pricePrecision,
-            uint96 _sizePrecision,
-            address _baseAssetAddress,
-            uint256 _baseAssetDecimals,
-            address _quoteAssetAddress,
-            uint256 _quoteAssetDecimals,
-            uint24 _tickSize,
-            uint96 _minSize,
-            uint96 _maxSize,
-            uint256 _takerFeeBps,
-            uint256 _makerFeeBps
-        ) = market.getMarketParams();
+        if (token1_ != address(0)) {
+            ERC20(token1_).approve(_marginAccount, type(uint256).max);
+        }
+        if (token2_ != address(0)) {
+            ERC20(token2_).approve(_marginAccount, type(uint256).max);
+        }
+    }
 
-        marketParams = MarketParams(
-            _pricePrecision,
-            _sizePrecision,
-            _baseAssetAddress,
-            _baseAssetDecimals,
-            _quoteAssetAddress,
-            _quoteAssetDecimals,
-            _tickSize,
-            _minSize,
-            _maxSize,
-            _takerFeeBps,
-            _makerFeeBps
+    /** @dev Fetches and stores the market params from the market contract. */
+    function setMarketParams() external {
+        (
+            marketParams.pricePrecision,
+            marketParams.sizePrecision,
+            marketParams.baseAssetAddress,
+            marketParams.baseAssetDecimals,
+            marketParams.quoteAssetAddress,
+            marketParams.quoteAssetDecimals,
+            marketParams.tickSize,
+            marketParams.minSize,
+            marketParams.maxSize,
+            marketParams.takerFeeBps,
+            marketParams.makerFeeBps
+        ) = market.getMarketParams();
+    }
+
+    /** @dev Previews the amount of shares to be minted for a given deposit of token1 and token2. */
+    function previewDeposit(
+        uint256 asset1,
+        uint256 asset2
+    ) public view virtual returns (uint256) {
+        return _convertToShares(asset1, asset2, Math.Rounding.Down);
+    }
+
+    /** @dev Previews the amount of token1 and token2 to be received for a given amount of shares to be minted. */
+    function previewMint(
+        uint256 shares
+    ) public view virtual returns (uint256, uint256) {
+        return _convertToAssets(shares, Math.Rounding.Up);
+    }
+
+    /** @dev Previews the amount of shares to be burned for a given withdrawal of token1 and token2. */
+    function previewWithdraw(
+        uint256 asset1,
+        uint256 asset2
+    ) public view virtual returns (uint256) {
+        return _convertToShares(asset1, asset2, Math.Rounding.Up);
+    }
+
+    /** @dev Previews the amount of token1 and token2 to be received for a given amount of shares to be burned. */
+    function previewRedeem(
+        uint256 shares
+    ) public view virtual returns (uint256, uint256) {
+        return _convertToAssets(shares, Math.Rounding.Down);
+    }
+
+    /** @dev Returns the total assets of the vault in token1 and token2. */
+    function totalAssets() public view returns (uint256, uint256) {
+        return (
+            marginAccount.getBalance(address(this), token1),
+            marginAccount.getBalance(address(this), token2)
         );
     }
 
+    /** @dev Deposits token1 and token2 into the vault and mints shares to the receiver. */
     function deposit(
         uint256 amount1,
         uint256 amount2,
         address receiver
     ) public payable returns (uint256) {
-        if (token1 == address(0)) {
-            require(msg.value == amount1, "KuruAMMVault: incorrect amount1");
-        } else if (token2 == address(0)) {
-            require(msg.value == amount2, "KuruAMMVault: incorrect amount2");
-        } else {
-            require(msg.value == 0, "KuruAMMVault: msg.value should be 0");
-        }
+        require(
+            msg.value ==
+                (
+                    token1 == address(0)
+                        ? amount1
+                        : token2 == address(0)
+                            ? amount2
+                            : 0
+                ),
+            "KuruAMMVault: incorrect amount"
+        );
 
-        uint256 shares = _deposit(amount1, amount2, receiver);
-        return shares;
+        return _depositAndMint(amount1, amount2, receiver);
     }
 
-    function _deposit(
+    /** @dev Internal function to handle the deposit logic and minting of shares. */
+    function _depositAndMint(
         uint256 amount1,
         uint256 amount2,
         address receiver
     ) internal returns (uint256) {
-        uint256 balance1Before = marginAccount.getBalance(address(this), token1);
-        uint256 balance2Before = marginAccount.getBalance(address(this), token2);
+        _depositToMarginAccount(amount1, token1);
+        _depositToMarginAccount(amount2, token2);
 
-        if (token1 == address(0)) {
-            marginAccount.deposit{value: amount1}(address(this), token1, amount1);
-        } else {
-            ERC20(token1).safeTransferFrom(msg.sender, address(this), amount1);
-            marginAccount.deposit(address(this), token1, amount1);
-        }
+        _updateMarketVaultOrderSize();
 
-        if (token2 == address(0)) {
-            marginAccount.deposit{value: amount2}(address(this), token2, amount2);
-        } else {
-            ERC20(token2).safeTransferFrom(msg.sender, address(this), amount2);
-            marginAccount.deposit(address(this), token2, amount2);
-        }
-
-        uint256 balance1After = marginAccount.getBalance(address(this), token1);
-        uint256 balance2After = marginAccount.getBalance(address(this), token2);
-
-        market.updateVaultOrdSz(
-            (uint96(
-                (balance1After * marketParams.pricePrecision) /
-                    10 ** marketParams.baseAssetDecimals
-            ) * 3) / 2003
-        );
-
-        uint256 actualAmount1 = balance1After - balance1Before;
-        uint256 actualAmount2 = balance2After - balance2Before;
-
-        uint256 totalSupply = totalSupply();
-        uint256 shares;
-
-        if (totalSupply == 0) {
-            shares = Math.sqrt(actualAmount1 * actualAmount2);
-        } else {
-            shares = Math.min(
-                (actualAmount1 * totalSupply) / balance1Before,
-                (actualAmount2 * totalSupply) / balance2Before
-            );
-        }
-
+        uint256 shares = totalSupply() == 0
+            ? Math.sqrt(amount1 * amount2)
+            : _convertToShares(amount1, amount2, Math.Rounding.Down);
         require(shares > 0, "KuruAMMVault: INSUFFICIENT_LIQUIDITY_MINTED");
+
         _mint(receiver, shares);
-        emit Deposit(msg.sender, receiver, actualAmount1, actualAmount2, shares);
 
         return shares;
     }
 
+    /** @dev Internal function to handle deposits to the margin account. */
+    function _depositToMarginAccount(uint256 amount, address token) internal {
+        if (token == address(0)) {
+            marginAccount.deposit{value: amount}(address(this), token, amount);
+        } else {
+            ERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+            marginAccount.deposit(address(this), token, amount);
+        }
+    }
+
+    /** @dev Updates the vault order size in the market. */
+    function _updateMarketVaultOrderSize() internal {
+        uint256 balance1After = marginAccount.getBalance(address(this), token1);
+        uint256 balance2After = marginAccount.getBalance(address(this), token2);
+
+        uint24 _price = uint24(balance2After * marketParams.pricePrecision / balance1After);
+        market.updateVaultOrdSz(
+            (uint96(
+                (balance1After * marketParams.sizePrecision) /
+                    10 ** marketParams.baseAssetDecimals
+            ) * 3) / 2003,
+            _price,
+            uint24(FixedPointMathLib.mulDivRound(_price, 1000, 1003))
+        );
+    }
+
+    /** @dev Withdraws token1 and token2 from the vault by burning the specified amount of shares. */
     function withdraw(
         uint256 shares,
         address receiver,
         address owner
     ) public returns (uint256, uint256) {
-        require(shares <= balanceOf(owner), "KuruAMMVault: withdraw more than balance");
+        require(
+            shares <= balanceOf(owner),
+            "KuruAMMVault: withdraw more than balance"
+        );
 
         if (msg.sender != owner) {
             _spendAllowance(owner, msg.sender, shares);
         }
 
-        uint256 totalSupply = totalSupply();
-        uint256 amount1 = (shares * marginAccount.getBalance(address(this), token1)) / totalSupply;
-        uint256 amount2 = (shares * marginAccount.getBalance(address(this), token2)) / totalSupply;
+        return _burnAndWithdraw(shares, receiver, owner);
+    }
+
+    /** @dev Internal function to handle the burning of shares and withdrawal logic. */
+    function _burnAndWithdraw(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) internal returns (uint256, uint256) {
+        (uint256 amount1, uint256 amount2) = _convertToAssets(
+            shares,
+            Math.Rounding.Down
+        );
 
         _burn(owner, shares);
 
-        marginAccount.withdraw(amount1, token1);
-        marginAccount.withdraw(amount2, token2);
+        _withdrawFromMarginAccount(amount1, token1, receiver);
+        _withdrawFromMarginAccount(amount2, token2, receiver);
 
-        if (token1 == address(0)) {
-            (bool success1, ) = receiver.call{value: amount1}("");
-            require(success1, "KuruAMMVault: failed to transfer token1");
-        } else {
-            ERC20(token1).safeTransfer(receiver, amount1);
-        }
-
-        if (token2 == address(0)) {
-            (bool success2, ) = receiver.call{value: amount2}("");
-            require(success2, "KuruAMMVault: failed to transfer token2");
-        } else {
-            ERC20(token2).safeTransfer(receiver, amount2);
-        }
-
-        uint256 balance1After = marginAccount.getBalance(address(this), token1);
-        market.updateVaultOrdSz(
-            (uint96(
-                (balance1After * marketParams.pricePrecision) /
-                    10 ** marketParams.baseAssetDecimals
-            ) * 3) / 2003
-        );
-
-        emit Withdraw(msg.sender, receiver, owner, amount1, amount2, shares);
+        _updateMarketVaultOrderSize();
 
         return (amount1, amount2);
     }
 
-    function totalAssets() public view returns (uint256) {
-        return marginAccount.getBalance(address(this), token1) + marginAccount.getBalance(address(this), token2);
+    /** @dev Internal function to handle withdrawals from the margin account. */
+    function _withdrawFromMarginAccount(
+        uint256 amount,
+        address token,
+        address receiver
+    ) internal {
+        marginAccount.withdraw(amount, token);
+        if (token == address(0)) {
+            // @audit: This is surely a bug.
+            (bool success, ) = receiver.call{value: amount}("");
+            require(success, "KuruAMMVault: failed to transfer native token");
+        } else {
+            ERC20(token).safeTransfer(receiver, amount);
+        }
     }
 
-    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view returns (uint256) {
-        return assets.mulDiv(totalSupply() + 10 ** decimals(), totalAssets() + 1, rounding);
+    /** @dev Mints shares to the receiver in exchange for depositing token1 and token2. */
+    function mint(
+        uint256 shares,
+        address receiver
+    ) public payable returns (uint256, uint256) {
+        (uint256 amount1, uint256 amount2) = previewMint(shares);
+
+        deposit(amount1, amount2, receiver);
+
+        return (amount1, amount2);
     }
 
-    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
-        return shares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** decimals(), rounding);
+    /** @dev Redeems shares by burning the specified amount and withdrawing token1 and token2 to the receiver. */
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public returns (uint256, uint256) {
+        require(
+            shares <= balanceOf(owner),
+            "KuruAMMVault: redeem more than balance"
+        );
+
+        if (msg.sender != owner) {
+            _spendAllowance(owner, msg.sender, shares);
+        }
+
+        return _burnAndWithdraw(shares, receiver, owner);
+    }
+
+    /** @dev Internal function to convert asset amounts to shares. */
+    function _convertToShares(
+        uint256 amount1,
+        uint256 amount2,
+        Math.Rounding rounding
+    ) internal view returns (uint256) {
+        (uint256 _reserve1, uint256 _reserve2) = totalAssets();
+        return
+            Math.min(
+                amount1.mulDiv(totalSupply(), _reserve1, rounding),
+                amount2.mulDiv(totalSupply(), _reserve2, rounding)
+            );
+    }
+
+    /** @dev Internal function to convert shares to asset amounts. */
+    function _convertToAssets(
+        uint256 shares,
+        Math.Rounding rounding
+    ) internal view returns (uint256, uint256) {
+        (uint256 _reserve1, uint256 _reserve2) = totalAssets();
+        return (
+            shares.mulDiv(_reserve1, totalSupply(), rounding),
+            shares.mulDiv(_reserve2, totalSupply(), rounding)
+        );
     }
 
     receive() external payable {}

@@ -2,12 +2,11 @@ const { ethers } = require("hardhat");
 const config = require("../config.json");
 
 async function main() {
-	const hlp2 = await ethers.getContractAt(
-		"HyperliquidityStrategy",
-		"0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"
+	const orderbook = await ethers.getContractAt(
+		"OrderBook",
+		config.cranklessOrderBookAddress
 	);
-	const tx = await hlp2.extend(20);
-	await tx.wait();
+	console.log(await orderbook.bestBidAsk());
 }
 
 main().catch((error) => {

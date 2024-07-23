@@ -1,3 +1,6 @@
+[profile.default]
+via_ir = true
+
 [fuzz]
 runs = 100
 seed = '0x4444'
