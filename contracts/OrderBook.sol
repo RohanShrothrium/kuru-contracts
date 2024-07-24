@@ -602,9 +602,9 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             _bestAsk = bestAsk();
         }
 
+        uint256 _feeDebit;
         if (_sizeToCreditTaker > 0) {
             _tokenCredit = ((_sizeToCreditTaker) * 10**baseAssetDecimals) / sizePrecision;
-            uint256 _feeDebit;
             uint256 _takerFeeBps = takerFeeBps;
             if (_takerFeeBps > 0) {
                 _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, _takerFeeBps, BPS_MULTIPLIER);
@@ -616,7 +616,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             marginAccount.creditUsersEncoded(makerCredits);
         }
 
-        return (_quoteSize, _tokenCredit);
+        return (_quoteSize, _tokenCredit - _feeDebit);
     }
 
     /**
@@ -646,9 +646,9 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             _bestBid = bestBid();
         }
 
+        uint256 _feeDebit;
         if (_quoteCreditTaker > 0) {
             _tokenCredit = ((_quoteCreditTaker) * 10**quoteAssetDecimals) / pricePrecision;
-            uint256 _feeDebit;
             uint256 _takerFeeBps = takerFeeBps;
             if (_takerFeeBps > 0) {
                 _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, _takerFeeBps, BPS_MULTIPLIER);
@@ -660,7 +660,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             marginAccount.creditUsersEncoded(makerCredits);
         }
 
-        return (_sizeToBeFilledLeft, _tokenCredit);
+        return (_sizeToBeFilledLeft, _tokenCredit - _feeDebit);
     }
 
     /**
@@ -690,14 +690,15 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     function _fillVaultForBuy(uint96 _size, uint24 _price) internal returns (uint96 remainingSize, bytes memory makerCredits) {
         uint96 availableSize = vaultOrderSize - askPartiallyFilledSize;
         uint96 _fillSize = _size < availableSize ? _size : availableSize;
-
+        
+        // Update askPartiallyFilledSize
         if (_size < availableSize) {
             askPartiallyFilledSize += _size;
         } else {
             askPartiallyFilledSize = 0;
-            vaultOrderSize = uint96((uint256(vaultOrderSize) * 2000 + 2002) / 2003);
-            vaultBestAsk = uint24((uint256(_price) * 1003 + 999) / 1000);
-            bidPartiallyFilledSize = uint24((uint256(bidPartiallyFilledSize) * 1000 + 1002) / 1003);
+            vaultOrderSize = uint96(FixedPointMathLib.mulDivUp(vaultOrderSize, 2000, 2003));
+            vaultBestAsk = uint24(FixedPointMathLib.mulDivRound(_price, 1003, 1000));
+            bidPartiallyFilledSize = uint24(FixedPointMathLib.mulDivDown(bidPartiallyFilledSize, 1000, 1003));
             vaultBestBid = _price;
         }
 
@@ -708,14 +709,15 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     function _fillVaultForSell(uint96 _size, uint24 _price) internal returns (uint96 remainingSize, bytes memory makerCredits) {
         uint96 availableSize = vaultOrderSize - bidPartiallyFilledSize;
         uint96 _fillSize = _size < availableSize ? _size : availableSize;
-
+        
+        // Update bidPartiallyFilledSize
         if (_size < availableSize) {
             bidPartiallyFilledSize += uint24(_size);
         } else {
-            uint24 _updatedPartialFill = uint24((uint256(askPartiallyFilledSize) * 1003 + 999) / 1000);
+            uint24 _updatedPartialFill = uint24(FixedPointMathLib.mulDivDown(askPartiallyFilledSize, 1003, 1000));
             bidPartiallyFilledSize = 0;
-            vaultOrderSize = uint96((uint256(vaultOrderSize) * 2003 + 2002) / 2000);
-            vaultBestBid = uint24((uint256(_price) * 1000 + 1002) / 1003);
+            vaultOrderSize = uint96(FixedPointMathLib.mulDivUp(vaultOrderSize, 2003, 2000));
+            vaultBestBid = uint24(FixedPointMathLib.mulDivRound(_price, 1000, 1003));
             askPartiallyFilledSize = _updatedPartialFill > vaultOrderSize ? vaultOrderSize - 1 : _updatedPartialFill;
             vaultBestAsk = _price;
         }

@@ -161,7 +161,12 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         uint256 balance1After = marginAccount.getBalance(address(this), token1);
         uint256 balance2After = marginAccount.getBalance(address(this), token2);
 
-        uint24 _price = uint24(balance2After * marketParams.pricePrecision / balance1After);
+        uint24 _price = uint24(
+            (balance2After *
+                10 ** token1Decimals *
+                marketParams.pricePrecision) /
+                (balance1After * 10 ** token2Decimals)
+        );
         market.updateVaultOrdSz(
             (uint96(
                 (balance1After * marketParams.sizePrecision) /
@@ -203,10 +208,10 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
 
         _burn(owner, shares);
 
+        _updateMarketVaultOrderSize();
+
         _withdrawFromMarginAccount(amount1, token1, receiver);
         _withdrawFromMarginAccount(amount2, token2, receiver);
-
-        _updateMarketVaultOrderSize();
 
         return (amount1, amount2);
     }

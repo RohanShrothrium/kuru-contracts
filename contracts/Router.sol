@@ -247,8 +247,8 @@ contract Router is IRouter, OwnableUpgradeable {
                             true,
                             _marketParams.pricePrecision,
                             _marketParams.sizePrecision,
-                            _marketParams.quoteAssetDecimals,
-                            _marketParams.baseAssetDecimals
+                            _marketParams.baseAssetDecimals,
+                            _marketParams.quoteAssetDecimals
                         )
                     ),
                     true
@@ -259,8 +259,8 @@ contract Router is IRouter, OwnableUpgradeable {
                         false,
                         _marketParams.pricePrecision,
                         _marketParams.sizePrecision,
-                        _marketParams.quoteAssetDecimals,
-                        _marketParams.baseAssetDecimals
+                        _marketParams.baseAssetDecimals,
+                        _marketParams.quoteAssetDecimals
                     ),
                     true
                 );
