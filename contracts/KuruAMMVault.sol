@@ -131,10 +131,10 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         uint256 amount2,
         address receiver
     ) internal returns (uint256) {
+        _updateMarketVaultOrderSize(amount1, amount2, true);
+
         _depositToMarginAccount(amount1, token1);
         _depositToMarginAccount(amount2, token2);
-
-        _updateMarketVaultOrderSize();
 
         uint256 shares = totalSupply() == 0
             ? Math.sqrt(amount1 * amount2)
@@ -157,9 +157,17 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     }
 
     /** @dev Updates the vault order size in the market. */
-    function _updateMarketVaultOrderSize() internal {
-        uint256 balance1After = marginAccount.getBalance(address(this), token1);
-        uint256 balance2After = marginAccount.getBalance(address(this), token2);
+    function _updateMarketVaultOrderSize(
+        uint256 amount1,
+        uint256 amount2,
+        bool isDeposit
+    ) internal {
+        uint256 balance1After = isDeposit
+            ? marginAccount.getBalance(address(this), token1) + amount1
+            : marginAccount.getBalance(address(this), token2) - amount1;
+        uint256 balance2After = isDeposit
+            ? marginAccount.getBalance(address(this), token2) + amount2
+            : marginAccount.getBalance(address(this), token2) - amount2;
 
         uint24 _price = uint24(
             (balance2After *
@@ -208,7 +216,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
 
         _burn(owner, shares);
 
-        _updateMarketVaultOrderSize();
+        _updateMarketVaultOrderSize(amount1, amount2, false);
 
         _withdrawFromMarginAccount(amount1, token1, receiver);
         _withdrawFromMarginAccount(amount2, token2, receiver);
