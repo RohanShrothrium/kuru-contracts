@@ -103,7 +103,8 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
         __Ownable_init();
         _transferOwnership(_owner);
-        require(_makerFeeBps <= _takerFeeBps, "OrderBook: Maker fee should be lower than taker fee");
+        //TODO: remove =
+        require(_makerFeeBps < _takerFeeBps, "OrderBook: Maker fee should be lower than taker fee");
         orderBookType = _type;
         baseAsset = IERC20(_baseAssetAddress);
         quoteAsset = IERC20(_quoteAssetAddress);
@@ -427,7 +428,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             quoteAsset.transferFrom(msg.sender, address(marginAccount), uint256(_quoteSize * 10**quoteAssetDecimals / pricePrecision));
         }
         uint256 _baseTokensCredited;
-        (_quoteSize, _baseTokensCredited) = _matchAggressiveBuy(type(uint24).max, _quoteSize, false);
+        (_quoteSize, _baseTokensCredited) = _marketBuyMatch(_quoteSize);
         if (_quoteSize > 0) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
             if (_type == OrderBookType.NATIVE_IN_QUOTE) {
@@ -558,8 +559,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 baseFeeCollected += ((_feeDebit * (takerFeeBps - makerFeeBps)) / takerFeeBps);
             }
             marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit - _feeDebit, true)));
-        } else if (makerCredits.length > 0) {
-            marginAccount.creditUsersEncoded(makerCredits);
         }
 
         return (_sizeToBeFilled, fundsConsumed);
@@ -568,16 +567,14 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
     /**
      * @dev Match limit buy orders if it crosses the book.
-     * @param _limitPrice Price of the buy order.
      * @param _quoteSize amount of quote asset user is ready to pay.
-     * @param _useMargin Bool representing whether the asset be consumed from the user's margin account.
      */
-    function _matchAggressiveBuy(uint24 _limitPrice, uint24 _quoteSize, bool _useMargin) internal returns(uint24, uint256) {
+    function _marketBuyMatch(uint24 _quoteSize) internal returns(uint24, uint256) {
         uint96 _sizeToCreditTaker;
         uint24 _bestAsk = bestAsk();
         uint256 _tokenCredit;
         bytes memory makerCredits;
-        while (_quoteSize > 0 && _bestAsk <= _limitPrice && _bestAsk != 0) {
+        while (_quoteSize > 0 && _bestAsk < type(uint24).max && _bestAsk != 0) {
             //Calculate base size fillable by current unconsumed quote size for a particular price
             uint96 _sizeFillableAtPriceLeft = _quoteSize * sizePrecision / _bestAsk;
             
@@ -611,9 +608,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 // Calculate protocol fee part of total fee
                 baseFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
             }
-            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit - _feeDebit, _useMargin)));
-        } else if (makerCredits.length > 0) {
-            marginAccount.creditUsersEncoded(makerCredits);
+            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit - _feeDebit, false)));
         }
 
         return (_quoteSize, _tokenCredit - _feeDebit);
@@ -656,8 +651,6 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
                 quoteFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
             }
             marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(quoteAsset), _tokenCredit - _feeDebit, _useMargin)));
-        } else if (makerCredits.length > 0) {
-            marginAccount.creditUsersEncoded(makerCredits);
         }
 
         return (_sizeToBeFilledLeft, _tokenCredit - _feeDebit);
