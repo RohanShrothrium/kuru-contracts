@@ -104,7 +104,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init();
         _transferOwnership(_owner);
         //TODO: remove =
-        require(_makerFeeBps < _takerFeeBps, "OrderBook: Maker fee should be lower than taker fee");
+        require(_makerFeeBps <= 8000 * _takerFeeBps / BPS_MULTIPLIER, "OrderBook: Maker fee should be lower than taker fee");
         orderBookType = _type;
         baseAsset = IERC20(_baseAssetAddress);
         quoteAsset = IERC20(_quoteAssetAddress);
@@ -707,11 +707,9 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         if (_size < availableSize) {
             bidPartiallyFilledSize += uint24(_size);
         } else {
-            uint24 _updatedPartialFill = uint24(FixedPointMathLib.mulDivDown(askPartiallyFilledSize, 1003, 1000));
             bidPartiallyFilledSize = 0;
             vaultOrderSize = uint96(FixedPointMathLib.mulDivUp(vaultOrderSize, 2003, 2000));
             vaultBestBid = uint24(FixedPointMathLib.mulDivRound(_price, 1000, 1003));
-            askPartiallyFilledSize = _updatedPartialFill > vaultOrderSize ? vaultOrderSize - 1 : _updatedPartialFill;
             vaultBestAsk = _price;
         }
 

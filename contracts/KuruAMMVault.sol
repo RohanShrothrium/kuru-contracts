@@ -131,15 +131,15 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         uint256 amount2,
         address receiver
     ) internal returns (uint256) {
-        _updateMarketVaultOrderSize(amount1, amount2, true);
-
-        _depositToMarginAccount(amount1, token1);
-        _depositToMarginAccount(amount2, token2);
-
         uint256 shares = totalSupply() == 0
             ? Math.sqrt(amount1 * amount2)
             : _convertToShares(amount1, amount2, Math.Rounding.Down);
         require(shares > 0, "KuruAMMVault: INSUFFICIENT_LIQUIDITY_MINTED");
+    
+        _updateMarketVaultOrderSize(amount1, amount2, true);
+
+        _depositToMarginAccount(amount1, token1);
+        _depositToMarginAccount(amount2, token2);
 
         _mint(receiver, shares);
 
