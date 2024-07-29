@@ -162,27 +162,20 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         uint256 amount2,
         bool isDeposit
     ) internal {
-        uint256 balance1After = isDeposit
-            ? marginAccount.getBalance(address(this), token1) + amount1
-            : marginAccount.getBalance(address(this), token2) - amount1;
-        uint256 balance2After = isDeposit
-            ? marginAccount.getBalance(address(this), token2) + amount2
-            : marginAccount.getBalance(address(this), token2) - amount2;
-
-        uint24 _price = uint24(
-            (balance2After *
-                10 ** token1Decimals *
-                marketParams.pricePrecision) /
-                (balance1After * 10 ** token2Decimals)
-        );
-        market.updateVaultOrdSz(
-            (uint96(
-                (balance1After * marketParams.sizePrecision) /
-                    10 ** marketParams.baseAssetDecimals
-            ) * 3) / 2003,
-            _price,
-            uint24(FixedPointMathLib.mulDivRound(_price, 1000, 1003))
-        );
+        MarketParams memory _marketParams = marketParams;
+        (uint256 _baseAmount, uint24 _currentAskPrice) = _returnNormalizedAmountAndPrice();
+        uint256 _quoteAmount = (_baseAmount * 10**_marketParams.quoteAssetDecimals * _marketParams.pricePrecision) / (_currentAskPrice * 10**_marketParams.baseAssetDecimals);
+        uint256 _postActionBaseAmount = isDeposit? _baseAmount + amount1 : _baseAmount - amount1;
+        uint256 _postActionQuoteAmount = isDeposit ? _quoteAmount + amount2 : _quoteAmount - amount2;
+        uint24 _newAskPrice;
+        uint24 _newBidPrice;
+        if(_currentAskPrice == type(uint24).max) {
+            _newAskPrice = uint24((_postActionQuoteAmount * 10**_marketParams.baseAssetDecimals * _marketParams.pricePrecision) / (_postActionBaseAmount * 10**_marketParams.quoteAssetDecimals));
+            _newBidPrice = uint24(FixedPointMathLib.mulDivRound(_newAskPrice, 1000, 1005));
+        }
+        uint96 _newAskSize = uint96((5 * _postActionBaseAmount * _marketParams.sizePrecision) / (2005 * 10**_marketParams.baseAssetDecimals));
+        uint96 _newBidSize = uint96((5 * _postActionBaseAmount * _marketParams.sizePrecision) / (2000 * 10**_marketParams.baseAssetDecimals));
+        market.updateVaultOrdSz(_newAskSize, _newBidSize, _newAskPrice, _newBidPrice); 
     }
 
     /** @dev Withdraws token1 and token2 from the vault by burning the specified amount of shares. */
@@ -268,6 +261,15 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         }
 
         return _burnAndWithdraw(shares, receiver, owner);
+    }
+
+    /**
+    * @dev Returns normalized base asset amount without profits
+     */
+    function _returnNormalizedAmountAndPrice() internal returns (uint256, uint24) {
+        uint96 _normalizedAskSize = (market.vaultAskOrderSize() * 2000) / 3; //TODO: rounding
+        uint24 _price = market.vaultBestAsk();
+        return (uint256((_normalizedAskSize * 10**marketParams.baseAssetDecimals) / marketParams.sizePrecision), _price);
     }
 
     /** @dev Internal function to convert asset amounts to shares. */
