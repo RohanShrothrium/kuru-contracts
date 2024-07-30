@@ -715,9 +715,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
         console.log("Vault ETH:", _vaultEthBalance);
         uint256 _vaultUsdcBalance = marginAccount.getBalance(address(vault), address(usdc));
         console.log("Vault USDC:", _vaultUsdcBalance);
-        (, , , uint24 _askPrice,,,) = orderBook.getVaultParams();
+        (, , , uint256 _askPrice,,,) = orderBook.getVaultParams();
         console.log((_vaultUsdcBalance * PRICE_PRECISION) / _vaultEthBalance);
-        console.log(_askPrice);
+        console.log(_askPrice * PRICE_PRECISION / 10 ** 18);
     }
     function mulDivUp(uint24 _price, uint96 _size) internal returns (uint24) {
         uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, SIZE_PRECISION);

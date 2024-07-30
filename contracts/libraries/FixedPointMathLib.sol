@@ -72,11 +72,11 @@ library FixedPointMathLib {
         return (value * multiplier + divisor / 2) / divisor;
     }
 
-    function min(uint24 a, uint24 b) internal pure returns (uint24) {
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
     }
 
-    function max(uint24 a, uint24 b) internal pure returns (uint24) {
+    function max(uint256 a, uint256 b) internal pure returns (uint256) {
         return a > b ? a : b;
     }
 

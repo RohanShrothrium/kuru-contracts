@@ -20,6 +20,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 
 contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {    
     OrderBookType orderBookType;
+    event priceEvent(uint256);
 
     mapping(uint40 => Order) public s_orders;
     mapping(uint256 => OrderLinkedList.PricePoint) public s_buyPricePoints;
@@ -51,9 +52,9 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     uint256 quoteAssetDecimals;
 
     address kuruAmmVault;
-    uint24 vaultBestBid;
+    uint256 vaultBestBid;
     uint96 bidPartiallyFilledSize;
-    uint24 public vaultBestAsk;
+    uint256 public vaultBestAsk;
     uint96 askPartiallyFilledSize;
     uint96 vaultBidOrderSize;
     uint96 public vaultAskOrderSize;
@@ -122,7 +123,7 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         takerFeeBps = _takerFeeBps;
         makerFeeBps = _makerFeeBps;
         kuruAmmVault = _kuruAmmVault;
-        vaultBestAsk = type(uint24).max;
+        vaultBestAsk = type(uint256).max;
     }
 
 
@@ -147,11 +148,11 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
     /**
      * @dev Called by the vault to update the order size when withdraws and deposits happen.
      */
-    function updateVaultOrdSz(uint96 _vaultAskOrderSize, uint96 _vaultBidOrderSize, uint24 _askPrice, uint24 _bidPrice) external onlyVault {
+    function updateVaultOrdSz(uint96 _vaultAskOrderSize, uint96 _vaultBidOrderSize, uint256 _askPrice, uint256 _bidPrice) external onlyVault {
         vaultBidOrderSize = _vaultBidOrderSize;
         vaultAskOrderSize = _vaultAskOrderSize;
 
-        if (vaultBestAsk == type(uint24).max) {
+        if (vaultBestAsk == type(uint256).max) {
             vaultBestAsk = _askPrice;
         }
         if (vaultBestBid == 0) {
@@ -533,8 +534,8 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
             bytes memory priceUpdate;
             uint96 sizeToBeFilledBefore = _sizeToBeFilled; // Capture the size before filling
             // _sizeToBeFilled always signifies size left to be filled
-            (_sizeToBeFilled, priceUpdate) = vaultBestAsk == _bestAsk && vaultAskOrderSize > 0
-                ? _fillVaultForBuy(_sizeToBeFilled, _bestAsk)
+            (_sizeToBeFilled, priceUpdate) = vaultBestAsk != type(uint256).max && uint24(vaultBestAsk * pricePrecision / 10**18) == _bestAsk && vaultAskOrderSize > 0
+                ? _fillVaultForBuy(_sizeToBeFilled)
                 : _fillSizeForPrice(
                     s_sellTree,
                     _bestAsk,
@@ -583,8 +584,8 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
             uint96 _sizeFillableAtPriceBefore = _sizeFillableAtPriceLeft; //save old size to be filled
             // The unfilled size is returned here, from which we can calculate filled size
-            (_sizeFillableAtPriceLeft, priceUpdate) = vaultBestAsk == _bestAsk && vaultAskOrderSize > 0
-                ? _fillVaultForBuy(_sizeFillableAtPriceLeft, _bestAsk)
+            (_sizeFillableAtPriceLeft, priceUpdate) = vaultBestAsk != type(uint256).max && uint24(vaultBestAsk * pricePrecision / 10**18) == _bestAsk && vaultAskOrderSize > 0
+                ? _fillVaultForBuy(_sizeFillableAtPriceLeft)
                 : _fillSizeForPrice(
                     s_sellTree,
                     _bestAsk,
@@ -631,8 +632,8 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
 
             bytes memory priceUpdate;
             // The function returns unfilled size, from which we can calculate filled size
-            (_sizeToBeFilledLeft, priceUpdate) = vaultBestBid == _bestBid && vaultBidOrderSize > 0
-                ? _fillVaultForSell(_sizeToBeFilledLeft, _bestBid)
+            (_sizeToBeFilledLeft, priceUpdate) = uint24(vaultBestBid * pricePrecision / 10**18) == _bestBid && vaultBidOrderSize > 0
+                ? _fillVaultForSell(_sizeToBeFilledLeft)
                 : _fillSizeForPrice(s_buyTree, _bestBid, s_buyPricePoints[_bestBid], _sizeToBeFilledLeft);
             // Calculate the quote size which needs to be credited for the size that was filled at the particular price point
             _quoteCreditTaker += uint24(FixedPointMathLib.mulDivDown(_sizeToBeFilledBefore - _sizeToBeFilledLeft, _bestBid, sizePrecision));
@@ -681,7 +682,8 @@ contract OrderBook is IOrderBook, OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
-function _fillVaultForBuy(uint96 _size, uint24 _price) internal returns (uint96 remainingSize, bytes memory makerCredits) {
+    function _fillVaultForBuy(uint96 _size) internal returns (uint96 remainingSize, bytes memory makerCredits) {
+        uint256 _price = vaultBestAsk;
         uint96 availableSize = vaultAskOrderSize - askPartiallyFilledSize;
         uint96 _fillSize = _size < availableSize ? _size : availableSize;
         
@@ -691,17 +693,20 @@ function _fillVaultForBuy(uint96 _size, uint24 _price) internal returns (uint96 
         } else {
             askPartiallyFilledSize = 0;
             vaultBidOrderSize = vaultAskOrderSize;
-            vaultAskOrderSize = uint96(FixedPointMathLib.mulDivUp(vaultAskOrderSize, 2000, 2005));
-            vaultBestAsk = uint24(FixedPointMathLib.mulDivRound(_price, 1005, 1000));
-            bidPartiallyFilledSize = uint24(FixedPointMathLib.mulDivDown(bidPartiallyFilledSize, 1000, 1005));
+            vaultAskOrderSize = uint96(FixedPointMathLib.mulDivUp(vaultAskOrderSize, 2000, 2003));
+            vaultBestAsk = FixedPointMathLib.mulDivRound(_price, 1003, 1000);
+            bidPartiallyFilledSize = uint96(FixedPointMathLib.mulDivDown(bidPartiallyFilledSize, 1000, 1003));
             vaultBestBid = _price;
         }
 
         remainingSize = _size - _fillSize;
-        makerCredits = _creditMaker(false, kuruAmmVault, _fillSize, _price);
+        makerCredits = _creditMaker(false, kuruAmmVault, _fillSize, uint24(_price * pricePrecision / 10**18));
+        emit Trade(0, kuruAmmVault, false, uint24(_price * pricePrecision / 10**18), availableSize - _fillSize, msg.sender, _fillSize);
+        emit priceEvent(_price);
     }
 
-    function _fillVaultForSell(uint96 _size, uint24 _price) internal returns (uint96 remainingSize, bytes memory makerCredits) {
+    function _fillVaultForSell(uint96 _size) internal returns (uint96 remainingSize, bytes memory makerCredits) {
+        uint256 _price = vaultBestBid;
         uint96 availableSize = vaultBidOrderSize - bidPartiallyFilledSize;
         uint96 _fillSize = _size < availableSize ? _size : availableSize;
         
@@ -711,14 +716,15 @@ function _fillVaultForBuy(uint96 _size, uint24 _price) internal returns (uint96 
         } else {
             bidPartiallyFilledSize = 0;
             vaultAskOrderSize = vaultBidOrderSize;
-            vaultBidOrderSize = uint96(FixedPointMathLib.mulDivDown(vaultAskOrderSize, 2005, 2000)); //@note: changed to muldivdown from up
-            vaultBestBid = uint24(FixedPointMathLib.mulDivRound(_price, 1000, 1005));
+            vaultBidOrderSize = uint96(FixedPointMathLib.mulDivDown(vaultAskOrderSize, 2003, 2000)); //@note: changed to muldivdown from up
+            vaultBestBid = FixedPointMathLib.mulDivRound(_price, 1000, 1003);
             vaultBestAsk = _price;
         }
 
         remainingSize = _size - _fillSize;
-        makerCredits = _creditMaker(false, kuruAmmVault, _fillSize, _price);
-        emit Trade(0, kuruAmmVault, false, _price, availableSize - _fillSize, msg.sender, _fillSize);
+        makerCredits = _creditMaker(false, kuruAmmVault, _fillSize, uint24(_price * pricePrecision / 10**18));
+        emit priceEvent(_price);
+        emit Trade(0, kuruAmmVault, false, uint24(_price * pricePrecision / 10**18), availableSize - _fillSize, msg.sender, _fillSize);
     }
 
     /**
@@ -825,7 +831,7 @@ function _fillVaultForBuy(uint96 _size, uint24 _price) internal returns (uint96 
     function getVaultParams()
         external
         view
-        returns (address, uint24, uint96, uint24, uint96, uint96, uint96)
+        returns (address, uint256, uint96, uint256, uint96, uint96, uint96)
     {
         return (
             kuruAmmVault,
@@ -841,15 +847,15 @@ function _fillVaultForBuy(uint96 _size, uint24 _price) internal returns (uint96 
     function bestAsk() internal view returns(uint24) {
         uint24 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0);
         return (firstLeft == 0) ? 
-            ((vaultBestAsk == type(uint24).max) ? 0 : vaultBestAsk) : 
-            FixedPointMathLib.min(firstLeft, vaultBestAsk);
+            ((vaultBestAsk == type(uint256).max) ? 0 : uint24(vaultBestAsk * pricePrecision / 10**18)) : 
+            uint24(FixedPointMathLib.min(firstLeft * 10**18 / pricePrecision, vaultBestAsk) * pricePrecision / 10**18);
     }
 
     function bestBid() internal view returns(uint24) {
         uint24 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
         return (firstRight == type(uint24).max) ? 
-            ((vaultBestBid == 0) ? type(uint24).max : vaultBestBid) : 
-            FixedPointMathLib.max(firstRight, vaultBestBid);
+            ((vaultBestBid == 0) ? type(uint24).max : uint24(vaultBestBid * pricePrecision / 10**18)) : 
+            uint24(FixedPointMathLib.max(firstRight, vaultBestBid) * pricePrecision / 10**18);
 
     }
 
