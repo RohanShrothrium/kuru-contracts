@@ -10,8 +10,8 @@ async function main() {
     const wbtcDecimals = 18;
     const usdcDecimals = 18;
 
-    const _sizePrecision = 100;
-    const _pricePrecision = 10**6;
+    const _sizePrecision = 10**10;
+    const _pricePrecision = 100;
     const _tickSize = 1;
     const _minSize = 10**2;
     const _maxSize = 10**12;

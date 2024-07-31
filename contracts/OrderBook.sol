@@ -524,20 +524,17 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         }
 
         if (_sizeToCreditTaker > 0) {
-            uint256 _baseAssetDecimals = _getBaseAssetDecimals();
-            uint256 _tokenCredit = (_sizeToCreditTaker * 10**_baseAssetDecimals) / sizePrecision;
-            address _baseAsset = address(baseAsset);
+            uint256 _tokenCredit = (_sizeToCreditTaker * 10**baseAssetDecimals) / sizePrecision;
             if(_sizeToCreditViaVault > 0) {
-                marginAccount.debitUser(kuruAmmVault, _baseAsset, (_sizeToCreditViaVault * 10**_baseAssetDecimals) / sizePrecision);
+                marginAccount.debitUser(kuruAmmVault, address(baseAsset), (_sizeToCreditViaVault * 10**baseAssetDecimals) / sizePrecision);
             }
             if (takerFeeBps > 0) {
-                uint256 _takerFeeBps = takerFeeBps;
-                uint256 _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, _takerFeeBps, BPS_MULTIPLIER);
+                uint256 _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, takerFeeBps, BPS_MULTIPLIER);
                 _tokenCredit -= _feeDebit;
                 // Calculate what ratio of fee goes to the protocol
-                baseFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
+                baseFeeCollected += ((_feeDebit * (takerFeeBps - makerFeeBps)) / takerFeeBps);
             }
-            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, _baseAsset, _tokenCredit, true)));
+            marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(baseAsset), _tokenCredit, true)));
         }
 
         return (_sizeToBeFilled, fundsConsumed);
@@ -595,7 +592,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
 
         return (_quoteSize, _tokenCredit);
     }
-
+    event TestEvent(bool, uint256);
     /**
      * 
      * @param _limitPrice Price of the sell order.
@@ -606,11 +603,13 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         uint24 _quoteCreditTaker = 0;
         uint256 _quoteCreditVaultTaker;
         (bool _isVaultFill, uint24 _bestBid) = bestBid();
+        emit TestEvent(_isVaultFill, _bestBid);
+        emit TestEvent(true, vaultBestBid);
         uint256 _tokenCredit;
         bytes memory makerCredits;
         while (_sizeToBeFilledLeft > 0 && _bestBid >= _limitPrice && _bestBid != type(uint24).max) {
             uint96 _sizeToBeFilledBefore = _sizeToBeFilledLeft; //save size left to fill
-
+            emit TestEvent(_isVaultFill, vaultBidOrderSize);
             bytes memory priceUpdate;
             // The function returns unfilled size, from which we can calculate filled size
             (_sizeToBeFilledLeft, priceUpdate) = _isVaultFill && vaultBidOrderSize > 0
@@ -877,42 +876,6 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         return data;
     }
 
-    /**
-     * @notice Returns all active orders (both buy and sell) for a given address.
-     * @param _maker The address of the order maker.
-     * @return Encoded bytes containing the block number and order IDs of all active orders.
-     */
-    function getActiveOrdersForAddress(address _maker) external view returns (bytes memory) {
-        bytes memory data = abi.encode(block.number);
-
-        // Get active buy orders
-        uint24 price = TreeMath.findFirstLeft(s_buyTree, 0);
-        while (price != type(uint24).max && price != 0) {
-            uint40 orderId = s_buyPricePoints[price].head;
-            while (orderId != 0) {
-                if (s_orders[orderId].ownerAddress == _maker) {
-                    data = bytes.concat(data, abi.encode(orderId));
-                }
-                orderId = s_orders[orderId].next;
-            }
-            price = TreeMath.findFirstLeft(s_buyTree, price);
-        }
-
-        // Get active sell orders
-        price = TreeMath.findFirstLeft(s_sellTree, 0);
-        while (price != type(uint24).max && price != 0) {
-            uint40 orderId = s_sellPricePoints[price].head;
-            while (orderId != 0) {
-                if (s_orders[orderId].ownerAddress == _maker) {
-                    data = bytes.concat(data, abi.encode(orderId));
-                }
-                orderId = s_orders[orderId].next;
-            }
-            price = TreeMath.findFirstLeft(s_sellTree, price);
-        }
-
-        return data;
-    }
 
     /**
      * @notice Get the details of an order and its status.
