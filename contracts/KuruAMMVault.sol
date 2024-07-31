@@ -18,16 +18,14 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     address private immutable token1;
     uint256 private immutable token1Decimals;
 
-    event testEvent(uint256, uint256);
-
     address private immutable token2;
     uint256 private immutable token2Decimals;
 
     IMarginAccount private immutable marginAccount;
     IOrderBook private immutable market;
 
-    MarketParams private marketParams;
-
+    MarketParams private marketParams; 
+    uint256 constant internal vaultPricePrecision = 10**18;
     constructor(
         address token1_,
         address token2_,
@@ -166,15 +164,13 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     ) internal {
         MarketParams memory _marketParams = marketParams;
         (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice();
-        uint256 _quoteAmount = (_baseAmount * 10**_marketParams.quoteAssetDecimals / 10**_marketParams.baseAssetDecimals) * 10**18 / _currentAskPrice;
-        emit testEvent(_baseAmount, _quoteAmount);
+        uint256 _quoteAmount = (_baseAmount * 10**_marketParams.quoteAssetDecimals / 10**_marketParams.baseAssetDecimals) * vaultPricePrecision / _currentAskPrice;
         uint256 _postActionBaseAmount = isDeposit? _baseAmount + amount1 : _baseAmount - amount1;
         uint256 _postActionQuoteAmount = isDeposit ? _quoteAmount + amount2 : _quoteAmount - amount2;
-        emit testEvent(_postActionBaseAmount, _postActionQuoteAmount);
         uint256 _newAskPrice;
         uint256 _newBidPrice;
         if(_currentAskPrice == type(uint256).max) {
-            _newAskPrice = (_postActionQuoteAmount * 10**_marketParams.baseAssetDecimals / 10**_marketParams.quoteAssetDecimals) * 10**18 / (_postActionBaseAmount);
+            _newAskPrice = (_postActionQuoteAmount * 10**_marketParams.baseAssetDecimals / 10**_marketParams.quoteAssetDecimals) * vaultPricePrecision / (_postActionBaseAmount);
             _newBidPrice = FixedPointMathLib.mulDivRound(_newAskPrice, 1000, 1003);
         }
         uint96 _newAskSize = uint96((3 * _postActionBaseAmount * _marketParams.sizePrecision) / (2003 * 10**_marketParams.baseAssetDecimals));

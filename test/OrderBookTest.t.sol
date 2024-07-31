@@ -691,10 +691,11 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testKuruVaultMarketBuy(uint24 _price, uint96 _size) public {
+    function testKuruVaultMarketSell(uint24 _price, uint96 _size) public {
         //TODO: VAULT MAY NOT HAVE ADJUSTED PRICE. TRY NOT CONFORMING TO TICK SIZE
         (_price, _size) = _adjustPriceAndSize(_price, _size);
-        uint24 _price = uint24(clampBetween(_price, 10000, _maxPrice));
+        _price = uint24(clampBetween(_price, 10000, _maxPrice));
+        _size *= 10;
         address _maker = genAddress();
         uint256 _amountBase = (_size * 10**eth.decimals()) / SIZE_PRECISION;
         eth.mint(_maker, _amountBase);
@@ -709,7 +710,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth.mint(_taker, _amountBase);
         vm.startPrank(_taker);
         eth.approve(address(orderBook), _amountBase);
-        orderBook.placeAndExecuteMarketSell(_size/10, false);
+        orderBook.placeAndExecuteMarketSell((_size * 7) / 10, false);
         vm.stopPrank();
         uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
         console.log("Vault ETH:", _vaultEthBalance);
@@ -719,6 +720,37 @@ contract OrderBookTest is Test, PropertiesAsserts {
         console.log((_vaultUsdcBalance * PRICE_PRECISION) / _vaultEthBalance);
         console.log(_askPrice * PRICE_PRECISION / 10 ** 18);
     }
+
+    function testKuruVaultMarketBuy(uint24 _price, uint96 _size) public {
+        //TODO: VAULT MAY NOT HAVE ADJUSTED PRICE. TRY NOT CONFORMING TO TICK SIZE
+        (_price, _size) = _adjustPriceAndSize(_price, _size);
+        _price = uint24(clampBetween(_price, 10000, _maxPrice));
+        _size *= 10;
+        address _maker = genAddress();
+        uint256 _amountBase = (_size * 10**eth.decimals()) / SIZE_PRECISION;
+        eth.mint(_maker, _amountBase);
+        uint256 _amountQuote = (_amountBase * 10**usdc.decimals() * _price) / (PRICE_PRECISION * 10**eth.decimals());
+        usdc.mint(_maker, _amountQuote);
+        vm.startPrank(_maker);
+        eth.approve(address(vault), _amountBase);
+        usdc.approve(address(vault), _amountQuote);
+        vault.deposit(_amountBase, _amountQuote, _maker);
+        vm.stopPrank();
+        address _taker = genAddress();
+        usdc.mint(_taker, _amountQuote);
+        vm.startPrank(_taker);
+        usdc.approve(address(orderBook), _amountQuote);
+        orderBook.placeAndExecuteMarketBuy(uint24(((_amountQuote / 10) * PRICE_PRECISION) / 10**18), false);
+        vm.stopPrank();
+        uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
+        console.log("Vault ETH:", _vaultEthBalance);
+        uint256 _vaultUsdcBalance = marginAccount.getBalance(address(vault), address(usdc));
+        console.log("Vault USDC:", _vaultUsdcBalance);
+        (, , , uint256 _askPrice,,,) = orderBook.getVaultParams();
+        console.log((_vaultUsdcBalance * PRICE_PRECISION) / _vaultEthBalance);
+        console.log(_askPrice * PRICE_PRECISION / 10 ** 18);
+    }
+
     function mulDivUp(uint24 _price, uint96 _size) internal returns (uint24) {
         uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, SIZE_PRECISION);
         if (_result >= type(uint24).max) {

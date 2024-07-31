@@ -1,0 +1,148 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+
+// ============ Library Imports ============
+import {OrderLinkedList} from "./libraries/OrderLinkedList.sol";
+import {TreeMath} from "./libraries/TreeMath.sol";
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
+
+// ============ Internal Interfaces Imports ============
+import {IOrderBook} from "./interfaces/IOrderBook.sol";
+
+// ============ Internal Contracts Imports ============
+import {IERC20} from "./libraries/IERC20.sol";
+import {IMarginAccount} from  "./interfaces/IMarginAccount.sol";
+
+// ============ External Imports ============
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
+abstract contract AbstractAMM is IOrderBook {
+
+    uint256 constant vaultPricePrecision = 10**18;
+    address kuruAmmVault;
+    uint256 vaultBestBid;
+    uint96 bidPartiallyFilledSize;
+    uint256 public vaultBestAsk;
+    uint96 askPartiallyFilledSize;
+    uint96 vaultBidOrderSize;
+    uint96 public vaultAskOrderSize;
+    uint256 constant BPS_MULTIPLIER = 10000;
+
+    modifier onlyVault() {
+        require(msg.sender == kuruAmmVault, "OrderBook: Only Vault");
+        _;
+    }
+
+    function _fillVaultForBuy(uint96 _size) internal returns (uint96 remainingSize, bytes memory makerCredits) {
+        uint256 _price = vaultBestAsk;
+        uint96 availableSize = vaultAskOrderSize - askPartiallyFilledSize;
+        uint96 _fillSize = _size < availableSize ? _size : availableSize;
+        
+        // Update askPartiallyFilledSize
+        if (_size < availableSize) {
+            askPartiallyFilledSize += _size;
+        } else {
+            askPartiallyFilledSize = 0;
+            vaultBidOrderSize = vaultAskOrderSize;
+            vaultAskOrderSize = uint96(FixedPointMathLib.mulDivUp(vaultAskOrderSize, 2000, 2003));
+            vaultBestAsk = FixedPointMathLib.mulDivRound(_price, 1003, 1000);
+            bidPartiallyFilledSize = uint96(FixedPointMathLib.mulDivDown(bidPartiallyFilledSize, 1000, 1003));
+            vaultBestBid = _price;
+        }
+
+        remainingSize = _size - _fillSize;
+        makerCredits = _creditVaultAsMaker(true, _fillSize, _price);
+        emit Trade(0, kuruAmmVault, false, uint24(_price * _getPricePrecision() / vaultPricePrecision), availableSize - _fillSize, msg.sender, _fillSize);
+    }
+
+    function _fillVaultForSell(uint96 _size) internal returns (uint96 remainingSize, bytes memory makerCredits) {
+        uint256 _price = vaultBestBid;
+        uint96 availableSize = vaultBidOrderSize - bidPartiallyFilledSize;
+        uint96 _fillSize = _size < availableSize ? _size : availableSize;
+        
+        // Update bidPartiallyFilledSize
+        if (_size < availableSize) {
+            bidPartiallyFilledSize += _size;
+        } else {
+            bidPartiallyFilledSize = 0;
+            vaultAskOrderSize = vaultBidOrderSize;
+            vaultBidOrderSize = uint96(FixedPointMathLib.mulDivDown(vaultAskOrderSize, 2003, 2000)); //@note: changed to muldivdown from up
+            vaultBestBid = FixedPointMathLib.mulDivRound(_price, 1000, 1003);
+            vaultBestAsk = _price;
+        }
+
+        remainingSize = _size - _fillSize;
+        makerCredits = _creditVaultAsMaker(false, _fillSize, _price);
+        emit Trade(0, kuruAmmVault, false, uint24(_price * _getPricePrecision() / vaultPricePrecision), availableSize - _fillSize, msg.sender, _fillSize);
+    }
+
+    function _creditVaultAsMaker(bool _isMarketBuy, uint96 _size, uint256 _price) internal view returns (bytes memory) {
+        address _creditAsset = _isMarketBuy ? address(_getQuoteAsset()) : address(_getBaseAsset());
+        uint256 _amount = _isMarketBuy ? (((_price * _size) / _getSizePrecision()) * 10**_getQuoteAssetDecimals()) / vaultPricePrecision : (_size * 10**_getBaseAssetDecimals()) / _getSizePrecision();
+        uint256 feeRebate;
+        address feeAsset;
+        bytes memory returnData;
+        if (_isMarketBuy) {
+            feeAsset = address(_getBaseAsset());
+            feeRebate = (((_size * 10**_getBaseAssetDecimals()) / _getSizePrecision()) * _getMakerFeeBps()) / BPS_MULTIPLIER;
+        }
+        else {
+            feeAsset = address(_getQuoteAsset());
+            feeRebate = (((((_price * _size) / _getSizePrecision()) * 10**_getQuoteAssetDecimals()) / vaultPricePrecision) * _getMakerFeeBps()) / BPS_MULTIPLIER;
+        }
+        //feeRebate only exists if makerFeeBps > 0
+        if(feeRebate > 0) {
+            returnData = abi.encode(kuruAmmVault, feeAsset, feeRebate, true);
+        }
+        return bytes.concat(returnData, abi.encode(kuruAmmVault, _creditAsset, _amount, true));
+    }
+
+    function getVaultParams()
+        external
+        view
+        returns (address, uint256, uint96, uint256, uint96, uint96, uint96)
+    {
+        return (
+            kuruAmmVault,
+            vaultBestBid,
+            bidPartiallyFilledSize,
+            vaultBestAsk,
+            askPartiallyFilledSize,
+            vaultBidOrderSize,
+            vaultAskOrderSize
+        );
+    }
+    event CheckPoint(uint256);
+    function updateVaultOrdSz(uint96 _vaultAskOrderSize, uint96 _vaultBidOrderSize, uint256 _askPrice, uint256 _bidPrice) external onlyVault {
+        emit CheckPoint(0);
+        vaultBidOrderSize = _vaultBidOrderSize;
+        vaultAskOrderSize = _vaultAskOrderSize;
+        emit CheckPoint(1);
+        if (vaultBestAsk == type(uint256).max) {
+            emit CheckPoint(2);
+            vaultBestAsk = _askPrice;
+            emit CheckPoint(3);
+        }
+        if (vaultBestBid == 0) {
+            vaultBestBid = _bidPrice;
+        }
+    }
+
+    function _getPricePrecision() internal virtual view returns (uint24);
+
+    function _getSizePrecision() internal virtual view returns (uint96);
+
+    function _getTakerFeeBps() internal virtual  view returns (uint256);
+
+    function _getMakerFeeBps() internal virtual view returns (uint256);
+
+    function _getBaseAssetDecimals() internal virtual view returns (uint256);
+
+    function _getQuoteAssetDecimals() internal virtual view returns (uint256);
+
+    function _getBaseAsset() internal virtual view returns (IERC20);
+
+    function _getQuoteAsset() internal virtual view returns (IERC20); 
+}
