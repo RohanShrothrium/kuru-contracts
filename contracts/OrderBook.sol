@@ -592,7 +592,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
 
         return (_quoteSize, _tokenCredit);
     }
-    event TestEvent(bool, uint256);
+
     /**
      * 
      * @param _limitPrice Price of the sell order.
@@ -603,13 +603,11 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         uint24 _quoteCreditTaker = 0;
         uint256 _quoteCreditVaultTaker;
         (bool _isVaultFill, uint24 _bestBid) = bestBid();
-        emit TestEvent(_isVaultFill, _bestBid);
-        emit TestEvent(true, vaultBestBid);
         uint256 _tokenCredit;
         bytes memory makerCredits;
         while (_sizeToBeFilledLeft > 0 && _bestBid >= _limitPrice && _bestBid != type(uint24).max) {
             uint96 _sizeToBeFilledBefore = _sizeToBeFilledLeft; //save size left to fill
-            emit TestEvent(_isVaultFill, vaultBidOrderSize);
+
             bytes memory priceUpdate;
             // The function returns unfilled size, from which we can calculate filled size
             (_sizeToBeFilledLeft, priceUpdate) = _isVaultFill && vaultBidOrderSize > 0
@@ -876,57 +874,4 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         return data;
     }
 
-
-    /**
-     * @notice Get the details of an order and its status.
-     * @param _orderId The ID of the order to retrieve.
-     * @return The order details and its status code.
-     *         Status code:
-     *         0 - Canceled order
-     *         1 - Filled order
-     *         2 - Active order
-     */
-    function getOrderDetails(uint40 _orderId) external view returns (Order memory, uint256) {
-        Order memory _order = s_orders[_orderId];
-        
-        if (_order.prev != OrderLinkedList.NULL) {
-            if (s_orders[_order.prev].next != _orderId) {
-                return (_order, 0);
-            }
-
-            if (_order.isBuy) {
-                if (s_buyPricePoints[_order.price].head > _orderId) {
-                    return (_order, 1);
-                }
-            } else {
-                if (s_sellPricePoints[_order.price].head > _orderId) {
-                    return (_order, 1);
-                }
-            }
-        } else {
-            if (_order.isBuy) {
-                if (s_buyPricePoints[_order.price].head != _orderId) {
-                    if (_order.next == OrderLinkedList.NULL && _order.size == 0) {
-                        return (_order, 1);
-                    }
-                    if (_order.next != OrderLinkedList.NULL && s_orders[_order.next].prev == _orderId) {
-                        return (_order, 1);
-                    }
-                    return (_order, 0);
-                }
-            } else {
-                if (s_sellPricePoints[_order.price].head != _orderId) {
-                    if (_order.next == OrderLinkedList.NULL && _order.size == 0) {
-                        return (_order, 1);
-                    }
-                    if (_order.next != OrderLinkedList.NULL && s_orders[_order.next].prev == _orderId) {
-                        return (_order, 1);
-                    }
-                    return (_order, 0);
-                }
-            }
-        }
-
-        return (_order, 2);
-    }
 }

@@ -114,16 +114,12 @@ abstract contract AbstractAMM is IOrderBook {
             vaultAskOrderSize
         );
     }
-    event CheckPoint(uint256);
+
     function updateVaultOrdSz(uint96 _vaultAskOrderSize, uint96 _vaultBidOrderSize, uint256 _askPrice, uint256 _bidPrice) external onlyVault {
-        emit CheckPoint(0);
         vaultBidOrderSize = _vaultBidOrderSize;
         vaultAskOrderSize = _vaultAskOrderSize;
-        emit CheckPoint(1);
         if (vaultBestAsk == type(uint256).max) {
-            emit CheckPoint(2);
             vaultBestAsk = _askPrice;
-            emit CheckPoint(3);
         }
         if (vaultBestBid == 0) {
             vaultBestBid = _bidPrice;
