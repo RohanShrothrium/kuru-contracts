@@ -52,7 +52,7 @@ interface IOrderBook {
         uint40 orderId,
         address makerAddress,
         bool isBuy,
-        uint24 price,
+        uint256 price,
         uint96 updatedSize,
         address takerAddress,
         uint96 filledSize
@@ -105,11 +105,13 @@ interface IOrderBook {
 
     function placeAndExecuteMarketBuy(
         uint24 _quoteAmount,
+        uint256 _minTokensOut,
         bool _isFillOrKill
     ) external payable returns (uint256);
 
     function placeAndExecuteMarketSell(
         uint96 _size,
+        uint256 _minTokensOut,
         bool _isFillOrKill
     ) external payable returns (uint256);
 

@@ -391,6 +391,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
      */
     function placeAndExecuteMarketBuy(
         uint24 _quoteSize,
+        uint256 _minTokensOut,
         bool _isFillOrKill
     ) payable public override marketActive returns (uint256) {
         OrderBookType _type = orderBookType;
@@ -422,6 +423,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
             (bool _success, ) = address(marginAccount).call{value: msg.value}("");
             require(_success, "OrderBook: MarginAccount native transfer failed");
         }
+        require(_baseTokensCredited >= _minTokensOut, "OrderBook: Slippage Exceeded");
         return _baseTokensCredited;
     }
 
@@ -432,6 +434,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
      */
     function placeAndExecuteMarketSell(
         uint96 _size,
+        uint256 _minTokensOut,
         bool _isFillOrKill
     ) payable public marketActive returns (uint256) {
         OrderBookType _type = orderBookType;
@@ -468,7 +471,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
             (bool _success, ) = address(marginAccount).call{value: msg.value}("");
             require(_success, "OrderBook: MarginAccount native transfer failed");
         }
-
+        require(_quoteCredited >= _minTokensOut, "OrderBook: Slippage Exceeded");
         return _quoteCredited;
     }
 
@@ -546,7 +549,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
      */
     function _marketBuyMatch(uint24 _quoteSize) internal returns(uint24, uint256) {
         uint96 _sizeToCreditTaker;
-        uint96 _sizeToCreditTakerByVault;
+        uint96 _sizeToCreditViaVault;
         (bool _isVaultFill, uint24 _bestAsk) = bestAsk();
         uint256 _tokenCredit;
         bytes memory makerCredits;
@@ -565,7 +568,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
                     s_sellPricePoints[_bestAsk],
                     _sizeFillableAtPriceLeft
                 );
-            _sizeToCreditTakerByVault += (_isVaultFill? (_sizeFillableAtPriceBefore - _sizeFillableAtPriceLeft) : 0);
+            _sizeToCreditViaVault += (_isVaultFill? (_sizeFillableAtPriceBefore - _sizeFillableAtPriceLeft) : 0);
             _sizeToCreditTaker += (_sizeFillableAtPriceBefore - _sizeFillableAtPriceLeft); //add size filled already at price
             makerCredits = bytes.concat(makerCredits, priceUpdate);
             // Calculate current quote size left with size that can be filled at current price point
@@ -577,8 +580,8 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         if (_sizeToCreditTaker > 0) {
             _tokenCredit = ((_sizeToCreditTaker) * 10**baseAssetDecimals) / sizePrecision;
             address _baseAsset = address(baseAsset);
-            if(_sizeToCreditTakerByVault > 0) {
-                marginAccount.debitUser(kuruAmmVault, _baseAsset, (_sizeToCreditTakerByVault * 10**baseAssetDecimals) / sizePrecision);
+            if(_sizeToCreditViaVault > 0) {
+                marginAccount.debitUser(kuruAmmVault, _baseAsset, (_sizeToCreditViaVault * 10**baseAssetDecimals) / sizePrecision);
             }
             uint256 _takerFeeBps = takerFeeBps;
             if (_takerFeeBps > 0) {
@@ -625,8 +628,8 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         }
 
         if (_quoteCreditTaker > 0 || _quoteCreditVaultTaker > 0) {
-            _tokenCredit = ((_quoteCreditTaker) * 10**quoteAssetDecimals) / pricePrecision;
-            _tokenCredit += (_quoteCreditVaultTaker * 10**quoteAssetDecimals) / vaultPricePrecision;
+            _tokenCredit = ((_quoteCreditTaker) * 10**quoteAssetDecimals) / pricePrecision + 
+                            (_quoteCreditVaultTaker * 10**quoteAssetDecimals) / vaultPricePrecision;
             if(_quoteCreditVaultTaker > 0) {
                 marginAccount.debitUser(kuruAmmVault, address(quoteAsset), (_quoteCreditVaultTaker * 10**quoteAssetDecimals) / vaultPricePrecision);
             }
@@ -695,7 +698,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
             s_orders[_orderId].size = _updatedSize;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
-        emit Trade(_orderId, s_orders[_orderId].ownerAddress, s_orders[_orderId].isBuy, s_orders[_orderId].price, _updatedSize, msg.sender, _sizeToBeFilled - remainingSize);
+        emit Trade(_orderId, s_orders[_orderId].ownerAddress, s_orders[_orderId].isBuy, (s_orders[_orderId].price * vaultPricePrecision) / pricePrecision, _updatedSize, msg.sender, _sizeToBeFilled - remainingSize);
     }
 
     /**
