@@ -54,7 +54,7 @@ abstract contract AbstractAMM is IOrderBook {
 
         remainingSize = _size - _fillSize;
         makerCredits = _creditVaultAsMaker(true, _fillSize, _price);
-        emit Trade(0, kuruAmmVault, false, _price, availableSize - _fillSize, msg.sender, _fillSize);
+        emit Trade(0, kuruAmmVault, true, _price, availableSize - _fillSize, msg.sender, _fillSize);
     }
 
     function _fillVaultForSell(uint96 _size) internal returns (uint96 remainingSize, bytes memory makerCredits) {

@@ -253,13 +253,12 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
             //If cancelled order is the head of corresponding price point, we need to update to new head
             if(_orderId == s_buyPricePoints[_order.price].head) {
                 OrderLinkedList.updateHead(s_buyPricePoints[_order.price], _order.next);
+                if(_order.next == OrderLinkedList.NULL) {
+                    //If there are no more orders remaining in price point, we can remove the price point
+                    TreeMath.remove(s_buyTree, _order.price);
+                }
             }
             OrderLinkedList.deleteOrder(s_buyPricePoints[_order.price], _order.prev, _order.next);
-            //If there are no more orders remaining in price point, we can remove the price point
-            if (_order.prev == _order.next) {
-                TreeMath.remove(s_buyTree, _order.price);
-            }
-
             marginAccount.creditUser(
                 _order.ownerAddress,
                 address(quoteAsset),
@@ -269,12 +268,12 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         } else {
             if(_orderId == s_sellPricePoints[_order.price].head) {
                 OrderLinkedList.updateHead(s_sellPricePoints[_order.price], _order.next);
+                if(_order.next == OrderLinkedList.NULL) {
+                    //If there are no more orders remaining in price point, we can remove the price point
+                    TreeMath.remove(s_sellTree, _order.price);
+                }
             }
             OrderLinkedList.deleteOrder(s_sellPricePoints[_order.price], _order.prev, _order.next);
-            if (_order.prev == _order.next) {
-                TreeMath.remove(s_sellTree, _order.price);
-            }
-
             marginAccount.creditUser(
                 _order.ownerAddress,
                 address(baseAsset),
@@ -300,9 +299,11 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
             require(s_orders[_order.prev].next == _orderId, "OrderBook: Order already cancelled");
             if (_order.isBuy) {
                 //Since all orders are filled FCFS in each price point, if head > order id, it means order id was already filled
-                require(s_buyPricePoints[_order.price].head <= _orderId, "OrderBook: Order already filled");
+                uint40 _head = s_buyPricePoints[_order.price].head;
+                require(_head <= _orderId && _head != OrderLinkedList.NULL, "OrderBook: Order already filled");
             } else {
-                require(s_sellPricePoints[_order.price].head <= _orderId, "OrderBook: Order already filled");
+                uint40 _head = s_sellPricePoints[_order.price].head;
+                require(_head <= _orderId && _head != OrderLinkedList.NULL, "OrderBook: Order already filled");
             }
         } else {
             if (_order.isBuy) {
@@ -391,7 +392,6 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
      */
     function placeAndExecuteMarketBuy(
         uint24 _quoteSize,
-        uint256 _minTokensOut,
         bool _isFillOrKill
     ) payable public override marketActive returns (uint256) {
         OrderBookType _type = orderBookType;
@@ -423,7 +423,6 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
             (bool _success, ) = address(marginAccount).call{value: msg.value}("");
             require(_success, "OrderBook: MarginAccount native transfer failed");
         }
-        require(_baseTokensCredited >= _minTokensOut, "OrderBook: Slippage Exceeded");
         return _baseTokensCredited;
     }
 
@@ -434,7 +433,6 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
      */
     function placeAndExecuteMarketSell(
         uint96 _size,
-        uint256 _minTokensOut,
         bool _isFillOrKill
     ) payable public marketActive returns (uint256) {
         OrderBookType _type = orderBookType;
@@ -471,7 +469,6 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
             (bool _success, ) = address(marginAccount).call{value: msg.value}("");
             require(_success, "OrderBook: MarginAccount native transfer failed");
         }
-        require(_quoteCredited >= _minTokensOut, "OrderBook: Slippage Exceeded");
         return _quoteCredited;
     }
 
@@ -606,7 +603,6 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         uint24 _quoteCreditTaker = 0;
         uint256 _quoteCreditVaultTaker;
         (bool _isVaultFill, uint24 _bestBid) = bestBid();
-        uint256 _tokenCredit;
         bytes memory makerCredits;
         while (_sizeToBeFilledLeft > 0 && _bestBid >= _limitPrice && _bestBid != type(uint24).max) {
             uint96 _sizeToBeFilledBefore = _sizeToBeFilledLeft; //save size left to fill
@@ -628,7 +624,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         }
 
         if (_quoteCreditTaker > 0 || _quoteCreditVaultTaker > 0) {
-            _tokenCredit = ((_quoteCreditTaker) * 10**quoteAssetDecimals) / pricePrecision + 
+            uint256 _tokenCredit = ((_quoteCreditTaker) * 10**quoteAssetDecimals) / pricePrecision + 
                             (_quoteCreditVaultTaker * 10**quoteAssetDecimals) / vaultPricePrecision;
             if(_quoteCreditVaultTaker > 0) {
                 marginAccount.debitUser(kuruAmmVault, address(quoteAsset), (_quoteCreditVaultTaker * 10**quoteAssetDecimals) / vaultPricePrecision);
@@ -641,9 +637,10 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
                 quoteFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
             }
             marginAccount.creditUsersEncoded(bytes.concat(makerCredits, abi.encode(msg.sender, address(quoteAsset), _tokenCredit, _useMargin)));
+            return (_sizeToBeFilledLeft, _tokenCredit);
         }
 
-        return (_sizeToBeFilledLeft, _tokenCredit);
+        return (_sizeToBeFilledLeft, 0);
     }
 
     /**
@@ -653,14 +650,13 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
      * @param _size The size of the order to be filled.
      * @return remainingSize The size remaining unfilled.
      */
-    function _fillSizeForPrice(TreeMath.TreeUint24 storage _tree, uint24 _price, OrderLinkedList.PricePoint storage _pricePoint, uint96 _size) internal returns (uint96 remainingSize, bytes memory makerCredits) {
-        remainingSize = _size;
+    function _fillSizeForPrice(TreeMath.TreeUint24 storage _tree, uint24 _price, OrderLinkedList.PricePoint storage _pricePoint, uint96 _size) internal returns (uint96, bytes memory makerCredits) {
         uint40 _orderId = _pricePoint.head;
-        while (remainingSize > 0 && _orderId != OrderLinkedList.NULL) {
+        while (_size > 0 && _orderId != OrderLinkedList.NULL) {
             //orderUpdate contains byte encoded data for token credit to be executed by Margin Account
             bytes memory orderUpdate;
             //_orderId returned contains the next order in line to be filled
-            (remainingSize, _orderId, orderUpdate) = _fillOrder(_orderId, remainingSize);
+            (_size, _orderId, orderUpdate) = _fillOrder(_orderId, _size);
             //prepare into a single bytes encoding to be batched as a single call to margin account
             makerCredits = bytes.concat(makerCredits, orderUpdate);
         }
@@ -668,6 +664,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         if (_orderId == OrderLinkedList.NULL) {
             TreeMath.remove(_tree, _price);
         }
+        return (_size, makerCredits);
     }
 
 
@@ -698,7 +695,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
             s_orders[_orderId].size = _updatedSize;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
-        emit Trade(_orderId, s_orders[_orderId].ownerAddress, s_orders[_orderId].isBuy, (s_orders[_orderId].price * vaultPricePrecision) / pricePrecision, _updatedSize, msg.sender, _sizeToBeFilled - remainingSize);
+        emit Trade(_orderId, s_orders[_orderId].ownerAddress, !s_orders[_orderId].isBuy, (s_orders[_orderId].price * vaultPricePrecision) / pricePrecision, _updatedSize, msg.sender, _sizeToBeFilled - remainingSize);
     }
 
     /**

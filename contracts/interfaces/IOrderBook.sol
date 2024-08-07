@@ -105,13 +105,11 @@ interface IOrderBook {
 
     function placeAndExecuteMarketBuy(
         uint24 _quoteAmount,
-        uint256 _minTokensOut,
         bool _isFillOrKill
     ) external payable returns (uint256);
 
     function placeAndExecuteMarketSell(
         uint96 _size,
-        uint256 _minTokensOut,
         bool _isFillOrKill
     ) external payable returns (uint256);
 

@@ -25,8 +25,9 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     IOrderBook private immutable market;
 
     MarketParams private marketParams; 
-    uint256 constant internal vaultPricePrecision = 10**18;
-    constructor(
+    //TODO: Add minimum initial liquidity and burn it, analogous to Uniswap V2. 
+    //TODO: Add vault share precision
+        constructor(
         address token1_,
         address token2_,
         address _marginAccount,
