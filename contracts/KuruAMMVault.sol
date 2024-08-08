@@ -23,9 +23,10 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
 
     IMarginAccount private immutable marginAccount;
     IOrderBook private immutable market;
-
+    uint256 vaultPricePrecision = 10**18;
     MarketParams private marketParams; 
     //TODO: Add minimum initial liquidity and burn it, analogous to Uniswap V2. 
+    uint256 constant MIN_LIQUIDITY = 10**3;
     //TODO: Add vault share precision
         constructor(
         address token1_,
@@ -112,7 +113,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         address receiver
     ) public payable returns (uint256) {
         require(
-            msg.value ==
+            msg.value >=
                 (
                     token1 == address(0)
                         ? amount1
@@ -132,19 +133,27 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         uint256 amount2,
         address receiver
     ) internal returns (uint256) {
-        uint256 shares = totalSupply() == 0
-            ? Math.sqrt(amount1 * amount2)
-            : _convertToShares(amount1, amount2, Math.Rounding.Down);
-        require(shares > 0, "KuruAMMVault: INSUFFICIENT_LIQUIDITY_MINTED");
-    
-        _updateMarketVaultOrderSize(amount1, amount2, true);
-
+        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice();
+        uint256 _shares;
+        if(totalSupply() != 0) {
+            uint256 _expectedQuoteAmount = ((Math.mulDiv(amount1, _currentAskPrice, vaultPricePrecision, Math.Rounding.Up) * 10**marketParams.quoteAssetDecimals)) / 10**marketParams.baseAssetDecimals;
+            require(_expectedQuoteAmount <= amount2, "KuruAMMVault: INSUFFICIENT TOKEN SUPPLIED");
+            _shares =_convertToShares(amount1, _expectedQuoteAmount, Math.Rounding.Down);
+            amount2 = _expectedQuoteAmount;
+            _mint(receiver, _shares);
+        }
+        else {
+            _shares = Math.sqrt(amount1 * amount2);
+            _mint(address(marginAccount), MIN_LIQUIDITY);
+            _shares -= MIN_LIQUIDITY;
+            _mint(receiver, _shares);
+        }
+        require(_shares > 0, "KuruAMMVault: INSUFFICIENT_LIQUIDITY_MINTED");
+        _updateMarketVaultOrderSize(amount1, amount2, _baseAmount, _currentAskPrice, true);
         _depositToMarginAccount(amount1, token1);
         _depositToMarginAccount(amount2, token2);
 
-        _mint(receiver, shares);
-
-        return shares;
+        return _shares;
     }
 
     /** @dev Internal function to handle deposits to the margin account. */
@@ -161,10 +170,11 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     function _updateMarketVaultOrderSize(
         uint256 amount1,
         uint256 amount2,
+        uint256 _baseAmount,
+        uint256 _currentAskPrice,
         bool isDeposit
     ) internal {
         MarketParams memory _marketParams = marketParams;
-        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice();
         uint256 _quoteAmount = (_baseAmount * 10**_marketParams.quoteAssetDecimals / 10**_marketParams.baseAssetDecimals) * vaultPricePrecision / _currentAskPrice;
         uint256 _postActionBaseAmount = isDeposit? _baseAmount + amount1 : _baseAmount - amount1;
         uint256 _postActionQuoteAmount = isDeposit ? _quoteAmount + amount2 : _quoteAmount - amount2;
@@ -209,24 +219,34 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         );
 
         _burn(owner, shares);
+        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice();
+        _updateMarketVaultOrderSize(amount1, amount2, _baseAmount, _currentAskPrice, false);
 
-        _updateMarketVaultOrderSize(amount1, amount2, false);
-
-        _withdrawFromMarginAccount(amount1, token1, receiver);
-        _withdrawFromMarginAccount(amount2, token2, receiver);
+        _withdrawFromMarginAccount(amount1, amount2, receiver);
 
         return (amount1, amount2);
     }
 
     /** @dev Internal function to handle withdrawals from the margin account. */
     function _withdrawFromMarginAccount(
+        uint256 amount1,
+        uint256 amount2,
+        address receiver
+    ) internal {
+        marginAccount.withdraw(amount1, token1);
+        marginAccount.withdraw(amount2, token2);
+
+        _transferTokensToUser(amount1, token1, receiver);
+        _transferTokensToUser(amount2, token2, receiver);
+    }
+
+    /** @dev Internal function to transfer tokens to the receiver. */
+    function _transferTokensToUser(
         uint256 amount,
         address token,
         address receiver
     ) internal {
-        marginAccount.withdraw(amount, token);
         if (token == address(0)) {
-            // @audit: This is surely a bug.
             (bool success, ) = receiver.call{value: amount}("");
             require(success, "KuruAMMVault: failed to transfer native token");
         } else {
