@@ -31,7 +31,7 @@ interface IMarginAccount {
         address _token,
         uint256 _amount,
         bool _useMargin
-    ) external returns (bool);
+    ) external;
 
     function creditUsersEncoded(
         bytes calldata _encodedData

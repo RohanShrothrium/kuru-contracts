@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-
 // ============ Library Imports ============
-import {OrderLinkedList} from "./libraries/OrderLinkedList.sol";
-import {TreeMath} from "./libraries/TreeMath.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // ============ Internal Interfaces Imports ============
@@ -12,11 +9,6 @@ import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
 // ============ Internal Contracts Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
-import {IMarginAccount} from  "./interfaces/IMarginAccount.sol";
-
-// ============ External Imports ============
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 abstract contract AbstractAMM is IOrderBook {
 
