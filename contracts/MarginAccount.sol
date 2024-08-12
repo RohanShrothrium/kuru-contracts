@@ -86,7 +86,7 @@ contract MarginAccount is IMarginAccount {
         address _token,
         uint256 _amount,
         bool _useMargin
-    ) external {
+    ) external returns (bool) {
         require(verifiedMarket[msg.sender], "MarginAccount: Only verified markets can credit users");
 
         if (_useMargin) {
@@ -94,6 +94,8 @@ contract MarginAccount is IMarginAccount {
         } else {
             IERC20(_token).transfer(_user, _amount);
         }
+
+        return true;
     }
 
     /**

@@ -171,10 +171,10 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
      * @param size Size of the sell order.
      */
     function addSellOrder(uint24 _price, uint96 size, bool _postOnly) public marketActive {
-        require(_price > 0, "OrderBook: Price too low");
         require(size > minSize, "OrderBook: Size too low");
         require(size < maxSize, "OrderBook: Size too large");
         require(_price % tickSize == 0, "OrderBook: Tick Size");
+        require(_price > 0, "OrderBook: Price too low");
 
         _consumeFunds(baseAsset, ((size * 10**baseAssetDecimals) / sizePrecision), msg.sender);
 
@@ -405,15 +405,21 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
         (_quoteSize, _baseTokensCredited) = _marketBuyMatch(_quoteSize);
         if (_quoteSize > 0) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
-            _type == OrderBookType.NATIVE_IN_QUOTE
-                ? _handleNativeMarketRefundTransfer(_quoteSize * 10**quoteAssetDecimals / pricePrecision)
-                : marginAccount.creditUser(
+            if (_type == OrderBookType.NATIVE_IN_QUOTE) {
+                //There are no more writes to the state after this, so read only reentrancies should be avoided
+                uint256 _refund = _quoteSize * 10**quoteAssetDecimals / pricePrecision;
+                _handleNativeMarketRefundTransfer(_refund);
+            }
+            else {
+                marginAccount.creditUser(
                     msg.sender,
                     address(quoteAsset),
                     uint256(_quoteSize * 10**quoteAssetDecimals / pricePrecision),
                     false
                 );
-        } else if (_type == OrderBookType.NATIVE_IN_QUOTE) {
+            }
+        }
+        else if (_type == OrderBookType.NATIVE_IN_QUOTE) {
             (bool _success, ) = address(marginAccount).call{value: msg.value}("");
             require(_success, "OrderBook: MarginAccount native transfer failed");
         }
@@ -446,16 +452,20 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
 
         if (_size > 0) {
             require(!_isFillOrKill, "OrderBook: insufficient volume on book");
-            (_type == OrderBookType.NATIVE_IN_BASE)
-                ? _handleNativeMarketRefundTransfer((_size * 10**baseAssetDecimals) / sizePrecision)
-                : marginAccount.creditUser(
+            if (_type == OrderBookType.NATIVE_IN_BASE) {
+                uint256 _refund = (_size * 10**baseAssetDecimals) / sizePrecision;
+                _handleNativeMarketRefundTransfer(_refund);
+            }
+            else {
+                marginAccount.creditUser(
                     msg.sender,
                     address(baseAsset),
                     ((_size * 10**baseAssetDecimals) / sizePrecision),
                     false
                 );
-
-        } else if (_type == OrderBookType.NATIVE_IN_BASE) {
+            } 
+        }
+        else if (_type == OrderBookType.NATIVE_IN_BASE) {
             (bool _success, ) = address(marginAccount).call{value: msg.value}("");
             require(_success, "OrderBook: MarginAccount native transfer failed");
         }
@@ -463,8 +473,8 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
     }
 
     /**
-     * @dev Internal function to credit native token refunds for market orders
-     * @param _refund The native token refund to be credited to the taker
+    * @dev Internal function to credit native token refunds for market orders
+    * @param _refund The native token refund to be credited to the taker
      */
     function _handleNativeMarketRefundTransfer(uint256 _refund) internal {
         (bool _success, ) = address(marginAccount).call{value: msg.value - _refund}("");
@@ -476,8 +486,8 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
     }
 
     /**
-     * @dev Calls the creditFee function in MarginAccount
-     * @notice Anyone can call this function
+    * @dev Calls the creditFee function in MarginAccount
+    * @notice Anyone can call this function
      */
     function collectFees() external {
         marginAccount.creditFee(address(baseAsset), baseFeeCollected, address(quoteAsset), quoteFeeCollected);
@@ -506,7 +516,7 @@ contract OrderBook is OwnableUpgradeable, UUPSUpgradeable, AbstractAMM {
 
             uint96 sizeFilled = sizeToBeFilledBefore - _sizeToBeFilled; // Calculate the filled size
             _sizeToCreditTaker += sizeFilled;
-            _sizeToCreditViaVault += (_isVaultFill ? sizeFilled : 0);
+            _sizeToCreditViaVault += (_isVaultFill? sizeFilled : 0);
             fundsConsumed += _calculateFundsConsumed(_bestAsk, sizeFilled);
             makerCredits = bytes.concat(makerCredits, priceUpdate);
 
