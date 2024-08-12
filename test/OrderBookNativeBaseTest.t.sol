@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import {FixedPointMathLib} from "../contracts/libraries/FixedPointMathLib.sol";
+import {Errors} from "../contracts/libraries/Errors.sol";
 import {IOrderBook} from "../contracts/interfaces/IOrderBook.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
@@ -172,7 +173,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("OrderBook: Post only crossed the book");
+        vm.expectRevert(Errors.PostOnlyError.selector);
         orderBook.addBuyOrder(_price, _buySize, true);
         vm.stopPrank();
     }
@@ -228,7 +229,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(eth), _amount);
-        vm.expectRevert("OrderBook: Post only crossed the book");
+        vm.expectRevert(Errors.PostOnlyError.selector);
         orderBook.addSellOrder(_price, _size, true);
         vm.stopPrank();
     }
@@ -392,7 +393,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         usdc.mint(_taker, (_quoteExtra * 10**_decimals) / PRICE_PRECISION);
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), (_quoteExtra * 10**_decimals) / PRICE_PRECISION);
-        vm.expectRevert("OrderBook: insufficient volume on book");
+        vm.expectRevert(Errors.InsufficientLiquidity.selector);
         orderBook.placeAndExecuteMarketBuy(_quoteExtra, true);
         vm.stopPrank();
     }
@@ -407,7 +408,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         address _taker = genAddress();
         usdc.mint(_taker, (_quoteExtra * 10**_decimals) / PRICE_PRECISION);
         vm.startPrank(_taker);
-        vm.expectRevert("ERC20: insufficient allowance");
+        vm.expectRevert(Errors.TransferFromFailed.selector);
         orderBook.placeAndExecuteMarketBuy(_quoteExtra, false);
         vm.stopPrank();
     }
@@ -484,7 +485,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         address _taker = genAddress();
         vm.deal(_taker, _sizeForSale);
         vm.startPrank(_taker);
-        vm.expectRevert("OrderBook: insufficient volume on book");
+        vm.expectRevert(Errors.InsufficientLiquidity.selector);
         orderBook.placeAndExecuteMarketSell{value: _sizeForSale}(_size + 10**6, true);
         vm.stopPrank();
     }
@@ -498,7 +499,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         address _taker = genAddress();
         vm.deal(_taker, _sizeForSale);
         vm.startPrank(_taker);
-        vm.expectRevert("OrderBook: Native asset not enough");
+        vm.expectRevert(Errors.NativeAssetInsufficient.selector);
         orderBook.placeAndExecuteMarketSell(_size + 10**6, false);
         vm.stopPrank();
     }
@@ -537,7 +538,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("OrderBook: Size too low");
+        vm.expectRevert(Errors.SizeError.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -552,7 +553,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("OrderBook: Size too large");
+        vm.expectRevert(Errors.SizeError.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -567,7 +568,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("OrderBook: Tick Size");
+        vm.expectRevert(Errors.TickSizeError.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -582,7 +583,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("OrderBook: Price too low");
+        vm.expectRevert(Errors.PriceError.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -597,7 +598,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(eth), _amount);
-        vm.expectRevert("OrderBook: Size too low");
+        vm.expectRevert(Errors.SizeError.selector);
         orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -612,7 +613,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(eth), _amount);
-        vm.expectRevert("OrderBook: Size too large");
+        vm.expectRevert(Errors.SizeError.selector);
         orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -627,7 +628,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(eth), _amount);
-        vm.expectRevert("OrderBook: Tick Size");
+        vm.expectRevert(Errors.TickSizeError.selector);
         orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -642,7 +643,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(eth), _amount);
-        vm.expectRevert("OrderBook: Price too low");
+        vm.expectRevert(Errors.PriceError.selector);
         orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }

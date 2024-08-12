@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import {FixedPointMathLib} from "../contracts/libraries/FixedPointMathLib.sol";
+import {Errors} from "../contracts/libraries/Errors.sol";
 import {IOrderBook} from "../contracts/interfaces/IOrderBook.sol";
 import {KuruAMMVault} from "../contracts/KuruAMMVault.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
@@ -187,7 +188,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("OrderBook: Post only crossed the book");
+        vm.expectRevert(Errors.PostOnlyError.selector);
         orderBook.addBuyOrder(_price, _buySize, true);
         vm.stopPrank();
     }
@@ -244,7 +245,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(eth), _amount);
-        vm.expectRevert("OrderBook: Post only crossed the book");
+        vm.expectRevert(Errors.PostOnlyError.selector);
         orderBook.addSellOrder(_price, _size, true);
         vm.stopPrank();
     }
@@ -415,7 +416,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         usdc.mint(_taker, (_quoteExtra * 10**_decimals) / PRICE_PRECISION);
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), (_quoteExtra * 10**_decimals) / PRICE_PRECISION);
-        vm.expectRevert("OrderBook: insufficient volume on book");
+        vm.expectRevert(Errors.InsufficientLiquidity.selector);
         orderBook.placeAndExecuteMarketBuy(_quoteExtra, true);
         vm.stopPrank();
     }
@@ -432,7 +433,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         address _taker = genAddress();
         usdc.mint(_taker, (_quoteExtra * 10**_decimals) / PRICE_PRECISION);
         vm.startPrank(_taker);
-        vm.expectRevert("ERC20: insufficient allowance");
+        vm.expectRevert(Errors.TransferFromFailed.selector);
         orderBook.placeAndExecuteMarketBuy(_quoteExtra, false);
         vm.stopPrank();
     }
@@ -516,7 +517,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth.mint(_taker, _sizeForSale);
         vm.startPrank(_taker);
         eth.approve(address(orderBook), _sizeForSale);
-        vm.expectRevert("OrderBook: insufficient volume on book");
+        vm.expectRevert(Errors.InsufficientLiquidity.selector);
         orderBook.placeAndExecuteMarketSell(_size + 10**6, true);
         vm.stopPrank();
     }
@@ -534,7 +535,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         address _taker = genAddress();
         eth.mint(_taker, _sizeForSale);
         vm.startPrank(_taker);
-        vm.expectRevert("ERC20: insufficient allowance");
+        vm.expectRevert(Errors.TransferFromFailed.selector);
         orderBook.placeAndExecuteMarketSell(_size + 10**6, false);
         vm.stopPrank();
     }
@@ -573,7 +574,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("OrderBook: Size too low");
+        vm.expectRevert(Errors.SizeError.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -588,7 +589,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("OrderBook: Size too large");
+        vm.expectRevert(Errors.SizeError.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -603,7 +604,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("OrderBook: Tick Size");
+        vm.expectRevert(Errors.TickSizeError.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -618,7 +619,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("OrderBook: Price too low");
+        vm.expectRevert(Errors.PriceError.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -634,7 +635,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(eth), _amount);
-        vm.expectRevert("OrderBook: Size too low");
+        vm.expectRevert(Errors.SizeError.selector);
         orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -650,7 +651,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(eth), _amount);
-        vm.expectRevert("OrderBook: Size too large");
+        vm.expectRevert(Errors.SizeError.selector);
         orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -666,7 +667,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(eth), _amount);
-        vm.expectRevert("OrderBook: Tick Size");
+        vm.expectRevert(Errors.TickSizeError.selector);
         orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -682,7 +683,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(eth), _amount);
-        vm.expectRevert("OrderBook: Price too low");
+        vm.expectRevert(Errors.PriceError.selector);
         orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -825,6 +826,52 @@ contract OrderBookTest is Test, PropertiesAsserts {
         orderBook.placeAndExecuteMarketBuy(uint24((_quoteForFillingAsk * PRICE_PRECISION) / 10**18), true);
         (,,,uint256 _vaultBestAskNew,,uint96 _vaultBidOrderSizeNew, uint96 _vaultAskOrderSizeNew) = orderBook.getVaultParams();
         console.log(_vaultBestAskNew * 1000 / _vaultBestAsk);
+    }
+
+    function testKuruVaultRevertWrongPriceAsserted(uint256 _targetVaultPrice, uint96 _targetVaultSize) public {
+        _targetVaultPrice = clampBetween(_targetVaultPrice, vaultPricePrecision * 3 / 2, _maxPrice * vaultPricePrecision / PRICE_PRECISION);
+        _targetVaultSize = uint96(clampBetween(_targetVaultSize, _minSize + 1, _maxSize * 2));
+        uint256 _amountBase = (_targetVaultSize * 10**eth.decimals()) / SIZE_PRECISION;
+        uint256 _amountQuote = (_targetVaultSize * 10**usdc.decimals() * _targetVaultPrice) / (vaultPricePrecision * SIZE_PRECISION);
+        address _vaultMaker = genAddress();
+        eth.mint(_vaultMaker, _amountBase);
+        usdc.mint(_vaultMaker, _amountQuote);
+        vm.startPrank(_vaultMaker);
+        eth.approve(address(vault), _amountBase);
+        usdc.approve(address(vault), _amountQuote);
+        vault.deposit(_amountBase, _amountQuote, _vaultMaker);
+        vm.stopPrank();
+        _targetVaultPrice = 10**18;
+        _amountBase = (_targetVaultSize * 10**eth.decimals()) / SIZE_PRECISION;
+        _amountQuote = (_targetVaultSize * 10**usdc.decimals() * _targetVaultPrice) / (vaultPricePrecision * SIZE_PRECISION);
+        _vaultMaker = genAddress();
+        eth.mint(_vaultMaker, _amountBase);
+        usdc.mint(_vaultMaker, _amountQuote);
+        vm.startPrank(_vaultMaker);
+        eth.approve(address(vault), _amountBase);
+        usdc.approve(address(vault), _amountQuote);
+        vm.expectRevert("KuruAMMVault: INSUFFICIENT TOKEN SUPPLIED");
+        vault.deposit(_amountBase, _amountQuote, _vaultMaker);
+        vm.stopPrank();
+    }
+
+    function testKuruVaultRevertInitialDepositMinSizeError() public {
+        uint256 _amountBase = 10000;
+        uint256 _amountQuote = 10000;
+        address _vaultMaker = genAddress();
+        eth.mint(_vaultMaker, _amountBase);
+        usdc.mint(_vaultMaker, _amountQuote);
+        vm.startPrank(_vaultMaker);
+        eth.approve(address(vault), _amountBase);
+        usdc.approve(address(vault), _amountQuote);
+        vault.deposit(_amountBase, _amountQuote, _vaultMaker);
+        vm.stopPrank();
+        _amountBase = 0;
+        _amountQuote = 0;
+        vm.startPrank(_vaultMaker);
+        vm.expectRevert("KuruAMMVault: INSUFFICIENT_LIQUIDITY_MINTED");
+        vault.deposit(0, 0, _vaultMaker);
+        vm.stopPrank();
     }
 
 

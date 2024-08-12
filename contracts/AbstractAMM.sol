@@ -11,7 +11,6 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
 // ============ Internal Contracts Imports ============
-import {IERC20} from "./libraries/IERC20.sol";
 import {IMarginAccount} from  "./interfaces/IMarginAccount.sol";
 
 // ============ External Imports ============
@@ -79,17 +78,17 @@ abstract contract AbstractAMM is IOrderBook {
     }
 
     function _creditVaultAsMaker(bool _isMarketBuy, uint96 _size, uint256 _price) internal view returns (bytes memory) {
-        address _creditAsset = _isMarketBuy ? address(_getQuoteAsset()) : address(_getBaseAsset());
+        address _creditAsset = _isMarketBuy ? _getQuoteAsset() : _getBaseAsset();
         uint256 _amount = _isMarketBuy ? (((_price * _size) / _getSizePrecision()) * 10**_getQuoteAssetDecimals()) / vaultPricePrecision : (_size * 10**_getBaseAssetDecimals()) / _getSizePrecision();
         uint256 feeRebate;
         address feeAsset;
         bytes memory returnData;
         if (_isMarketBuy) {
-            feeAsset = address(_getBaseAsset());
+            feeAsset = _getBaseAsset();
             feeRebate = (((_size * 10**_getBaseAssetDecimals()) / _getSizePrecision()) * _getMakerFeeBps()) / BPS_MULTIPLIER;
         }
         else {
-            feeAsset = address(_getQuoteAsset());
+            feeAsset = _getQuoteAsset();
             feeRebate = (((((_price * _size) / _getSizePrecision()) * 10**_getQuoteAssetDecimals()) / vaultPricePrecision) * _getMakerFeeBps()) / BPS_MULTIPLIER;
         }
         //feeRebate only exists if makerFeeBps > 0
@@ -138,7 +137,7 @@ abstract contract AbstractAMM is IOrderBook {
 
     function _getQuoteAssetDecimals() internal virtual view returns (uint256);
 
-    function _getBaseAsset() internal virtual view returns (IERC20);
+    function _getBaseAsset() internal virtual view returns (address);
 
-    function _getQuoteAsset() internal virtual view returns (IERC20); 
+    function _getQuoteAsset() internal virtual view returns (address); 
 }
