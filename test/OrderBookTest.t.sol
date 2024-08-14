@@ -855,7 +855,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testKuruVaultRevertInitialDepositMinSizeError() public {
+    function testKuruVaultRevertInitialDepositMinSize() public {
         uint256 _amountBase = 10000;
         uint256 _amountQuote = 10000;
         address _vaultMaker = genAddress();
@@ -871,6 +871,32 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_vaultMaker);
         vm.expectRevert("KuruAMMVault: INSUFFICIENT_LIQUIDITY_MINTED");
         vault.deposit(0, 0, _vaultMaker);
+        vm.stopPrank();
+    }
+
+    function testKuruVaultReverPartialFilledSizeExceedsNewSize(uint256 _targetVaultPrice, uint96 _targetVaultSize) public {
+        (_targetVaultPrice, _targetVaultSize) = _adjustPriceAndSizeForVault(_targetVaultPrice, _targetVaultSize);
+        uint256 _amountBase = (_targetVaultSize * 10**eth.decimals()) / SIZE_PRECISION;
+        uint256 _amountQuote = (_targetVaultSize * 10**usdc.decimals() * _targetVaultPrice) / (vaultPricePrecision * SIZE_PRECISION);
+        address _vaultMaker = genAddress();
+        eth.mint(_vaultMaker, _amountBase);
+        usdc.mint(_vaultMaker, _amountQuote);
+        vm.startPrank(_vaultMaker);
+        eth.approve(address(vault), _amountBase);
+        usdc.approve(address(vault), _amountQuote);
+        uint256 _shares = vault.deposit(_amountBase, _amountQuote, _vaultMaker);
+        vm.stopPrank();
+        (,,,uint256 _vaultBestAsk,,uint96 _vaultBidOrderSize, uint96 _vaultAskOrderSize) = orderBook.getVaultParams();
+        uint256 _bidTakerBaseAmount = (_vaultBidOrderSize * 10**eth.decimals()) / (2 * SIZE_PRECISION); //half of bid order size 
+        address _partialBidTaker = genAddress();
+        eth.mint(_partialBidTaker, _bidTakerBaseAmount);
+        vm.startPrank(_partialBidTaker);
+        eth.approve(address(orderBook), _bidTakerBaseAmount);
+        orderBook.placeAndExecuteMarketSell(_vaultBidOrderSize / 2, true);
+        vm.stopPrank();
+        vm.startPrank(_vaultMaker);
+        vm.expectRevert(KuruAMMVault.NewSizeExceedsPartiallyFilledSize.selector);
+        vault.withdraw(_shares, _vaultMaker, _vaultMaker);
         vm.stopPrank();
     }
 

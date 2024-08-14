@@ -13,10 +13,6 @@ import {IOrderBook} from "./interfaces/IOrderBook.sol";
 // ============ Internal Contracts Imports ============
 import {IMarginAccount} from  "./interfaces/IMarginAccount.sol";
 
-// ============ External Imports ============
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-
 abstract contract AbstractAMM is IOrderBook {
 
     uint256 constant vaultPricePrecision = 10**18;
@@ -47,7 +43,7 @@ abstract contract AbstractAMM is IOrderBook {
             vaultBidOrderSize = vaultAskOrderSize;
             vaultAskOrderSize = uint96(FixedPointMathLib.mulDivUp(vaultAskOrderSize, 2000, 2003));
             vaultBestAsk = FixedPointMathLib.mulDivRound(_price, 1003, 1000);
-            bidPartiallyFilledSize = uint96(FixedPointMathLib.mulDivDown(bidPartiallyFilledSize, 1000, 1003));
+            bidPartiallyFilledSize = uint96(FixedPointMathLib.mulDiv(bidPartiallyFilledSize, 1000, 1003));
             vaultBestBid = _price;
         }
 
@@ -67,7 +63,7 @@ abstract contract AbstractAMM is IOrderBook {
         } else {
             bidPartiallyFilledSize = 0;
             vaultAskOrderSize = vaultBidOrderSize;
-            vaultBidOrderSize = uint96(FixedPointMathLib.mulDivDown(vaultAskOrderSize, 2003, 2000)); //@note: changed to muldivdown from up
+            vaultBidOrderSize = uint96(FixedPointMathLib.mulDiv(vaultAskOrderSize, 2003, 2000)); //@note: changed to muldivdown from up
             vaultBestBid = FixedPointMathLib.mulDivRound(_price, 1000, 1003);
             vaultBestAsk = _price;
         }

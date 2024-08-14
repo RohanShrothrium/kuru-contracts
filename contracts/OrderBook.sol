@@ -6,7 +6,7 @@ pragma solidity ^0.8.0;
 import {OrderLinkedList} from "./libraries/OrderLinkedList.sol";
 import {TreeMath} from "./libraries/TreeMath.sol";
 import {Errors} from "./libraries/Errors.sol";
-import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {AbstractAMM} from "./AbstractAMM.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 
