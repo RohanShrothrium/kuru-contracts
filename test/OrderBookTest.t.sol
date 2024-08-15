@@ -856,8 +856,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
     }
 
     function testKuruVaultRevertInitialDepositMinSize() public {
-        uint256 _amountBase = 10000;
-        uint256 _amountQuote = 10000;
+        uint256 _amountBase = 10 * 10**18;
+        uint256 _amountQuote = 10 * 10**18;
         address _vaultMaker = genAddress();
         eth.mint(_vaultMaker, _amountBase);
         usdc.mint(_vaultMaker, _amountQuote);

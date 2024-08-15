@@ -265,7 +265,6 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         address receiver,
         address owner
     ) internal returns (uint256, uint256) {
-        uint256 _erc20base = ERC20(token1).balanceOf(address(marginAccount));
         (uint256 amount1, uint256 amount2) = _convertToAssets(shares, false);
 
         (
