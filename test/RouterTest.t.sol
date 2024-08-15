@@ -76,8 +76,7 @@ contract OrderBookTest is Test {
         vm.startPrank(_maker);
         token.approve(address(marginAccount), _tokenForEachOrder);
         marginAccount.deposit(_maker, address(token), _tokenForEachOrder);
-        uint24 _pricePrecision = orderBook.getPricePrecision();
-        uint96 _sizePrecision = orderBook.getSizePrecision();
+        (uint24 _pricePrecision, uint96 _sizePrecision, , , , , , , , ,) = orderBook.getMarketParams();
         orderBook.addBuyOrder(_price * _pricePrecision, _size * _sizePrecision, false);
         vm.stopPrank();
     }
@@ -93,8 +92,7 @@ contract OrderBookTest is Test {
         vm.startPrank(_maker);
         token.approve(address(marginAccount), _size * 10 ** token.decimals());
         marginAccount.deposit(_maker, address(token), _size * 10 ** token.decimals());
-        uint24 _pricePrecision = orderBook.getPricePrecision();
-        uint96 _sizePrecision = orderBook.getSizePrecision();
+        (uint24 _pricePrecision, uint96 _sizePrecision, , , , , , , , ,) = orderBook.getMarketParams();
         orderBook.addSellOrder(
             _price * _pricePrecision,
             _size * _sizePrecision,
@@ -224,7 +222,7 @@ contract OrderBookTest is Test {
 
 
     function _createOrderbook(OrderBook.OrderBookType _type, MintableERC20 _baseAsset, MintableERC20 _quoteAsset, uint96 _sizePrecision, uint24 _pricePrecision) internal returns (OrderBook) {
-        uint96 _tickSize = _pricePrecision / 2;
+        uint24 _tickSize = _pricePrecision / 2;
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 15;
         uint256 _takerFeeBps = 0;

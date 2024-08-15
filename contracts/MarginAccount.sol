@@ -139,6 +139,7 @@ contract MarginAccount is IMarginAccount {
         address _token,
         uint256 _amount
     ) external payable {
+        require(_user != address(0), "MarginAccount: zero address not allowed");
         if (_token == NATIVE) {
             require(msg.value == _amount, "MarginAccount: amount and value mismatch");
             balances[_accountKey(_user, NATIVE)] += _amount;

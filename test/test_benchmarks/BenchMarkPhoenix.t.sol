@@ -31,7 +31,7 @@ contract BenchMarkTest is Test, Gas {
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
-        uint96 _tickSize = PRICE_PRECISION / 2;
+        uint24 _tickSize = PRICE_PRECISION / 2;
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 12;
         uint256 _takerFeeBps = 0;

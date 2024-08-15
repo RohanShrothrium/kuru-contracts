@@ -11,12 +11,12 @@ async function main() {
     const usdcDecimals = 18;
 
     const _sizePrecision = 10**10;
-    const _pricePrecision = 10**2;
+    const _pricePrecision = 100;
     const _tickSize = 1;
-    const _minSize = 10**5;
+    const _minSize = 10**2;
     const _maxSize = 10**12;
-    const _takerFeeBps = 0;
-    const _makerFeeBps = 0;
+    const _takerFeeBps = 25;
+    const _makerFeeBps = 20;
 
     const [deployer, taker] = await hre.ethers.getSigners();
     const userAddress = deployer.address;
@@ -32,11 +32,11 @@ async function main() {
     console.log("USDC deployed to:", usdc.address);
 
     // Fund the shark account with a substantial amount of tokens
-    await wbtc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"));
-    await wbtc.mint(userAddress, hre.ethers.utils.parseEther("1000000"));
+    await wbtc.mint(takerAddress, hre.ethers.utils.parseEther("206900"));
+    await wbtc.mint(userAddress, hre.ethers.utils.parseEther("206900"));
     console.log("Shark WBTC balance:", (await wbtc.balanceOf(takerAddress)).toString());
 
-    await usdc.mint(userAddress, hre.ethers.utils.parseEther("1000000"));
+    await usdc.mint(userAddress, hre.ethers.utils.parseEther("206900"));
     await usdc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"));
     console.log("Shark USDC balance:", (await usdc.balanceOf(userAddress)).toString());
 
@@ -82,12 +82,43 @@ async function main() {
 
     console.log("CranklessOrderBook deployed to:", cranklessOrderBookAddress);
 
+    const market = await hre.ethers.getContractAt(
+		"OrderBook",
+		cranklessOrderBookAddress
+	);
+
+    const vaultParamsData = await market.getVaultParams();
+    const kuruAmmVaultAddress = vaultParamsData[0];
+    console.log("KuruAMMVault deployed to:", kuruAmmVaultAddress);
+
+    var tx = await wbtc.approve(
+        kuruAmmVaultAddress,
+        hre.ethers.utils.parseEther("206900"),
+    );
+    await tx.wait();
+
+    var tx = await usdc.approve(
+        kuruAmmVaultAddress,
+        hre.ethers.utils.parseEther("100000"),
+    );
+    await tx.wait();
+
+    const kuruAmmVault = await hre.ethers.getContractAt(
+		"KuruAMMVault",
+		kuruAmmVaultAddress
+	);
+
+    // TODO: Uncomment if you want an AMM
+    // const vaultDepositTx = await kuruAmmVault.deposit(hre.ethers.utils.parseEther("206900"), hre.ethers.utils.parseEther("79"), userAddress);
+    // await vaultDepositTx.wait();
+
     const config = {
         "usdcAddress": usdcAddress,
         "wbtcAddress": wbtcAddress,
         "routerAddress": routerAddress,
         "marginAccountAddress": marginAccountAddress,
-        "cranklessOrderBookAddress": cranklessOrderBookAddress
+        "cranklessOrderBookAddress": cranklessOrderBookAddress,
+        kuruAmmVaultAddress,
     }
     fs.writeFileSync("config.json", JSON.stringify(config));
 }

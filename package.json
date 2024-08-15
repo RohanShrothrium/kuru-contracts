@@ -2,7 +2,7 @@
   "name": "hardhat-project",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
-    "hardhat": "^2.15.0"
+    "hardhat": "^2.22.8"
   },
   "dependencies": {
     "@chainlink/contracts": "^0.6.1",
@@ -10,6 +10,7 @@
     "@openzeppelin/contracts": "^4.9.6",
     "@pythnetwork/pyth-sdk-solidity": "github:pyth-network/pyth-sdk-solidity",
     "forge-std": "^1.1.2",
-    "openzeppelin-solidity": "^3.4.2"
+    "openzeppelin-solidity": "^3.4.2",
+    "solady": "^0.0.232"
   }
 }
