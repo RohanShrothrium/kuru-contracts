@@ -28,11 +28,7 @@ contract Router is IRouter, OwnableUpgradeable {
     address marginAccountAddress;
 
     // Event for market registration
-    event MarketRegistered(
-        address baseAsset,
-        address quoteAsset,
-        address market
-    );
+    event MarketRegistered(address baseAsset, address quoteAsset, address market);
 
     // Event for market updation
     event MarketUpdated(address baseAsset, address quoteAsset, address market);
@@ -72,7 +68,6 @@ contract Router is IRouter, OwnableUpgradeable {
         uint256 _takerFeeBps,
         uint256 _makerFeeBps
     ) public returns (address proxy) {
-        
         {
             bytes32 _salt = _getSalt(
                 _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? NATIVE : _baseAssetAddress,
@@ -88,15 +83,14 @@ contract Router is IRouter, OwnableUpgradeable {
             proxy = Create2.deploy(
                 0,
                 _salt,
-                abi.encodePacked(
-                    type(ERC1967Proxy).creationCode,
-                    abi.encode(orderBookImplementation, bytes(""))
-                )
+                abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(orderBookImplementation, bytes("")))
             );
         }
         KuruAMMVault _kuruAmmVault = _deployKuruAMMVault(_baseAssetAddress, _quoteAssetAddress, proxy);
-        uint256 _baseAssetDecimals = _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
-        uint256 _quoteAssetDecimals = _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20(_quoteAssetAddress).decimals();
+        uint256 _baseAssetDecimals =
+            _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
+        uint256 _quoteAssetDecimals =
+            _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20(_quoteAssetAddress).decimals();
         // @note native decimals hardcoded to 18
         {
             IOrderBook(proxy).initialize(
@@ -168,33 +162,28 @@ contract Router is IRouter, OwnableUpgradeable {
             keccak256(
                 abi.encodePacked(
                     type(ERC1967Proxy).creationCode,
-                    abi.encode(
-                        old ? oldImplementation : orderBookImplementation,
-                        bytes("")
-                    )
+                    abi.encode(old ? oldImplementation : orderBookImplementation, bytes(""))
                 )
             )
         );
     }
 
     /**
-    * @dev Function to upgrade the orderbook implementation. Can only be called by owner
-    * @param newImplementation The new deployed orderbook implementation
+     * @dev Function to upgrade the orderbook implementation. Can only be called by owner
+     * @param newImplementation The new deployed orderbook implementation
      */
-    function upgradeImplementation(
-        address newImplementation
-    ) external onlyOwner {
+    function upgradeImplementation(address newImplementation) external onlyOwner {
         require(newImplementation != orderBookImplementation);
         orderBookImplementation = newImplementation;
     }
 
     /**
-    * @dev This function lets anyone batch upgrade orderbooks if a new implementation is available 
-    * @param proxies The proxies which are to be upgraded to the latest orderbook implementation
-    */
+     * @dev This function lets anyone batch upgrade orderbooks if a new implementation is available
+     * @param proxies The proxies which are to be upgraded to the latest orderbook implementation
+     */
     function upgradeMultipleProxies(address[] memory proxies) public {
-        for (uint i = 0; i < proxies.length; i++) {
-            (bool success, ) = proxies[i].call(abi.encodeWithSelector(0x3659cfe6, orderBookImplementation));
+        for (uint256 i = 0; i < proxies.length; i++) {
+            (bool success,) = proxies[i].call(abi.encodeWithSelector(0x3659cfe6, orderBookImplementation));
             require(success, "Router: Upgrade Failed");
         }
     }
@@ -206,8 +195,12 @@ contract Router is IRouter, OwnableUpgradeable {
         address _marketAddress,
         IOrderBook.OrderBookType _type
     ) internal {
-        _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? true : IERC20(_baseAsset).approve(_marketAddress, type(uint256).max);
-        _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? true : IERC20(_quoteAsset).approve(_marketAddress, type(uint256).max);
+        _type == IOrderBook.OrderBookType.NATIVE_IN_BASE
+            ? true
+            : IERC20(_baseAsset).approve(_marketAddress, type(uint256).max);
+        _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE
+            ? true
+            : IERC20(_quoteAsset).approve(_marketAddress, type(uint256).max);
 
         IMarginAccount(marginAccountAddress).updateMarkets(_marketAddress);
 
@@ -226,33 +219,32 @@ contract Router is IRouter, OwnableUpgradeable {
         uint256 _minAmountOut
     ) external returns (uint256 _amountOut) {
         require(_marketAddresses.length >= 1, "Router: No markets in input");
-        require(
-            _isBuy.length == _marketAddresses.length,
-            "Router: Sizes length mismatch"
-        );
+        require(_isBuy.length == _marketAddresses.length, "Router: Sizes length mismatch");
 
         IERC20(_debitToken).transferFrom(msg.sender, address(this), _amount);
 
-        for (uint i = 0; i < _marketAddresses.length; i++) {
+        for (uint256 i = 0; i < _marketAddresses.length; i++) {
             address _currentMarket = _marketAddresses[i];
             MarketParams memory _marketParams = verifiedMarket[_currentMarket];
             require(_marketParams.pricePrecision > 0, "Router: Invalid market!");
             IOrderBook market = IOrderBook(_currentMarket);
             uint256 _value = _nativeSend[i] ? _amount : 0;
             _amountOut = _isBuy[i]
-                ? (market.placeAndExecuteMarketBuy{value: _value}(
-                    uint24(
-                        _amountToSize(
-                            _amount,
-                            true,
-                            _marketParams.pricePrecision,
-                            _marketParams.sizePrecision,
-                            _marketParams.baseAssetDecimals,
-                            _marketParams.quoteAssetDecimals
-                        )
-                    ),
-                    true
-                ))
+                ? (
+                    market.placeAndExecuteMarketBuy{value: _value}(
+                        uint24(
+                            _amountToSize(
+                                _amount,
+                                true,
+                                _marketParams.pricePrecision,
+                                _marketParams.sizePrecision,
+                                _marketParams.baseAssetDecimals,
+                                _marketParams.quoteAssetDecimals
+                            )
+                        ),
+                        true
+                    )
+                )
                 : market.placeAndExecuteMarketSell{value: _value}(
                     _amountToSize(
                         _amount,
@@ -264,16 +256,12 @@ contract Router is IRouter, OwnableUpgradeable {
                     ),
                     true
                 );
-        
+
             _amount = _amountOut;
         }
-        require(
-            _amountOut >= _minAmountOut,
-            "Router: Slippage exceeds expected value!"
-        );
+        require(_amountOut >= _minAmountOut, "Router: Slippage exceeds expected value!");
         IERC20(_creditToken).transfer(msg.sender, _amountOut);
     }
-
 
     function _amountToSize(
         uint256 _amount,
@@ -283,16 +271,9 @@ contract Router is IRouter, OwnableUpgradeable {
         uint256 baseAssetDecimals,
         uint256 quoteAssetDecimals
     ) internal pure returns (uint96) {
-        return
-            _isBuy
-                ? uint24(
-                    (_amount * pricePrecision) /
-                        10 ** quoteAssetDecimals
-                )
-                : uint96(
-                    (_amount * sizePrecision) /
-                        10 ** baseAssetDecimals
-                );
+        return _isBuy
+            ? uint24((_amount * pricePrecision) / 10 ** quoteAssetDecimals)
+            : uint96((_amount * sizePrecision) / 10 ** baseAssetDecimals);
     }
 
     function _getSalt(
@@ -309,39 +290,35 @@ contract Router is IRouter, OwnableUpgradeable {
         {
             (_baseAssetAddress, _quoteAssetAddress) = _reOrder(_baseAssetAddress, _quoteAssetAddress);
         }
-        return
-            keccak256(
-                abi.encodePacked(
-                    _baseAssetAddress,
-                    _quoteAssetAddress,
-                    _sizePrecision,
-                    _pricePrecision,
-                    _tickSize,
-                    _minSize,
-                    _maxSize,
-                    _takerFeeBps,
-                    _makerFeeBps
-                )
-            );
+        return keccak256(
+            abi.encodePacked(
+                _baseAssetAddress,
+                _quoteAssetAddress,
+                _sizePrecision,
+                _pricePrecision,
+                _tickSize,
+                _minSize,
+                _maxSize,
+                _takerFeeBps,
+                _makerFeeBps
+            )
+        );
     }
 
-    function _reOrder(address _tokenA, address _tokenB) internal pure returns (address _baseAsset, address _quoteAsset) {
+    function _reOrder(address _tokenA, address _tokenB)
+        internal
+        pure
+        returns (address _baseAsset, address _quoteAsset)
+    {
         (_baseAsset, _quoteAsset) = (_tokenA > _tokenB) ? (_tokenB, _tokenA) : (_tokenA, _tokenB);
     }
 
-    function _deployKuruAMMVault(
-        address _token1Address,
-        address _token2Address,
-        address _marketAddress
-    ) internal returns(KuruAMMVault) {
-        KuruAMMVault _vault = new KuruAMMVault(
-            _token1Address,
-            _token2Address,
-            marginAccountAddress,
-            _marketAddress,
-            "",
-            ""
-        );
+    function _deployKuruAMMVault(address _token1Address, address _token2Address, address _marketAddress)
+        internal
+        returns (KuruAMMVault)
+    {
+        KuruAMMVault _vault =
+            new KuruAMMVault(_token1Address, _token2Address, marginAccountAddress, _marketAddress, "", "");
 
         return _vault;
     }

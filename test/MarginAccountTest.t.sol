@@ -70,8 +70,12 @@ contract OrderBookTest is Test {
         vm.stopPrank();
     }
 
-
-    function _createOrderbook(MintableERC20 _baseAsset, MintableERC20 _quoteAsset, uint96 _sizePrecision, uint24 _pricePrecision) internal returns (OrderBook) {
+    function _createOrderbook(
+        MintableERC20 _baseAsset,
+        MintableERC20 _quoteAsset,
+        uint96 _sizePrecision,
+        uint24 _pricePrecision
+    ) internal returns (OrderBook) {
         uint24 _tickSize = _pricePrecision / 2;
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 15;

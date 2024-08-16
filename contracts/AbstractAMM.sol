@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-
 // ============ Library Imports ============
 import {OrderLinkedList} from "./libraries/OrderLinkedList.sol";
 import {TreeMath} from "./libraries/TreeMath.sol";
@@ -11,11 +10,10 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
 // ============ Internal Contracts Imports ============
-import {IMarginAccount} from  "./interfaces/IMarginAccount.sol";
+import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 abstract contract AbstractAMM is IOrderBook {
-
-    uint256 constant vaultPricePrecision = 10**18;
+    uint256 constant vaultPricePrecision = 10 ** 18;
     address kuruAmmVault;
     uint256 vaultBestBid;
     uint96 bidPartiallyFilledSize;
@@ -34,7 +32,7 @@ abstract contract AbstractAMM is IOrderBook {
         uint256 _price = vaultBestAsk;
         uint96 availableSize = vaultAskOrderSize - askPartiallyFilledSize;
         uint96 _fillSize = _size < availableSize ? _size : availableSize;
-        
+
         // Update askPartiallyFilledSize
         if (_size < availableSize) {
             askPartiallyFilledSize += _size;
@@ -56,7 +54,7 @@ abstract contract AbstractAMM is IOrderBook {
         uint256 _price = vaultBestBid;
         uint96 availableSize = vaultBidOrderSize - bidPartiallyFilledSize;
         uint96 _fillSize = _size < availableSize ? _size : availableSize;
-        
+
         // Update bidPartiallyFilledSize
         if (_size < availableSize) {
             bidPartiallyFilledSize += _size;
@@ -73,32 +71,37 @@ abstract contract AbstractAMM is IOrderBook {
         emit Trade(0, kuruAmmVault, false, _price, availableSize - _fillSize, msg.sender, _fillSize);
     }
 
-    function _creditVaultAsMaker(bool _isMarketBuy, uint96 _size, uint256 _price) internal view returns (bytes memory) {
+    function _creditVaultAsMaker(bool _isMarketBuy, uint96 _size, uint256 _price)
+        internal
+        view
+        returns (bytes memory)
+    {
         address _creditAsset = _isMarketBuy ? _getQuoteAsset() : _getBaseAsset();
-        uint256 _amount = _isMarketBuy ? (((_price * _size) / _getSizePrecision()) * 10**_getQuoteAssetDecimals()) / vaultPricePrecision : (_size * 10**_getBaseAssetDecimals()) / _getSizePrecision();
+        uint256 _amount = _isMarketBuy
+            ? (((_price * _size) / _getSizePrecision()) * 10 ** _getQuoteAssetDecimals()) / vaultPricePrecision
+            : (_size * 10 ** _getBaseAssetDecimals()) / _getSizePrecision();
         uint256 feeRebate;
         address feeAsset;
         bytes memory returnData;
         if (_isMarketBuy) {
             feeAsset = _getBaseAsset();
-            feeRebate = (((_size * 10**_getBaseAssetDecimals()) / _getSizePrecision()) * _getMakerFeeBps()) / BPS_MULTIPLIER;
-        }
-        else {
+            feeRebate =
+                (((_size * 10 ** _getBaseAssetDecimals()) / _getSizePrecision()) * _getMakerFeeBps()) / BPS_MULTIPLIER;
+        } else {
             feeAsset = _getQuoteAsset();
-            feeRebate = (((((_price * _size) / _getSizePrecision()) * 10**_getQuoteAssetDecimals()) / vaultPricePrecision) * _getMakerFeeBps()) / BPS_MULTIPLIER;
+            feeRebate = (
+                ((((_price * _size) / _getSizePrecision()) * 10 ** _getQuoteAssetDecimals()) / vaultPricePrecision)
+                    * _getMakerFeeBps()
+            ) / BPS_MULTIPLIER;
         }
         //feeRebate only exists if makerFeeBps > 0
-        if(feeRebate > 0) {
+        if (feeRebate > 0) {
             returnData = abi.encode(kuruAmmVault, feeAsset, feeRebate, true);
         }
         return bytes.concat(returnData, abi.encode(kuruAmmVault, _creditAsset, _amount, true));
     }
 
-    function getVaultParams()
-        external
-        view
-        returns (address, uint256, uint96, uint256, uint96, uint96, uint96)
-    {
+    function getVaultParams() external view returns (address, uint256, uint96, uint256, uint96, uint96, uint96) {
         return (
             kuruAmmVault,
             vaultBestBid,
@@ -110,7 +113,12 @@ abstract contract AbstractAMM is IOrderBook {
         );
     }
 
-    function updateVaultOrdSz(uint96 _vaultAskOrderSize, uint96 _vaultBidOrderSize, uint256 _askPrice, uint256 _bidPrice) external onlyVault {
+    function updateVaultOrdSz(
+        uint96 _vaultAskOrderSize,
+        uint96 _vaultBidOrderSize,
+        uint256 _askPrice,
+        uint256 _bidPrice
+    ) external onlyVault {
         vaultBidOrderSize = _vaultBidOrderSize;
         vaultAskOrderSize = _vaultAskOrderSize;
         if (vaultBestAsk == type(uint256).max) {
@@ -121,19 +129,19 @@ abstract contract AbstractAMM is IOrderBook {
         }
     }
 
-    function _getPricePrecision() internal virtual view returns (uint24);
+    function _getPricePrecision() internal view virtual returns (uint24);
 
-    function _getSizePrecision() internal virtual view returns (uint96);
+    function _getSizePrecision() internal view virtual returns (uint96);
 
-    function _getTakerFeeBps() internal virtual  view returns (uint256);
+    function _getTakerFeeBps() internal view virtual returns (uint256);
 
-    function _getMakerFeeBps() internal virtual view returns (uint256);
+    function _getMakerFeeBps() internal view virtual returns (uint256);
 
-    function _getBaseAssetDecimals() internal virtual view returns (uint256);
+    function _getBaseAssetDecimals() internal view virtual returns (uint256);
 
-    function _getQuoteAssetDecimals() internal virtual view returns (uint256);
+    function _getQuoteAssetDecimals() internal view virtual returns (uint256);
 
-    function _getBaseAsset() internal virtual view returns (address);
+    function _getBaseAsset() internal view virtual returns (address);
 
-    function _getQuoteAsset() internal virtual view returns (address); 
+    function _getQuoteAsset() internal view virtual returns (address);
 }

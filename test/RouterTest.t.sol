@@ -52,12 +52,10 @@ contract OrderBookTest is Test {
         usdc.mint(user2, initUsdc);
         mon.mint(user3, initMon);
     }
-    
+
     function genAddress() internal returns (address) {
         uint256 _seed = SEED;
-        uint256 privateKeyGen = uint256(
-            keccak256(abi.encodePacked(bytes32(_seed)))
-        );
+        uint256 privateKeyGen = uint256(keccak256(abi.encodePacked(bytes32(_seed))));
         address derived = vm.addr(privateKeyGen);
         ++SEED;
         lastGenAddress = derived;
@@ -76,7 +74,7 @@ contract OrderBookTest is Test {
         vm.startPrank(_maker);
         token.approve(address(marginAccount), _tokenForEachOrder);
         marginAccount.deposit(_maker, address(token), _tokenForEachOrder);
-        (uint24 _pricePrecision, uint96 _sizePrecision, , , , , , , , ,) = orderBook.getMarketParams();
+        (uint24 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
         orderBook.addBuyOrder(_price * _pricePrecision, _size * _sizePrecision, false);
         vm.stopPrank();
     }
@@ -92,12 +90,8 @@ contract OrderBookTest is Test {
         vm.startPrank(_maker);
         token.approve(address(marginAccount), _size * 10 ** token.decimals());
         marginAccount.deposit(_maker, address(token), _size * 10 ** token.decimals());
-        (uint24 _pricePrecision, uint96 _sizePrecision, , , , , , , , ,) = orderBook.getMarketParams();
-        orderBook.addSellOrder(
-            _price * _pricePrecision,
-            _size * _sizePrecision,
-            false
-        );
+        (uint24 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
+        orderBook.addSellOrder(_price * _pricePrecision, _size * _sizePrecision, false);
         vm.stopPrank();
     }
 
@@ -109,7 +103,7 @@ contract OrderBookTest is Test {
         _addCustomBuyOrderOnlyPriceSize(eth_mon, mon, sellerA, 600, 3);
         address sellerB = genAddress();
         _addCustomBuyOrderOnlyPriceSize(mon_usdc, usdc, sellerB, 3, 1800);
-        
+
         address routerUser = genAddress();
         eth.mint(routerUser, 3 * 10 ** 18);
         uint256 _previousBalance = usdc.balanceOf(routerUser);
@@ -141,7 +135,6 @@ contract OrderBookTest is Test {
         router.anyToAnySwap(markets, isBuy, isNativeSend, address(usdc), address(eth), 5000 * 10 ** 18, 2 * 10 ** 18);
         vm.stopPrank();
         assertEq(eth.balanceOf(routerUser) - _previousBalance, 5 * 10 ** 18);
-
     }
 
     function testRevertSlippageExceeded() public {
@@ -150,7 +143,7 @@ contract OrderBookTest is Test {
         _addCustomBuyOrderOnlyPriceSize(eth_mon, mon, sellerA, 600, 3);
         address sellerB = genAddress();
         _addCustomBuyOrderOnlyPriceSize(mon_usdc, usdc, sellerB, 3, 1800);
-        
+
         address routerUser = genAddress();
         eth.mint(routerUser, 3 * 10 ** 18);
 
@@ -176,7 +169,7 @@ contract OrderBookTest is Test {
         _addCustomBuyOrderOnlyPriceSize(eth_mon, mon, sellerA, 600, 3);
         address sellerB = genAddress();
         _addCustomBuyOrderOnlyPriceSize(mon_usdc, usdc, sellerB, 3, 1800);
-        
+
         address routerUser = genAddress();
         eth.mint(routerUser, 3 * 10 ** 18);
 
@@ -202,7 +195,7 @@ contract OrderBookTest is Test {
         _addCustomBuyOrderOnlyPriceSize(eth_mon, mon, sellerA, 600, 3);
         address sellerB = genAddress();
         _addCustomBuyOrderOnlyPriceSize(mon_usdc, usdc, sellerB, 3, 1800);
-        
+
         address routerUser = genAddress();
         eth.mint(routerUser, 3 * 10 ** 18);
 
@@ -220,8 +213,13 @@ contract OrderBookTest is Test {
         vm.stopPrank();
     }
 
-
-    function _createOrderbook(OrderBook.OrderBookType _type, MintableERC20 _baseAsset, MintableERC20 _quoteAsset, uint96 _sizePrecision, uint24 _pricePrecision) internal returns (OrderBook) {
+    function _createOrderbook(
+        OrderBook.OrderBookType _type,
+        MintableERC20 _baseAsset,
+        MintableERC20 _quoteAsset,
+        uint96 _sizePrecision,
+        uint24 _pricePrecision
+    ) internal returns (OrderBook) {
         uint24 _tickSize = _pricePrecision / 2;
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 15;
@@ -243,7 +241,11 @@ contract OrderBookTest is Test {
         return OrderBook(proxy);
     }
 
-    function _swapTokens(MintableERC20 tokenA, MintableERC20 tokenB) internal pure returns (MintableERC20, MintableERC20) {
+    function _swapTokens(MintableERC20 tokenA, MintableERC20 tokenB)
+        internal
+        pure
+        returns (MintableERC20, MintableERC20)
+    {
         MintableERC20 temp = tokenA;
         tokenA = tokenB;
         tokenB = temp;

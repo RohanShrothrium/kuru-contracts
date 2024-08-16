@@ -9,11 +9,11 @@ import {MintableERC20} from "../lib/MintableERC20.sol";
 import {IHevm} from "./IHevm.sol";
 
 abstract contract FuzzBase {
-
     struct ExpectedAmounts {
         address owner;
         uint256 amount;
     }
+
     address clearOut;
     ExpectedAmounts[] makerBuyOrders;
     ExpectedAmounts[] makerSellOrders;
@@ -27,8 +27,8 @@ abstract contract FuzzBase {
     OrderBook orderBook;
     MintableERC20 base;
     MintableERC20 quote;
-    uint96 constant SIZE_PRECISION = 10**10;
-    uint24 constant PRICE_PRECISION = 10**2;
+    uint96 constant SIZE_PRECISION = 10 ** 10;
+    uint24 constant PRICE_PRECISION = 10 ** 2;
 
     function genAddress() internal returns (address) {
         uint256 _seed = SEED;
@@ -38,5 +38,4 @@ abstract contract FuzzBase {
         lastGenAddress = derived;
         return derived;
     }
-
 }

@@ -33,10 +33,10 @@ library OrderLinkedList {
     }
 
     function deleteOrder(PricePoint storage point, uint40 prev, uint40 next) internal {
-        if (prev == NULL) {point.head = next;}
-        if (next == NULL) {point.tail = prev;}
+        if (prev == NULL) point.head = next;
+        if (next == NULL) point.tail = prev;
     }
-    
+
     /**
      * @notice Deletes one or multiple orders from the tail.
      * @param point The price point.

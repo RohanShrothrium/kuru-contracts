@@ -12,7 +12,7 @@ import {Test, console} from "forge-std/Test.sol";
 
 contract BenchMarkTest is Test, Gas {
     OrderBook orderBook;
-    MintableERC20 usdc; 
+    MintableERC20 usdc;
     MintableERC20 eth;
     Router router;
     MarginAccount marginAccount;
@@ -27,7 +27,8 @@ contract BenchMarkTest is Test, Gas {
     uint256 initUsdc = 1000000 * 10 ** 18;
     address lastGenAddress;
     uint256 SEED = 2;
-            uint24 _initPrice = 1800;
+    uint24 _initPrice = 1800;
+
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
@@ -67,29 +68,20 @@ contract BenchMarkTest is Test, Gas {
 
     function genAddress() internal returns (address) {
         uint256 _seed = SEED;
-        uint256 privateKeyGen = uint256(
-            keccak256(abi.encodePacked(bytes32(_seed)))
-        );
+        uint256 privateKeyGen = uint256(keccak256(abi.encodePacked(bytes32(_seed))));
         address derived = vm.addr(privateKeyGen);
         ++SEED;
         lastGenAddress = derived;
         return derived;
     }
 
-    function _addCustomBuyOrder(
-        address _user,
-        uint24 _price,
-        uint96 _size
-    ) internal {
+    function _addCustomBuyOrder(address _user, uint24 _price, uint96 _size) internal {
         vm.startPrank(_user);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
 
-    function _addCustomBuyOrderOnlyPriceSize(
-        uint24 _price,
-        uint96 _size
-    ) internal {
+    function _addCustomBuyOrderOnlyPriceSize(uint24 _price, uint96 _size) internal {
         address _maker = genAddress();
         uint256 _usdcForEachOrder = _price * _size * 10 ** usdc.decimals();
         usdc.mint(_maker, _usdcForEachOrder);
@@ -100,28 +92,17 @@ contract BenchMarkTest is Test, Gas {
         vm.stopPrank();
     }
 
-    function _addCustomSellOrderOnlyPriceSize(
-        uint24 _price,
-        uint96 _size
-    ) internal {
+    function _addCustomSellOrderOnlyPriceSize(uint24 _price, uint96 _size) internal {
         address _maker = genAddress();
         eth.mint(_maker, _size * 10 ** 18);
         vm.startPrank(_maker);
         eth.approve(address(marginAccount), _size * 10 ** 18);
         marginAccount.deposit(_maker, address(eth), _size * 10 ** 18);
-        orderBook.addSellOrder(
-            _price * PRICE_PRECISION,
-            _size * SIZE_PRECISION,
-            false
-        );
+        orderBook.addSellOrder(_price * PRICE_PRECISION, _size * SIZE_PRECISION, false);
         vm.stopPrank();
     }
 
-    function _addCustomSellOrder(
-        address _user,
-        uint24 _price,
-        uint96 _size
-    ) internal {
+    function _addCustomSellOrder(address _user, uint24 _price, uint96 _size) internal {
         vm.startPrank(_user);
         orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
@@ -140,19 +121,14 @@ contract BenchMarkTest is Test, Gas {
      *12 Fill events: 3 transactions
      */
 
-    function fillXforNtimes(
-        uint256 _fills,
-        uint256 _num,
-        string memory _label
-    ) internal returns (uint256) {
-
+    function fillXforNtimes(uint256 _fills, uint256 _num, string memory _label) internal returns (uint256) {
         uint24 _step = PRICE_PRECISION / 2;
         uint96 _size = 5;
         uint24 _curPrice = _initPrice;
         uint256 _gasUse;
-        for (uint i; i < _num; i++) {
+        for (uint256 i; i < _num; i++) {
             uint256 _usdcNeeded;
-            for (uint j; j < _fills; j++) {
+            for (uint256 j; j < _fills; j++) {
                 _addCustomSellOrderOnlyPriceSize(_curPrice, _size);
                 _usdcNeeded += (_curPrice) * _size * 10 ** usdc.decimals();
                 if (diffPricePoint) {
@@ -174,16 +150,16 @@ contract BenchMarkTest is Test, Gas {
     }
 
     function testSpec() internal {
-        uint fill_1 = 1;
-        uint fill_2 = 1;
-        uint fill_3 = 1;
-        uint fill_4 = 1;
-        uint fill_5 = 1;
-        uint fill_6 = 1;
-        uint fill_7 = 1;
-        uint fill_8 = 1;
-        uint fill_9 = 1;
-        uint fill_12 = 1;
+        uint256 fill_1 = 1;
+        uint256 fill_2 = 1;
+        uint256 fill_3 = 1;
+        uint256 fill_4 = 1;
+        uint256 fill_5 = 1;
+        uint256 fill_6 = 1;
+        uint256 fill_7 = 1;
+        uint256 fill_8 = 1;
+        uint256 fill_9 = 1;
+        uint256 fill_12 = 1;
         uint256 _gasUsed;
         _gasUsed = fillXforNtimes(1, fill_1, string("1 FILLS"));
         console.log("1 FILLS TOTAL = ", _gasUsed);

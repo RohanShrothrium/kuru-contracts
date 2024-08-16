@@ -26,13 +26,7 @@ interface IOrderBook {
      * @param size Size of the order in the specified precision.
      * @param isBuy Boolean indicating if the order is a buy (true) or sell (false) order.
      */
-    event OrderCreated(
-        uint40 orderId,
-        address owner,
-        uint96 size,
-        uint24 price,
-        bool isBuy
-    );
+    event OrderCreated(uint40 orderId, address owner, uint96 size, uint24 price, bool isBuy);
 
     /**
      * @dev Emitted when one or more orders are completed or canceled.
@@ -40,7 +34,8 @@ interface IOrderBook {
      */
     event OrdersCanceled(uint40[] orderId, address owner);
 
-    /***
+    /**
+     *
      * @dev Emitted when a trade goes through.
      * @param orderId Order Id of the order that was filled.
      * PS. All data regarding the original order can be found out from the order ID
@@ -91,33 +86,22 @@ interface IOrderBook {
         bool postOnly
     ) external;
 
-    function placeMultipleBuyOrders(
-        uint24[] memory _prices,
-        uint96[] memory _sizes,
-        bool _postOnly
-    ) external;
+    function placeMultipleBuyOrders(uint24[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
 
-    function placeMultipleSellOrders(
-        uint24[] memory _prices,
-        uint96[] memory _sizes,
-        bool _postOnly
-    ) external;
+    function placeMultipleSellOrders(uint24[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
 
-    function placeAndExecuteMarketBuy(
-        uint24 _quoteAmount,
-        bool _isFillOrKill
-    ) external payable returns (uint256);
+    function placeAndExecuteMarketBuy(uint24 _quoteAmount, bool _isFillOrKill) external payable returns (uint256);
 
-    function placeAndExecuteMarketSell(
-        uint96 _size,
-        bool _isFillOrKill
-    ) external payable returns (uint256);
+    function placeAndExecuteMarketSell(uint96 _size, bool _isFillOrKill) external payable returns (uint256);
 
     function bestBidAsk() external view returns (uint24, uint24);
 
     function updateVaultOrdSz(uint96 _askSize, uint96 _bidSize, uint256 _askPrice, uint256 _bidPrice) external;
 
-    function getMarketParams() external view returns (uint24, uint96, address, uint256, address, uint256, uint24, uint96, uint96, uint256, uint256);
+    function getMarketParams()
+        external
+        view
+        returns (uint24, uint96, address, uint256, address, uint256, uint24, uint96, uint96, uint256, uint256);
 
     function getVaultParams() external view returns (address, uint256, uint96, uint256, uint96, uint96, uint96);
 

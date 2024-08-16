@@ -40,7 +40,6 @@ contract Gas is Test {
         // try vm.envBool(string("OVERWRITE")) returns (bool _check) {
         //     overwrite = _check;
         // } catch {}
-        
     }
 
     function startMeasuringGas(string memory label) internal virtual {
