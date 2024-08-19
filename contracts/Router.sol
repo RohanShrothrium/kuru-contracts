@@ -28,10 +28,18 @@ contract Router is IRouter, OwnableUpgradeable {
     address marginAccountAddress;
 
     // Event for market registration
-    event MarketRegistered(address baseAsset, address quoteAsset, address market);
-
-    // Event for market updation
-    event MarketUpdated(address baseAsset, address quoteAsset, address market);
+    event MarketRegistered(
+        address baseAsset,
+        address quoteAsset,
+        address market,
+        uint24 pricePrecision,
+        uint96 sizePrecision,
+        uint24 tickSize,
+        uint96 minSize,
+        uint96 maxSize,
+        uint256 takerFeeBps,
+        uint256 makerFeeBps
+    );
 
     /**
      * @param _owner The owner of the contract.
@@ -130,6 +138,19 @@ contract Router is IRouter, OwnableUpgradeable {
 
         _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
 
+        emit MarketRegistered(
+            _baseAssetAddress,
+            _quoteAssetAddress,
+            proxy,
+            _pricePrecision,
+            _sizePrecision,
+            _tickSize,
+            _minSize,
+            _maxSize,
+            _takerFeeBps,
+            _makerFeeBps
+        );
+
         return proxy;
     }
 
@@ -203,8 +224,6 @@ contract Router is IRouter, OwnableUpgradeable {
             : IERC20(_quoteAsset).approve(_marketAddress, type(uint256).max);
 
         IMarginAccount(marginAccountAddress).updateMarkets(_marketAddress);
-
-        emit MarketRegistered(_baseAsset, _quoteAsset, _marketAddress);
     }
 
     //@note should change this to accomodate native
