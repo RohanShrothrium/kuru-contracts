@@ -11,41 +11,12 @@ if (devnetName !== "") {
 }
 
 async function main() {
-    const currentProvider = new hre.ethers.providers.JsonRpcProvider("https://devnet1.monad.xyz/rpc/WbScX50z7Xsvsuk6UB1uMci8Ekee3PJqhBZ2RRx0xSjyqx9hjipbfMh60vr7a1gS");
-    const deployerPvtKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+    const currentProvider = new hre.ethers.providers.JsonRpcProvider("https://eth-sepolia.api.onfinality.io/public");
+    const deployerPvtKey = "e33eae6a73c0c8bb2be71c86d72dc35b6b573468592165cbb24cc66f961c1c2e";
     const deployer = new hre.ethers.Wallet(deployerPvtKey, currentProvider);
 
-    const userAddress = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
-    const takerAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+    const userAddress = "0xf109c592d2c9EA712A01c6fCE8f149c5AF0b6672";
 
-    const ERC20 = await hre.ethers.getContractFactory("MintableERC20", deployer);
-    var tokenA = await ERC20.deploy("Token A", "TOKA");
-    await tokenA.deployed();
-    console.log("Token A deployed to:", tokenA.address);
-
-    var tokenB = await ERC20.deploy("Token B", "TOKB");
-    await tokenB.deployed();
-    console.log("Token B deployed to:", tokenB.address);
-
-    if(hre.ethers.BigNumber.from(tokenA.address).gt(hre.ethers.BigNumber.from(tokenB.address))) {
-        const temp = tokenA;
-        tokenA = tokenB;
-        tokenB = temp;
-    }
-
-    // Fund the shark account with a substantial amount of tokens
-    await (await tokenA.mint(userAddress, hre.ethers.utils.parseEther("1000000"))).wait();
-    await (await tokenA.mint(takerAddress, hre.ethers.utils.parseEther("1000000"))).wait();
-    console.log("Shark WBTC balance:", (await tokenA.balanceOf(takerAddress)).toString());
-
-    await (await tokenB.mint(userAddress, hre.ethers.utils.parseEther("1000000"))).wait();
-    await (await tokenB.mint(takerAddress, hre.ethers.utils.parseEther("1000000"))).wait();
-    console.log("Shark USDC balance:", (await tokenB.balanceOf(userAddress)).toString());
-
-    // Your existing deployment logic here, modified to use the deployed token addresses
-    // Replace wbtcAddress and usdcAddress with the addresses of the deployed contracts
-    var wbtcAddress = tokenA.address;
-    var usdcAddress = tokenB.address;
     // deploy Router Contract
     const Router = await hre.ethers.getContractFactory("Router", deployer);
     const router = await Router.deploy();
@@ -53,8 +24,6 @@ async function main() {
 
     const routerAddress = router.address;
     console.log("Router deployed to:", routerAddress);
-
-
 
     // deploy Margin Account Contract
     const MarginAccount = await hre.ethers.getContractFactory("MarginAccount", deployer);
@@ -76,8 +45,6 @@ async function main() {
     console.log("Router Initialized with owner:", userAddress);
 
     const config = {
-        "usdcAddress": usdcAddress,
-        "wbtcAddress": wbtcAddress,
         "routerAddress": routerAddress,
         "marginAccountAddress": marginAccountAddress,
     }

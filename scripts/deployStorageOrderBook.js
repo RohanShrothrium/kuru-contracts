@@ -32,12 +32,12 @@ async function main() {
     console.log("USDC deployed to:", usdc.address);
 
     // Fund the shark account with a substantial amount of tokens
-    await wbtc.mint(takerAddress, hre.ethers.utils.parseEther("206900"));
-    await wbtc.mint(userAddress, hre.ethers.utils.parseEther("206900"));
+    await wbtc.mint(takerAddress, hre.ethers.utils.parseEther("10000000"));
+    await wbtc.mint(userAddress, hre.ethers.utils.parseEther("10000000"));
     console.log("Shark WBTC balance:", (await wbtc.balanceOf(takerAddress)).toString());
 
-    await usdc.mint(userAddress, hre.ethers.utils.parseEther("206900"));
-    await usdc.mint(takerAddress, hre.ethers.utils.parseEther("1000000"));
+    await usdc.mint(userAddress, hre.ethers.utils.parseEther("10000000"));
+    await usdc.mint(takerAddress, hre.ethers.utils.parseEther("10000000"));
     console.log("Shark USDC balance:", (await usdc.balanceOf(userAddress)).toString());
 
     // Your existing deployment logic here, modified to use the deployed token addresses
@@ -93,13 +93,13 @@ async function main() {
 
     var tx = await wbtc.approve(
         kuruAmmVaultAddress,
-        hre.ethers.utils.parseEther("206900"),
+        hre.ethers.utils.parseEther("10000000"),
     );
     await tx.wait();
 
     var tx = await usdc.approve(
         kuruAmmVaultAddress,
-        hre.ethers.utils.parseEther("100000"),
+        hre.ethers.utils.parseEther("10000000"),
     );
     await tx.wait();
 
@@ -109,8 +109,8 @@ async function main() {
 	);
 
     // TODO: Uncomment if you want an AMM
-    // const vaultDepositTx = await kuruAmmVault.deposit(hre.ethers.utils.parseEther("206900"), hre.ethers.utils.parseEther("79"), userAddress);
-    // await vaultDepositTx.wait();
+    const vaultDepositTx = await kuruAmmVault.deposit(hre.ethers.utils.parseEther("10000"), hre.ethers.utils.parseEther("1000000"), userAddress);
+    await vaultDepositTx.wait();
 
     const config = {
         "usdcAddress": usdcAddress,
