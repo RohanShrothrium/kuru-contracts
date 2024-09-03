@@ -75,7 +75,8 @@ contract Router is IRouter, OwnableUpgradeable {
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
-        uint256 _makerFeeBps
+        uint256 _makerFeeBps,
+        uint96 _kuruAmmSpread
     ) public returns (address proxy) {
         {
             bytes32 _salt = _getSalt(
@@ -95,7 +96,7 @@ contract Router is IRouter, OwnableUpgradeable {
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(orderBookImplementation, bytes("")))
             );
         }
-        KuruAMMVault _kuruAmmVault = _deployKuruAMMVault(_baseAssetAddress, _quoteAssetAddress, proxy);
+        KuruAMMVault _kuruAmmVault = _deployKuruAMMVault(_baseAssetAddress, _quoteAssetAddress, proxy, _kuruAmmSpread);
         uint256 _baseAssetDecimals =
             _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
         uint256 _quoteAssetDecimals =
@@ -117,7 +118,8 @@ contract Router is IRouter, OwnableUpgradeable {
                 _maxSize,
                 _takerFeeBps,
                 _makerFeeBps,
-                address(_kuruAmmVault)
+                address(_kuruAmmVault),
+                _kuruAmmSpread
             );
         }
 
@@ -334,13 +336,15 @@ contract Router is IRouter, OwnableUpgradeable {
         (_baseAsset, _quoteAsset) = (_tokenA > _tokenB) ? (_tokenB, _tokenA) : (_tokenA, _tokenB);
     }
 
-    function _deployKuruAMMVault(address _token1Address, address _token2Address, address _marketAddress)
+    function _deployKuruAMMVault(address _token1Address, address _token2Address, address _marketAddress, uint96 _spread)
         internal
         returns (KuruAMMVault)
     {
         KuruAMMVault _vault =
-            new KuruAMMVault(_token1Address, _token2Address, marginAccountAddress, _marketAddress, "", "");
+            new KuruAMMVault(_token1Address, _token2Address, marginAccountAddress, _marketAddress, _spread / 10, "", "");
 
         return _vault;
     }
+
+    receive() external payable {}
 }

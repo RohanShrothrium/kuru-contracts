@@ -27,7 +27,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     //TODO: Add minimum initial liquidity and burn it, analogous to Uniswap V2.
     uint256 constant MIN_LIQUIDITY = 10 ** 3;
     //TODO: Add vault share precision
-
+    uint96 immutable SPREAD_CONSTANT;
     error NewSizeExceedsPartiallyFilledSize();
 
     constructor(
@@ -35,6 +35,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         address token2_,
         address _marginAccount,
         address _market,
+        uint96 _spreadConstant,
         string memory _name,
         string memory _symbol
     ) ERC20(_name, _symbol) {
@@ -44,7 +45,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         token2Decimals = token2_ != address(0) ? ERC20(token2_).decimals() : 18;
         marginAccount = IMarginAccount(_marginAccount);
         market = IOrderBook(_market);
-
+        SPREAD_CONSTANT = _spreadConstant;
         if (token1_ != address(0)) {
             ERC20(token1_).approve(_marginAccount, type(uint256).max);
         }
@@ -185,14 +186,14 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
                         / 10 ** _marketParams.quoteAssetDecimals
                 ) * vaultPricePrecision
             ) / (_postActionBaseAmount);
-            _newBidPrice = FixedPointMathLib.mulDiv(_newAskPrice, 1000, 1003);
+            _newBidPrice = FixedPointMathLib.mulDiv(_newAskPrice, 1000, 1000 + SPREAD_CONSTANT);
         }
         (,, uint96 _partiallyFilledBidSize,, uint96 _partiallyFilledAskSize,,) = market.getVaultParams();
         uint96 _newAskSize = uint96(
-            (3 * _postActionBaseAmount * _marketParams.sizePrecision) / (2003 * 10 ** _marketParams.baseAssetDecimals)
+            (SPREAD_CONSTANT * _postActionBaseAmount * _marketParams.sizePrecision) / ((2000 + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
         );
         uint96 _newBidSize = uint96(
-            (3 * _postActionBaseAmount * _marketParams.sizePrecision) / (2000 * 10 ** _marketParams.baseAssetDecimals)
+            (SPREAD_CONSTANT * _postActionBaseAmount * _marketParams.sizePrecision) / (2000 * 10 ** _marketParams.baseAssetDecimals)
         );
         if (_newAskSize <= _partiallyFilledAskSize || _newBidSize <= _partiallyFilledBidSize) {
             revert NewSizeExceedsPartiallyFilledSize();
@@ -285,7 +286,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
      * @dev Returns normalized base asset amount without profits
      */
     function _returnNormalizedAmountAndPrice() internal view returns (uint256, uint256) {
-        uint96 _normalizedAskSize = (market.vaultAskOrderSize() * 2003) / 3; //TODO: rounding
+        uint96 _normalizedAskSize = (market.vaultAskOrderSize() * (2000 + SPREAD_CONSTANT)) / SPREAD_CONSTANT; //TODO: rounding
         uint256 _price = market.vaultBestAsk();
         return ((_normalizedAskSize * 10 ** marketParams.baseAssetDecimals) / marketParams.sizePrecision, _price);
     }

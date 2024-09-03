@@ -11,6 +11,10 @@ library Errors {
      */
     error MarketFeeError();
     /**
+    * @dev Thrown when Kuru AMM Vault spread passed to initializer is too high or too low or is not a multiple of 10
+     */
+    error InvalidSpread();
+    /**
      * @dev Thrown when the inputted price while adding an order is invalid
      */
     error PriceError();
@@ -59,4 +63,5 @@ library Errors {
      * @dev Thrown when safe transfer from fails
      */
     error TransferFromFailed();
+
 }

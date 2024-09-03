@@ -48,6 +48,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         router = new Router();
 
         marginAccount = new MarginAccount(address(router), address(router));
+        uint96 SPREAD = 30;
 
         router.initialize(address(this), address(marginAccount), address(implementation));
 
@@ -61,7 +62,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            SPREAD
         );
         orderBook = OrderBook(proxy);
     }

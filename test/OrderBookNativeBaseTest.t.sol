@@ -48,6 +48,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         marginAccount = new MarginAccount(address(router), address(router));
 
         router.initialize(address(this), address(marginAccount), address(implementation));
+        uint96 SPREAD = 30;
 
         address proxy = router.deployProxy(
             _type,
@@ -59,7 +60,8 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            SPREAD
         );
         orderBook = OrderBook(proxy);
     }
