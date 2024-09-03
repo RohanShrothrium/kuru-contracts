@@ -31,9 +31,9 @@ async function main() {
     const _tickSize = 1;
     const _minSize = 10 ** 2;
     const _maxSize = 10 ** 12;
-    const _takerFeeBps = 25;
-    const _makerFeeBps = 20;
-
+    const _takerFeeBps = 30;
+    const _makerFeeBps = 21;
+    const _spread = 30;
     // Determine the proxy type based on the base and quote addresses
     let proxyType;
     if (baseAddress === hre.ethers.constants.AddressZero) {
@@ -55,7 +55,8 @@ async function main() {
         _minSize,
         _maxSize,
         _takerFeeBps,
-        _makerFeeBps
+        _makerFeeBps,
+        _spread
     );
     const deployProxyTx = await router.deployProxy(
         proxyType,
@@ -67,7 +68,8 @@ async function main() {
         _minSize,
         _maxSize,
         _takerFeeBps,
-        _makerFeeBps
+        _makerFeeBps,
+        _spread
     );
     await deployProxyTx.wait();
 
@@ -91,7 +93,11 @@ async function main() {
             hre.ethers.utils.parseEther(baseDeposit),
         );
         await tx.wait();
-
+        var tx = await base.approve(
+            cranklessOrderBookAddress,
+            hre.ethers.BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935"),
+        );
+        await tx.wait();
         console.log("Successfully deposited base assets")
     }
 
@@ -100,6 +106,11 @@ async function main() {
         var tx = await quote.approve(
             kuruAmmVaultAddress,
             hre.ethers.utils.parseEther(quoteDeposit),
+        );
+        await tx.wait();
+        var tx = await quote.approve(
+            cranklessOrderBookAddress,
+            hre.ethers.BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935"),
         );
         await tx.wait();
 
