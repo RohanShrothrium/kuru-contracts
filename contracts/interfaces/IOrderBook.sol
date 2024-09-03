@@ -68,7 +68,8 @@ interface IOrderBook {
         uint96 _maxSize,
         uint256 _takerFeeBps,
         uint256 _makerFeeBps,
-        address _kuruAmmVault
+        address _kuruAmmVault,
+        uint96 _kuruAmmSpread
     ) external;
 
     function addBuyOrder(uint24 _price, uint96 size, bool _postOnly) external;
@@ -94,7 +95,7 @@ interface IOrderBook {
 
     function placeAndExecuteMarketSell(uint96 _size, bool _isFillOrKill) external payable returns (uint256);
 
-    function bestBidAsk() external view returns (uint24, uint24);
+    function bestBidAsk() external view returns (uint256, uint256);
 
     function updateVaultOrdSz(uint96 _askSize, uint96 _bidSize, uint256 _askPrice, uint256 _bidPrice) external;
 

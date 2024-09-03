@@ -32,7 +32,7 @@ contract OrderBookTest is Test {
     uint256 initMon = 1000000 * 10 ** 18;
     uint256 SEED = 2;
     address lastGenAddress;
-
+    uint96 SPREAD = 30;
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         mon = new MintableERC20("MON", "MON");
@@ -243,7 +243,8 @@ contract OrderBookTest is Test {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            SPREAD
         );
 
         return OrderBook(proxy);
