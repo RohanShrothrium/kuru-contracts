@@ -828,10 +828,10 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vault.deposit(1000000000 ether, 1 ether, _maker);
         vm.stopPrank();
         address _taker = genAddress();
-        usdc.mint(_taker, 2543*10**16);
+        usdc.mint(_taker, 43*10**16);
         vm.startPrank(_taker);
-        usdc.approve(address(orderBook), 2543*10**16);
-        orderBook.placeAndExecuteMarketBuy(2543, true);
+        usdc.approve(address(orderBook), 43*10**16);
+        orderBook.placeAndExecuteMarketBuy(43, true);
         vm.stopPrank();
         uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
         console.log("Vault ETH:", _vaultEthBalance);
