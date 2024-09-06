@@ -28,6 +28,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     uint256 constant MIN_LIQUIDITY = 10 ** 3;
     //TODO: Add vault share precision
     uint96 immutable SPREAD_CONSTANT;
+
     error NewSizeExceedsPartiallyFilledSize();
 
     constructor(
@@ -79,6 +80,14 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     function previewDeposit(uint256 asset1, uint256 asset2) public view virtual returns (uint256) {
         (, uint256 _price) = _returnNormalizedAmountAndPrice();
         return _convertToShares(asset1, asset2, _price, false);
+    }
+
+    function returnSpreadProfits() public view returns (uint256, uint256) {
+        (uint256 _reserve1, uint256 _reserve2) = totalAssets();
+        (uint256 _baseAssetNormalized, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice();
+        uint256 _quoteAssetNormalized = _baseAssetNormalized * _currentAskPrice * 10 ** marketParams.quoteAssetDecimals
+            / (vaultPricePrecision * 10 ** marketParams.baseAssetDecimals);
+        return (_reserve1 - _baseAssetNormalized, _reserve2 - _quoteAssetNormalized);
     }
 
     /**
@@ -190,10 +199,12 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         }
         (,, uint96 _partiallyFilledBidSize,, uint96 _partiallyFilledAskSize,,) = market.getVaultParams();
         uint96 _newAskSize = uint96(
-            (SPREAD_CONSTANT * _postActionBaseAmount * _marketParams.sizePrecision) / ((2000 + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
+            (SPREAD_CONSTANT * _postActionBaseAmount * _marketParams.sizePrecision)
+                / ((2000 + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
         );
         uint96 _newBidSize = uint96(
-            (SPREAD_CONSTANT * _postActionBaseAmount * _marketParams.sizePrecision) / (2000 * 10 ** _marketParams.baseAssetDecimals)
+            (SPREAD_CONSTANT * _postActionBaseAmount * _marketParams.sizePrecision)
+                / (2000 * 10 ** _marketParams.baseAssetDecimals)
         );
         if (_newAskSize <= _partiallyFilledAskSize || _newBidSize <= _partiallyFilledBidSize) {
             revert NewSizeExceedsPartiallyFilledSize();

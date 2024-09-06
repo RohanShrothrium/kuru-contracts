@@ -265,6 +265,7 @@ contract Router is IRouter, OwnableUpgradeable {
                                 _marketParams.quoteAssetDecimals
                             )
                         ),
+                        false,
                         true
                     )
                 )
@@ -277,6 +278,7 @@ contract Router is IRouter, OwnableUpgradeable {
                         _marketParams.baseAssetDecimals,
                         _marketParams.quoteAssetDecimals
                     ),
+                    false,
                     true
                 );
 
