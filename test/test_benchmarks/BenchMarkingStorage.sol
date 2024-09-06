@@ -27,6 +27,7 @@ contract BenchMarkTest is Test, Gas {
     address lastGenAddress;
     uint256 SEED = 2;
     uint96 SPREAD = 30;
+
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
@@ -198,7 +199,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds * PRICE_PRECISION / (10 ** 18)), true);
+            orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds * PRICE_PRECISION / (10 ** 18)), false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -220,7 +221,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds * PRICE_PRECISION / (10 ** 18)), true);
+            orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds * PRICE_PRECISION / (10 ** 18)), false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -242,7 +243,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds * PRICE_PRECISION / (10 ** 18)), true);
+            orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds * PRICE_PRECISION / (10 ** 18)), false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -268,7 +269,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds * PRICE_PRECISION / 10 ** 18), true);
+            orderBook.placeAndExecuteMarketBuy(uint24(_consumableFunds * PRICE_PRECISION / 10 ** 18), false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -293,7 +294,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             eth.approve(address(orderBook), _sellSizeEth);
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketSell(_size * SIZE_PRECISION, true);
+            orderBook.placeAndExecuteMarketSell(_size * SIZE_PRECISION, false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -318,7 +319,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             eth.approve(address(orderBook), _sellSizeEth);
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketSell(_size * SIZE_PRECISION, true);
+            orderBook.placeAndExecuteMarketSell(_size * SIZE_PRECISION, false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -343,7 +344,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             eth.approve(address(orderBook), _sellSizeEth);
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketSell(_size * SIZE_PRECISION, true);
+            orderBook.placeAndExecuteMarketSell(_size * SIZE_PRECISION, false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -366,7 +367,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             eth.approve(address(orderBook), _sellSize * 10 ** eth.decimals());
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketSell(_sellSize * SIZE_PRECISION, true);
+            orderBook.placeAndExecuteMarketSell(_sellSize * SIZE_PRECISION, false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED : ", gasVar);
             vm.stopPrank();

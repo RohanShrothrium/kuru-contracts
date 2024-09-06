@@ -23,6 +23,7 @@ abstract contract AbstractAMM is IOrderBook {
     uint96 public vaultAskOrderSize;
     uint256 constant BPS_MULTIPLIER = 10000;
     uint96 SPREAD_CONSTANT;
+
     modifier onlyVault() {
         require(msg.sender == kuruAmmVault, "OrderBook: Only Vault");
         _;
@@ -41,7 +42,8 @@ abstract contract AbstractAMM is IOrderBook {
             vaultBidOrderSize = vaultAskOrderSize;
             vaultAskOrderSize = uint96(FixedPointMathLib.mulDivUp(vaultAskOrderSize, 2000, 2000 + SPREAD_CONSTANT));
             vaultBestAsk = FixedPointMathLib.mulDivRound(_price, 1000 + SPREAD_CONSTANT, 1000);
-            bidPartiallyFilledSize = uint96(FixedPointMathLib.mulDiv(bidPartiallyFilledSize, 1000, 1000 + SPREAD_CONSTANT));
+            bidPartiallyFilledSize =
+                uint96(FixedPointMathLib.mulDiv(bidPartiallyFilledSize, 1000, 1000 + SPREAD_CONSTANT));
             vaultBestBid = _price;
         }
         remainingSize = _size - _fillSize;

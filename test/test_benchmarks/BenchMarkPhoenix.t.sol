@@ -149,7 +149,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _usdcNeeded);
             startMeasuringGas(_label);
-            orderBook.placeAndExecuteMarketBuy(_input, true);
+            orderBook.placeAndExecuteMarketBuy(_input, false, true);
             uint256 _gas1 = stopMeasuringGas();
             vm.stopPrank();
             _gasUse += _gas1;

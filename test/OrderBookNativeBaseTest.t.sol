@@ -365,7 +365,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         uint256 _minOut = ((_sizeCreditA + _sizeCreditB - _toleranceInBase) * 10 ** ethDecimals / SIZE_PRECISION);
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), (_totalAmount * 10 ** decimals) / PRICE_PRECISION);
-        orderBook.placeAndExecuteMarketBuy(_totalAmount, false);
+        orderBook.placeAndExecuteMarketBuy(_totalAmount, false, false);
         vm.stopPrank();
 
         orderBook.collectFees();
@@ -405,7 +405,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         }
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION);
-        orderBook.placeAndExecuteMarketBuy(_quoteExtra, false);
+        orderBook.placeAndExecuteMarketBuy(_quoteExtra, false, false);
         vm.stopPrank();
 
         assertGte(usdc.balanceOf(_taker), (100 * 10 ** _decimals) / PRICE_PRECISION, "Too less refund credit");
@@ -433,7 +433,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION);
         vm.expectRevert(Errors.InsufficientLiquidity.selector);
-        orderBook.placeAndExecuteMarketBuy(_quoteExtra, true);
+        orderBook.placeAndExecuteMarketBuy(_quoteExtra, false, true);
         vm.stopPrank();
     }
 
@@ -448,7 +448,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         usdc.mint(_taker, (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION);
         vm.startPrank(_taker);
         vm.expectRevert(Errors.TransferFromFailed.selector);
-        orderBook.placeAndExecuteMarketBuy(_quoteExtra, false);
+        orderBook.placeAndExecuteMarketBuy(_quoteExtra, false, false);
         vm.stopPrank();
     }
 
@@ -475,7 +475,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         address _taker = genAddress();
         vm.deal(_taker, _sizeForSale);
         vm.startPrank(_taker);
-        orderBook.placeAndExecuteMarketSell{value: _sizeForSale}((_sizeA + _sizeB), true);
+        orderBook.placeAndExecuteMarketSell{value: _sizeForSale}((_sizeA + _sizeB), false, true);
         vm.stopPrank();
 
         orderBook.collectFees();
@@ -510,7 +510,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         address _taker = genAddress();
         vm.deal(_taker, _sizeForSale);
         vm.startPrank(_taker);
-        orderBook.placeAndExecuteMarketSell{value: _sizeForSale}(_size + 10 ** 6, false);
+        orderBook.placeAndExecuteMarketSell{value: _sizeForSale}(_size + 10 ** 6, false, false);
         vm.stopPrank();
 
         orderBook.collectFees();
@@ -537,7 +537,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.deal(_taker, _sizeForSale);
         vm.startPrank(_taker);
         vm.expectRevert(Errors.InsufficientLiquidity.selector);
-        orderBook.placeAndExecuteMarketSell{value: _sizeForSale}(_size + 10 ** 6, true);
+        orderBook.placeAndExecuteMarketSell{value: _sizeForSale}(_size + 10 ** 6, false, true);
         vm.stopPrank();
     }
 
@@ -551,7 +551,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.deal(_taker, _sizeForSale);
         vm.startPrank(_taker);
         vm.expectRevert(Errors.NativeAssetInsufficient.selector);
-        orderBook.placeAndExecuteMarketSell(_size + 10 ** 6, false);
+        orderBook.placeAndExecuteMarketSell(_size + 10 ** 6, false, false);
         vm.stopPrank();
     }
 

@@ -91,9 +91,9 @@ interface IOrderBook {
 
     function placeMultipleSellOrders(uint24[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
 
-    function placeAndExecuteMarketBuy(uint24 _quoteAmount, bool _isFillOrKill) external payable returns (uint256);
+    function placeAndExecuteMarketBuy(uint24 _quoteAmount, bool _isMargin, bool _isFillOrKill) external payable returns (uint256);
 
-    function placeAndExecuteMarketSell(uint96 _size, bool _isFillOrKill) external payable returns (uint256);
+    function placeAndExecuteMarketSell(uint96 _size, bool _isMargin, bool _isFillOrKill) external payable returns (uint256);
 
     function bestBidAsk() external view returns (uint256, uint256);
 
