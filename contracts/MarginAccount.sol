@@ -67,7 +67,6 @@ contract MarginAccount is IMarginAccount {
         require(balances[_accountKey(_user, _token)] >= _amount, "MarginAccoiunt: Insufficient Balance");
 
         balances[_accountKey(_user, _token)] -= _amount;
-
     }
 
     /**
@@ -82,7 +81,12 @@ contract MarginAccount is IMarginAccount {
         if (_useMargin) {
             balances[_accountKey(_user, _token)] += _amount;
         } else {
-            IERC20(_token).transfer(_user, _amount);
+            if (_token == NATIVE) {
+                (bool success,) = _user.call{value: _amount}("");
+                require(success, "MarginAccount: Failed to credit user native tokens");
+            } else {
+                IERC20(_token).transfer(_user, _amount);
+            }
         }
 
         return true;
