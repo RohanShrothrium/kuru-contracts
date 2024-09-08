@@ -398,7 +398,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
         address _taker = genAddress();
         vm.deal(_taker, (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION);
         vm.startPrank(_taker);
-        orderBook.placeAndExecuteMarketBuy{value: (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION}(_quoteExtra, false, false);
+        orderBook.placeAndExecuteMarketBuy{value: (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION}(
+            _quoteExtra, false, false
+        );
         vm.stopPrank();
         assertGte(_taker.balance, (100 * 10 ** _decimals) / PRICE_PRECISION, "Too less refund credit");
         assertLte(_taker.balance, (101 * 10 ** _decimals) / PRICE_PRECISION, "Too much refund credit");
@@ -430,7 +432,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.deal(_taker, (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION);
         vm.startPrank(_taker);
         vm.expectRevert(Errors.InsufficientLiquidity.selector);
-        orderBook.placeAndExecuteMarketBuy{value: (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION}(_quoteExtra, false, true);
+        orderBook.placeAndExecuteMarketBuy{value: (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION}(
+            _quoteExtra, false, true
+        );
         vm.stopPrank();
     }
 

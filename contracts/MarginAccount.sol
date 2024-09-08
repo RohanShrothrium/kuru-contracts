@@ -70,7 +70,6 @@ contract MarginAccount is IMarginAccount {
         require(balances[_accountKey(_user, _token)] >= _amount, "MarginAccoiunt: Insufficient Balance");
 
         balances[_accountKey(_user, _token)] -= _amount;
-
     }
 
     /**
