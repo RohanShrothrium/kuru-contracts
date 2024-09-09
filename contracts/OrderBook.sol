@@ -421,6 +421,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         if (_remainingQuoteSize > 0) {
             require(!_isFillOrKill, Errors.InsufficientLiquidity());
             if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin) {
+            if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin) {
                 //There are no more writes to the state after this, so read only reentrancies should be avoided
                 uint256 _refund = _pricePrecisionToQuoteAssetPrecision(_remainingQuoteSize)
                     + (msg.value - _pricePrecisionToQuoteAssetPrecision(_quoteSize));
@@ -449,6 +450,8 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         returns (uint256)
     {
         OrderBookType _type = orderBookType;
+        if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin) {
+            require(msg.value >= _sizePrecisionToBaseAssetPrecision(_size), Errors.NativeAssetInsufficient());
         if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin) {
             require(msg.value >= _sizePrecisionToBaseAssetPrecision(_size), Errors.NativeAssetInsufficient());
         } else {
