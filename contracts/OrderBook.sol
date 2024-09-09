@@ -407,7 +407,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     {
         OrderBookType _type = orderBookType;
         if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin) {
-            require(msg.value >= _pricePrecisionToQuoteAssetPrecision(_quoteSize), Errors.NativeAssetInsufficient());
+            require(msg.value == _pricePrecisionToQuoteAssetPrecision(_quoteSize), Errors.NativeAssetInsufficient());
         } else {
             require(msg.value == 0, Errors.NativeAssetNotRequired());
             _isMargin
@@ -417,17 +417,17 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 );
         }
 
-        (uint24 _remainingQuoteSize, uint256 _baseTokensCredited) = _marketBuyMatch(_quoteSize);
-        if (_remainingQuoteSize > 0) {
+        uint256 _baseTokensCredited;
+        (_quoteSize, _baseTokensCredited) = _marketBuyMatch(_quoteSize);
+        if (_quoteSize > 0) {
             require(!_isFillOrKill, Errors.InsufficientLiquidity());
             if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin) {
                 //There are no more writes to the state after this, so read only reentrancies should be avoided
-                uint256 _refund = _pricePrecisionToQuoteAssetPrecision(_remainingQuoteSize)
-                    + (msg.value - _pricePrecisionToQuoteAssetPrecision(_quoteSize));
+                uint256 _refund = _pricePrecisionToQuoteAssetPrecision(_quoteSize);
                 _handleNativeMarketRefundTransfer(_refund);
             } else {
                 marginAccount.creditUser(
-                    msg.sender, quoteAsset, _pricePrecisionToQuoteAssetPrecision(_remainingQuoteSize), _isMargin
+                    msg.sender, quoteAsset, _pricePrecisionToQuoteAssetPrecision(_quoteSize), _isMargin
                 );
             }
         } else if (_type == OrderBookType.NATIVE_IN_QUOTE) {
