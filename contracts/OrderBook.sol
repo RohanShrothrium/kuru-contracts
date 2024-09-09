@@ -222,7 +222,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
      * @dev Cancels multiple orders in a batch.
      * @param _orderIds Array of order IDs to cancel.
      */
-    function batchCancelOrders(uint40[] calldata _orderIds) external marketActive {
+    function batchCancelOrders(uint40[] calldata _orderIds) external {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _cancelOrder(_orderIds[i]);
         }
