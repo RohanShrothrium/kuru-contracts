@@ -421,7 +421,6 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         if (_remainingQuoteSize > 0) {
             require(!_isFillOrKill, Errors.InsufficientLiquidity());
             if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin) {
-            if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin) {
                 //There are no more writes to the state after this, so read only reentrancies should be avoided
                 uint256 _refund = _pricePrecisionToQuoteAssetPrecision(_remainingQuoteSize)
                     + (msg.value - _pricePrecisionToQuoteAssetPrecision(_quoteSize));
@@ -451,9 +450,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     {
         OrderBookType _type = orderBookType;
         if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin) {
-            require(msg.value >= _sizePrecisionToBaseAssetPrecision(_size), Errors.NativeAssetInsufficient());
-        if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin) {
-            require(msg.value >= _sizePrecisionToBaseAssetPrecision(_size), Errors.NativeAssetInsufficient());
+            require(msg.value == _sizePrecisionToBaseAssetPrecision(_size), Errors.NativeAssetInsufficient());
         } else {
             require(msg.value == 0, Errors.NativeAssetNotRequired());
             _isMargin
@@ -461,13 +458,13 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 : baseAsset.safeTransferFrom(msg.sender, address(marginAccount), _sizePrecisionToBaseAssetPrecision(_size));
         }
 
-        (uint96 _remainingSize, uint256 _quoteCredited) = _matchAggressiveSell(0, _size, false);
+        uint256 _quoteCredited;
+        (_size, _quoteCredited) = _matchAggressiveSell(0, _size, false);
 
-        if (_remainingSize > 0) {
+        if (_size > 0) {
             require(!_isFillOrKill, Errors.InsufficientLiquidity());
             if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin) {
-                uint256 _refund = _sizePrecisionToBaseAssetPrecision(_remainingSize)
-                    + (msg.value - _sizePrecisionToBaseAssetPrecision(_size));
+                uint256 _refund = _sizePrecisionToBaseAssetPrecision(_size);
                 _handleNativeMarketRefundTransfer(_refund);
             } else {
                 marginAccount.creditUser(msg.sender, baseAsset, _sizePrecisionToBaseAssetPrecision(_size), _isMargin);
