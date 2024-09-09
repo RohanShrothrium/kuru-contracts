@@ -26,7 +26,7 @@ contract BenchMarkTest is Test, Gas {
     uint256 initUsdc = 1000000 * 10 ** 18;
     address lastGenAddress;
     uint256 SEED = 2;
-
+    uint96 SPREAD = 30;
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
@@ -41,7 +41,7 @@ contract BenchMarkTest is Test, Gas {
                 bytes32(keccak256("")),
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
             );
-        router = Router(routerProxy);
+        router = Router(payable(routerProxy));
         marginAccount = new MarginAccount(address(router), address(router));
 
         OrderBook implementation = new OrderBook();
@@ -58,7 +58,8 @@ contract BenchMarkTest is Test, Gas {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            SPREAD
         );
 
         orderBook = OrderBook(proxy);

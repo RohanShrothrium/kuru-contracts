@@ -22,7 +22,7 @@ abstract contract AbstractAMM is IOrderBook {
     uint96 vaultBidOrderSize;
     uint96 public vaultAskOrderSize;
     uint256 constant BPS_MULTIPLIER = 10000;
-
+    uint96 SPREAD_CONSTANT;
     modifier onlyVault() {
         require(msg.sender == kuruAmmVault, "OrderBook: Only Vault");
         _;
@@ -39,12 +39,11 @@ abstract contract AbstractAMM is IOrderBook {
         } else {
             askPartiallyFilledSize = 0;
             vaultBidOrderSize = vaultAskOrderSize;
-            vaultAskOrderSize = uint96(FixedPointMathLib.mulDivUp(vaultAskOrderSize, 2000, 2003));
-            vaultBestAsk = FixedPointMathLib.mulDivRound(_price, 1003, 1000);
-            bidPartiallyFilledSize = uint96(FixedPointMathLib.mulDiv(bidPartiallyFilledSize, 1000, 1003));
+            vaultAskOrderSize = uint96(FixedPointMathLib.mulDivUp(vaultAskOrderSize, 2000, 2000 + SPREAD_CONSTANT));
+            vaultBestAsk = FixedPointMathLib.mulDivRound(_price, 1000 + SPREAD_CONSTANT, 1000);
+            bidPartiallyFilledSize = uint96(FixedPointMathLib.mulDiv(bidPartiallyFilledSize, 1000, 1000 + SPREAD_CONSTANT));
             vaultBestBid = _price;
         }
-
         remainingSize = _size - _fillSize;
         makerCredits = _creditVaultAsMaker(true, _fillSize, _price);
         emit Trade(0, kuruAmmVault, true, _price, availableSize - _fillSize, msg.sender, _fillSize);
@@ -61,8 +60,8 @@ abstract contract AbstractAMM is IOrderBook {
         } else {
             bidPartiallyFilledSize = 0;
             vaultAskOrderSize = vaultBidOrderSize;
-            vaultBidOrderSize = uint96(FixedPointMathLib.mulDiv(vaultAskOrderSize, 2003, 2000)); //@note: changed to muldivdown from up
-            vaultBestBid = FixedPointMathLib.mulDivRound(_price, 1000, 1003);
+            vaultBidOrderSize = uint96(FixedPointMathLib.mulDiv(vaultAskOrderSize, 2000 + SPREAD_CONSTANT, 2000)); //@note: changed to muldivdown from up
+            vaultBestBid = FixedPointMathLib.mulDivRound(_price, 1000, 1000 + SPREAD_CONSTANT);
             vaultBestAsk = _price;
         }
 

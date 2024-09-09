@@ -32,7 +32,7 @@ contract OrderBookTest is Test {
     uint256 initMon = 1000000 * 10 ** 18;
     uint256 SEED = 2;
     address lastGenAddress;
-
+    uint96 SPREAD = 30;
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         mon = new MintableERC20("MON", "MON");
@@ -44,7 +44,7 @@ contract OrderBookTest is Test {
                 bytes32(keccak256("")),
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
             );
-        router = Router(routerProxy);
+        router = Router(payable(routerProxy));
 
         marginAccount = new MarginAccount(address(router), address(router));
 
@@ -243,7 +243,8 @@ contract OrderBookTest is Test {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            SPREAD
         );
 
         return OrderBook(proxy);

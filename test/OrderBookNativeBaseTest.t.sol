@@ -51,11 +51,12 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
                 bytes32(keccak256("")),
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
             );
-        router = Router(routerProxy);
+        router = Router(payable(routerProxy));
 
         marginAccount = new MarginAccount(address(router), address(router));
 
         router.initialize(address(this), address(marginAccount), address(implementation));
+        uint96 SPREAD = 30;
 
         address proxy = router.deployProxy(
             _type,
@@ -67,7 +68,8 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            SPREAD
         );
         orderBook = OrderBook(proxy);
     }
