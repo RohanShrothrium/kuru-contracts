@@ -9,6 +9,8 @@ import {OrderBook} from "../contracts/OrderBook.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {Router} from "../contracts/Router.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 import {MintableERC20} from "./lib/MintableERC20.sol";
 import {PropertiesAsserts} from "./Helper.sol";
 
@@ -43,7 +45,13 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         OrderBook.OrderBookType _type = IOrderBook.OrderBookType.NATIVE_IN_BASE;
         OrderBook implementation = new OrderBook();
 
-        router = new Router();
+        Router routerImplementation = new Router();
+        address routerProxy = Create2.deploy(
+                0,
+                bytes32(keccak256("")),
+                abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
+            );
+        router = Router(routerProxy);
 
         marginAccount = new MarginAccount(address(router), address(router));
 

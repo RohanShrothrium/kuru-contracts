@@ -44,6 +44,10 @@ library Errors {
      */
     error NativeAssetInsufficient();
     /**
+    * @dev Thrown when msg.value is greater than 0 when native assets are not required
+     */
+    error NativeAssetNotRequired();
+    /**
      * @dev Thrown when native asset transfer fails
      */
     error NativeAssetTransferFail();

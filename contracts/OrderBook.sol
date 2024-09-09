@@ -87,7 +87,8 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         address _kuruAmmVault
     ) public initializer {
         _initializeOwner(_owner);
-        require(_makerFeeBps <= 8000 * _takerFeeBps / BPS_MULTIPLIER, Errors.MarketFeeError());
+        require(_makerFeeBps <= (8000 * _takerFeeBps) / BPS_MULTIPLIER, Errors.MarketFeeError());
+        require(_takerFeeBps < BPS_MULTIPLIER, Errors.MarketFeeError());
         orderBookType = _type;
         baseAsset = _baseAssetAddress;
         quoteAsset = _quoteAssetAddress;
@@ -398,24 +399,30 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         OrderBookType _type = orderBookType;
         if (_type == OrderBookType.NATIVE_IN_QUOTE) {
             require(
-                msg.value >= (_quoteSize) * 10 ** quoteAssetDecimals / pricePrecision, Errors.NativeAssetInsufficient()
+                msg.value >= ((_quoteSize) * 10 ** quoteAssetDecimals) / pricePrecision,
+                Errors.NativeAssetInsufficient()
             );
         } else {
+            require(msg.value == 0, Errors.NativeAssetNotRequired());
             quoteAsset.safeTransferFrom(
-                msg.sender, address(marginAccount), uint256(_quoteSize * 10 ** quoteAssetDecimals / pricePrecision)
+                msg.sender, address(marginAccount), uint256((_quoteSize * 10 ** quoteAssetDecimals) / pricePrecision)
             );
         }
+
         uint256 _baseTokensCredited;
         (_quoteSize, _baseTokensCredited) = _marketBuyMatch(_quoteSize);
         if (_quoteSize > 0) {
             require(!_isFillOrKill, Errors.InsufficientLiquidity());
             if (_type == OrderBookType.NATIVE_IN_QUOTE) {
                 //There are no more writes to the state after this, so read only reentrancies should be avoided
-                uint256 _refund = _quoteSize * 10 ** quoteAssetDecimals / pricePrecision;
+                uint256 _refund = (_quoteSize * 10 ** quoteAssetDecimals) / pricePrecision;
                 _handleNativeMarketRefundTransfer(_refund);
             } else {
                 marginAccount.creditUser(
-                    msg.sender, quoteAsset, uint256(_quoteSize * 10 ** quoteAssetDecimals / pricePrecision), false
+                    msg.sender,
+                    quoteAsset,
+                    uint256((_quoteSize * 10 ** quoteAssetDecimals) / pricePrecision),
+                    false
                 );
             }
         } else if (_type == OrderBookType.NATIVE_IN_QUOTE) {
@@ -438,8 +445,9 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     {
         OrderBookType _type = orderBookType;
         if (_type == OrderBookType.NATIVE_IN_BASE) {
-            require(msg.value >= _size * 10 ** baseAssetDecimals / sizePrecision, Errors.NativeAssetInsufficient());
+            require(msg.value == (_size * 10 ** baseAssetDecimals) / sizePrecision, Errors.NativeAssetInsufficient());
         } else {
+            require(msg.value == 0, Errors.NativeAssetNotRequired());
             baseAsset.safeTransferFrom(
                 msg.sender, address(marginAccount), (_size * 10 ** baseAssetDecimals) / sizePrecision
             );
@@ -451,7 +459,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         if (_size > 0) {
             require(!_isFillOrKill, Errors.InsufficientLiquidity());
             if (_type == OrderBookType.NATIVE_IN_BASE) {
-                uint256 _refund = (_size * 10 ** baseAssetDecimals) / sizePrecision;
+                uint256 _refund = ((_size * 10 ** baseAssetDecimals) / sizePrecision);
                 _handleNativeMarketRefundTransfer(_refund);
             } else {
                 marginAccount.creditUser(
@@ -544,7 +552,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         bytes memory makerCredits;
         while (_quoteSize > 0 && _bestAsk < type(uint24).max && _bestAsk != 0) {
             //Calculate base size fillable by current unconsumed quote size for a particular price
-            uint96 _sizeFillableAtPriceLeft = _quoteSize * sizePrecision / _bestAsk;
+            uint96 _sizeFillableAtPriceLeft = (_quoteSize * sizePrecision) / _bestAsk;
 
             bytes memory priceUpdate;
             uint96 _sizeFillableAtPriceBefore = _sizeFillableAtPriceLeft; //save old size to be filled
