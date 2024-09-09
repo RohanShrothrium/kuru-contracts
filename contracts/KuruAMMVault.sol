@@ -113,7 +113,9 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
      */
     function deposit(uint256 amount1, uint256 amount2, address receiver) public payable returns (uint256) {
         require(
-            msg.value >= (token1 == address(0) ? amount1 : token2 == address(0) ? amount2 : 0),
+            (token1 == address(0) || token2 == address(0))
+                ? msg.value >= (token1 == address(0) ? amount1 : amount2)
+                : msg.value == 0,
             "KuruAMMVault: incorrect amount"
         );
 

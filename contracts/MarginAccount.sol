@@ -3,12 +3,15 @@ pragma solidity ^0.8.0;
 
 // ============ Internal Library Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 
 // ============ Internal Interface Imports ============
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 contract MarginAccount is IMarginAccount {
+    using SafeTransferLib for address;
     // Mapping from user addresses to their NATIVE balance
+
     mapping(bytes32 => uint256) public balances;
 
     // Mapping of hash of token pairs to their market contract addresses
@@ -83,7 +86,12 @@ contract MarginAccount is IMarginAccount {
         if (_useMargin) {
             balances[_accountKey(_user, _token)] += _amount;
         } else {
-            IERC20(_token).transfer(_user, _amount);
+            if (_token == NATIVE) {
+                (bool success,) = _user.call{value: _amount}("");
+                require(success, "MarginAccount: Failed to credit user native tokens");
+            } else {
+                _token.safeTransfer(_user, _amount);
+            }
         }
 
         return true;
@@ -106,7 +114,7 @@ contract MarginAccount is IMarginAccount {
                 balances[_accountKey(_user, _token)] += _amount;
             } else {
                 if (_token != NATIVE) {
-                    IERC20(_token).transfer(_user, _amount);
+                    _token.safeTransfer(_user, _amount);
                 } else {
                     (bool success,) = _user.call{value: _amount}("");
                     require(success, "MarginAccount: Failed to credit user native tokens");
@@ -129,7 +137,8 @@ contract MarginAccount is IMarginAccount {
             require(msg.value == _amount, "MarginAccount: amount and value mismatch");
             balances[_accountKey(_user, NATIVE)] += _amount;
         } else {
-            IERC20(_token).transferFrom(msg.sender, address(this), _amount);
+            require(msg.value == 0, "MarginAccount: msg.value not zero");
+            _token.safeTransferFrom(msg.sender, address(this), _amount);
             balances[_accountKey(_user, _token)] += _amount;
         }
 
@@ -148,7 +157,7 @@ contract MarginAccount is IMarginAccount {
             (bool _success,) = (msg.sender).call{value: _amount}("");
             require(_success, "MarginAccount: Native fund withdrawal failed");
         } else {
-            IERC20(_token).transfer(msg.sender, _amount);
+            _token.safeTransfer(msg.sender, _amount);
         }
 
         emit Withdrawal(msg.sender, _token, _amount);
