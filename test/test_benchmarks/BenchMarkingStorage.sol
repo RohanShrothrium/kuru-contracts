@@ -26,7 +26,7 @@ contract BenchMarkTest is Test, Gas {
     uint256 initUsdc = 1000000 * 10 ** 18;
     address lastGenAddress;
     uint256 SEED = 2;
-
+    uint96 SPREAD = 30;
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
@@ -58,7 +58,8 @@ contract BenchMarkTest is Test, Gas {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            SPREAD
         );
 
         orderBook = OrderBook(proxy);

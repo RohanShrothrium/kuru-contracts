@@ -34,7 +34,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
 
     uint24 presetPrice;
     bool priceSet;
-
+    uint96 SPREAD = 30;
     constructor() {
         MintableERC20 tokenA = new MintableERC20("A", "A");
         MintableERC20 tokenB = new MintableERC20("B", "B");
@@ -65,7 +65,8 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            SPREAD
         );
         orderBook = OrderBook(proxy);
     }
@@ -121,8 +122,8 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
                 MODE = Fuzz_Mode.CLEAR_OUT;
             }
         } else if (MODE == Fuzz_Mode.CLEAR_OUT) {
-            (uint24 _bastBid, uint24 _bastAsk) = orderBook.bestBidAsk();
-            if (_bastBid == type(uint24).max && _bastAsk == 0) {
+            (uint256 _bastBid, uint256 _bastAsk) = orderBook.bestBidAsk();
+            if (_bastBid == type(uint256).max && _bastAsk == 0) {
                 MODE = Fuzz_Mode.WITHDRAW;
             } else {
                 if (isBuy) {

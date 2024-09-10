@@ -57,6 +57,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             );
         router = Router(payable(routerProxy));
         marginAccount = new MarginAccount(address(router), address(router));
+        uint96 SPREAD = 100;
 
         router.initialize(address(this), address(marginAccount), address(implementation));
 
@@ -70,7 +71,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            SPREAD
         );
         orderBook = OrderBook(proxy);
         (address _kuruVault,,,,,,) = orderBook.getVaultParams();
@@ -810,6 +812,32 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), _amountQuote);
         orderBook.placeAndExecuteMarketBuy(uint24(((_amountQuote / 10) * PRICE_PRECISION) / 10 ** 18), false);
+        vm.stopPrank();
+        uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
+        console.log("Vault ETH:", _vaultEthBalance);
+        uint256 _vaultUsdcBalance = marginAccount.getBalance(address(vault), address(usdc));
+        console.log("Vault USDC:", _vaultUsdcBalance);
+        (,,, uint256 _askPrice,,,) = orderBook.getVaultParams();
+        console.log((_vaultUsdcBalance * PRICE_PRECISION) / _vaultEthBalance);
+        console.log(_askPrice * PRICE_PRECISION / 10 ** 18);
+    }
+
+
+    function testKuruVaultMarketBuySpl() public {
+        //TODO: VAULT MAY NOT HAVE ADJUSTED PRICE. TRY NOT CONFORMING TO TICK SIZE
+        address _maker = genAddress();
+        eth.mint(_maker, 1000000000 ether);
+        usdc.mint(_maker, 1 ether);
+        vm.startPrank(_maker);
+        eth.approve(address(vault), 1000000000 ether);
+        usdc.approve(address(vault), 1 ether);
+        vault.deposit(1000000000 ether, 1 ether, _maker);
+        vm.stopPrank();
+        address _taker = genAddress();
+        usdc.mint(_taker, 43*10**16);
+        vm.startPrank(_taker);
+        usdc.approve(address(orderBook), 43*10**16);
+        orderBook.placeAndExecuteMarketBuy(43, true);
         vm.stopPrank();
         uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
         console.log("Vault ETH:", _vaultEthBalance);

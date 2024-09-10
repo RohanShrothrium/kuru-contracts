@@ -84,7 +84,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
-        uint256 _makerFeeBps
+        uint256 _makerFeeBps,
+        uint96 _kuruAmmSpread
     ) public returns (address proxy) {
         require(_baseAssetAddress != _quoteAssetAddress, "Router: Base and quote assets are the same!");
         {
@@ -105,7 +106,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(orderBookImplementation, bytes("")))
             );
         }
-        KuruAMMVault _kuruAmmVault = _deployKuruAMMVault(_baseAssetAddress, _quoteAssetAddress, proxy);
+        KuruAMMVault _kuruAmmVault = _deployKuruAMMVault(_baseAssetAddress, _quoteAssetAddress, proxy, _kuruAmmSpread);
         uint256 _baseAssetDecimals =
             _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
         uint256 _quoteAssetDecimals =
@@ -127,7 +128,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 _maxSize,
                 _takerFeeBps,
                 _makerFeeBps,
-                address(_kuruAmmVault)
+                address(_kuruAmmVault),
+                _kuruAmmSpread
             );
         }
 
@@ -369,12 +371,12 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         (_baseAsset, _quoteAsset) = (_tokenA > _tokenB) ? (_tokenB, _tokenA) : (_tokenA, _tokenB);
     }
 
-    function _deployKuruAMMVault(address _token1Address, address _token2Address, address _marketAddress)
+    function _deployKuruAMMVault(address _token1Address, address _token2Address, address _marketAddress, uint96 _spread)
         internal
         returns (KuruAMMVault)
     {
         KuruAMMVault _vault =
-            new KuruAMMVault(_token1Address, _token2Address, marginAccountAddress, _marketAddress, "", "");
+            new KuruAMMVault(_token1Address, _token2Address, marginAccountAddress, _marketAddress, _spread / 10, "", "");
 
         return _vault;
     }

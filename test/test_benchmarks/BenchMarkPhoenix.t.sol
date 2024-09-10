@@ -49,7 +49,7 @@ contract BenchMarkTest is Test, Gas {
         u2 = genAddress();
         u3 = genAddress();
         marginAccount = new MarginAccount(address(router), address(router));
-
+        uint96 SPREAD = 30;
         OrderBook implementation = new OrderBook();
 
         router.initialize(address(this), address(marginAccount), address(implementation));
@@ -64,7 +64,8 @@ contract BenchMarkTest is Test, Gas {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            SPREAD
         );
 
         orderBook = OrderBook(proxy);
