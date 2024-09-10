@@ -45,7 +45,7 @@ contract BenchMarkTest is Test, Gas {
                 bytes32(keccak256("")),
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
             );
-        router = Router(routerProxy);        u1 = genAddress();
+        router = Router(payable(routerProxy));        u1 = genAddress();
         u2 = genAddress();
         u3 = genAddress();
         marginAccount = new MarginAccount(address(router), address(router));

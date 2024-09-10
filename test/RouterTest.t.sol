@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
+import {IOrderBook} from "../contracts/interfaces/IOrderBook.sol";
 import {Router} from "../contracts/Router.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -17,6 +18,8 @@ contract OrderBookTest is Test {
     OrderBook eth_mon;
     OrderBook mon_usdc;
     OrderBook eth_usdc;
+    OrderBook native_mon;
+    OrderBook mon_native;
     Router router;
     MarginAccount marginAccount;
     MintableERC20 eth;
@@ -44,7 +47,7 @@ contract OrderBookTest is Test {
                 bytes32(keccak256("")),
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
             );
-        router = Router(routerProxy);
+        router = Router(payable(routerProxy));
 
         marginAccount = new MarginAccount(address(router), address(router));
 
@@ -52,9 +55,11 @@ contract OrderBookTest is Test {
 
         router.initialize(address(this), address(marginAccount), address(implementation));
         OrderBook.OrderBookType _type;
-        eth_mon = _createOrderbook(_type, eth, mon, SIZE_PRECISION, PRICE_PRECISION);
-        mon_usdc = _createOrderbook(_type, mon, usdc, SIZE_PRECISION, PRICE_PRECISION);
-        eth_usdc = _createOrderbook(_type, eth, usdc, SIZE_PRECISION, PRICE_PRECISION);
+        eth_mon = _createOrderbook(_type, address(eth), address(mon), SIZE_PRECISION, PRICE_PRECISION);
+        mon_usdc = _createOrderbook(_type, address(mon), address(usdc), SIZE_PRECISION, PRICE_PRECISION);
+        eth_usdc = _createOrderbook(_type, address(eth), address(usdc), SIZE_PRECISION, PRICE_PRECISION);
+        native_mon = _createOrderbook(IOrderBook.OrderBookType.NATIVE_IN_BASE, address(0), address(mon), SIZE_PRECISION, PRICE_PRECISION);
+        mon_native = _createOrderbook(IOrderBook.OrderBookType.NATIVE_IN_QUOTE, address(mon), address(0), SIZE_PRECISION, PRICE_PRECISION * 10);
 
         eth.mint(user1, initEth);
         usdc.mint(user2, initUsdc);
@@ -100,6 +105,34 @@ contract OrderBookTest is Test {
         marginAccount.deposit(_maker, address(token), _size * 10 ** token.decimals());
         (uint24 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
         orderBook.addSellOrder(_price * _pricePrecision, _size * _sizePrecision, false);
+        vm.stopPrank();
+    }
+
+    function _addCustomBuyOrderOnlyPriceSizeNativeQuote(
+        OrderBook orderBook,
+        address _maker,
+        uint24 _priceWithoutPrecision,
+        uint96 _sizeWithoutPrecision
+    ) internal {
+        vm.startPrank(_maker);
+        (uint24 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
+        uint256 depositAmount = _priceWithoutPrecision * _sizeWithoutPrecision * 10 ** 18;
+        marginAccount.deposit{value: depositAmount}(_maker, address(0), depositAmount);
+        orderBook.addBuyOrder(_priceWithoutPrecision * _pricePrecision, _sizeWithoutPrecision * _sizePrecision, false);
+        vm.stopPrank();
+    }
+
+    function _addCustomSellOrderOnlyPriceSizeNativeBase(
+        OrderBook orderBook,
+        address _maker,
+        uint24 _priceWithoutPrecision,
+        uint96 _sizeWithoutPrecision
+    ) internal {
+        vm.startPrank(_maker);
+        (uint24 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
+        uint256 depositAmount = _sizeWithoutPrecision * 10 ** 18;
+        marginAccount.deposit{value: depositAmount}(_maker, address(0), depositAmount);
+        orderBook.addSellOrder(_priceWithoutPrecision * _pricePrecision, _sizeWithoutPrecision * _sizePrecision, false);
         vm.stopPrank();
     }
 
@@ -223,8 +256,8 @@ contract OrderBookTest is Test {
 
     function _createOrderbook(
         OrderBook.OrderBookType _type,
-        MintableERC20 _baseAsset,
-        MintableERC20 _quoteAsset,
+        address _baseAsset,
+        address _quoteAsset,
         uint96 _sizePrecision,
         uint24 _pricePrecision
     ) internal returns (OrderBook) {
@@ -235,8 +268,8 @@ contract OrderBookTest is Test {
         uint256 _makerFeeBps = 0;
         address proxy = router.deployProxy(
             _type,
-            address(_baseAsset),
-            address(_quoteAsset),
+            _baseAsset,
+            _quoteAsset,
             _sizePrecision,
             _pricePrecision,
             _tickSize,
@@ -258,5 +291,164 @@ contract OrderBookTest is Test {
         tokenA = tokenB;
         tokenB = temp;
         return (tokenA, tokenB);
+    }
+
+    function testNativeToTokenSwap() public {
+        // Setup liquidity in native_mon market
+        address nativeProvider = genAddress();
+        vm.deal(nativeProvider, 10 ether);
+        _addCustomBuyOrderOnlyPriceSize(native_mon, mon, nativeProvider, 100, 5); // 1 Native = 100 MON
+
+        // Setup liquidity in mon_usdc market
+        address monProvider = genAddress();
+        _addCustomBuyOrderOnlyPriceSize(mon_usdc, usdc, monProvider, 2, 1000); // 1 MON = 2 USDC
+
+        address swapper = genAddress();
+        vm.deal(swapper, 1 ether);
+        
+        vm.startPrank(swapper);
+        address[] memory markets = new address[](2);
+        markets[0] = address(native_mon);
+        markets[1] = address(mon_usdc);
+        bool[] memory isBuy = new bool[](2);
+        isBuy[0] = false;
+        isBuy[1] = false;
+        bool[] memory isNativeSend = new bool[](2);
+        isNativeSend[0] = true;
+        isNativeSend[1] = false;
+
+        uint256 expectedUsdcOut = 200 * 10 ** 18; // 1 Native -> 100 MON -> 200 USDC
+        router.anyToAnySwap{value: 1 ether}(
+            markets,
+            isBuy,
+            isNativeSend,
+            address(0),
+            address(usdc),
+            1 ether,
+            expectedUsdcOut
+        );
+        vm.stopPrank();
+
+        assertEq(usdc.balanceOf(swapper), expectedUsdcOut);
+    }
+
+    function testMultiMarketNativeToTokenSwap() public {
+        // Setup liquidity in native_mon market
+        address nativeProvider = genAddress();
+        vm.deal(nativeProvider, 10 ether);
+        _addCustomBuyOrderOnlyPriceSize(native_mon, mon, nativeProvider, 100, 5); // 1 Native = 100 MON
+
+        // Setup liquidity in mon_usdc market
+        address monProvider = genAddress();
+        _addCustomBuyOrderOnlyPriceSize(mon_usdc, usdc, monProvider, 2, 1000); // 1 MON = 2 USDC
+
+        // Setup liquidity in usdc_eth market
+        address usdcProvider = genAddress();
+        _addCustomSellOrderOnlyPriceSize(eth_usdc, eth, usdcProvider, 2000, 10); // 1 ETH = 2000 USDC
+
+        address swapper = genAddress();
+        vm.deal(swapper, 1 ether);
+        
+        vm.startPrank(swapper);
+        address[] memory markets = new address[](3);
+        markets[0] = address(native_mon);
+        markets[1] = address(mon_usdc);
+        markets[2] = address(eth_usdc);
+        bool[] memory isBuy = new bool[](3);
+        isBuy[0] = false;
+        isBuy[1] = false;
+        isBuy[2] = true;
+        bool[] memory isNativeSend = new bool[](3);
+        isNativeSend[0] = true;
+        isNativeSend[1] = false;
+        isNativeSend[2] = false;
+
+        uint256 expectedEthOut = 0.1 * 10 ** 18; // 1 Native -> 100 MON -> 200 USDC -> 0.1 ETH
+        router.anyToAnySwap{value: 1 ether}(
+            markets,
+            isBuy,
+            isNativeSend,
+            address(0),
+            address(eth),
+            1 ether,
+            expectedEthOut
+        );
+        vm.stopPrank();
+
+        assertEq(eth.balanceOf(swapper), expectedEthOut);
+    }
+
+    function testNativeBuyInMonNativeMarket() public {
+        // Setup liquidity in mon_native market
+        address monProvider = genAddress();
+        _addCustomSellOrderOnlyPriceSize(mon_native, mon, monProvider, 1, 10); // 1 MON = 1 Native
+
+        address buyer = genAddress();
+        vm.deal(buyer, 1 ether);
+        
+        vm.startPrank(buyer);
+        uint256 initialMonBalance = mon.balanceOf(buyer);
+        address[] memory markets = new address[](1);
+        markets[0] = address(mon_native);
+        bool[] memory isBuy = new bool[](1);
+        isBuy[0] = true;
+        bool[] memory isNativeSend = new bool[](1);
+        isNativeSend[0] = true;
+
+        uint256 expectedMonOut = 0.1 * 10 ** 18; // 0.1 Native should buy 0.1 MON
+        router.anyToAnySwap{value: 0.1 ether}(
+            markets,
+            isBuy,
+            isNativeSend,
+            address(0),
+            address(mon),
+            0.1 ether,
+            expectedMonOut
+        );
+        vm.stopPrank();
+
+        assertEq(mon.balanceOf(buyer) - initialMonBalance, expectedMonOut);
+    }
+
+    function testMultiRouteSwapEndingInNative() public {
+        // Setup liquidity in eth_mon market
+        address ethProvider = genAddress();
+        _addCustomBuyOrderOnlyPriceSize(eth_mon, mon, ethProvider, 2000, 10); // 1 ETH = 2000 MON
+
+        // Setup liquidity in mon_native market
+        address nativeProvider = genAddress();
+        vm.deal(nativeProvider, 2000 ether);
+        _addCustomBuyOrderOnlyPriceSizeNativeQuote(mon_native, nativeProvider, 1, 2000); // 1 MON = 1 Native
+
+        address swapper = genAddress();
+        eth.mint(swapper, 1 * 10 ** 18); // 1 ETH
+
+        vm.startPrank(swapper);
+        eth.approve(address(router), 1 * 10 ** 18);
+        uint256 initialNativeBalance = address(swapper).balance;
+        
+        address[] memory markets = new address[](2);
+        markets[0] = address(eth_mon);
+        markets[1] = address(mon_native);
+        bool[] memory isBuy = new bool[](2);
+        isBuy[0] = false;
+        isBuy[1] = false;
+        bool[] memory isNativeSend = new bool[](2);
+        isNativeSend[0] = false;
+        isNativeSend[1] = false;
+
+        uint256 expectedNativeOut = 2000 ether; // 1 ETH -> 2000 MON -> 2000 Native
+        router.anyToAnySwap(
+            markets,
+            isBuy,
+            isNativeSend,
+            address(eth),
+            address(0),
+            1 * 10 ** 18,
+            expectedNativeOut
+        );
+        vm.stopPrank();
+
+        assertEq(address(swapper).balance - initialNativeBalance, expectedNativeOut);
     }
 }
