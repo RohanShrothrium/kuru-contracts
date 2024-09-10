@@ -94,9 +94,10 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         uint96 _kuruAmmSpread
     ) public initializer {
         _initializeOwner(_owner);
-        require(_makerFeeBps <= (8000 * _takerFeeBps) / BPS_MULTIPLIER, Errors.MarketFeeError());
+
+        require(_makerFeeBps <= 8000 * _takerFeeBps / BPS_MULTIPLIER && _takerFeeBps < BPS_MULTIPLIER, Errors.MarketFeeError());
         require(_kuruAmmSpread % 10 == 0 && _kuruAmmSpread > 0 && _kuruAmmSpread < 500, Errors.InvalidSpread());
-        require(_takerFeeBps < BPS_MULTIPLIER, Errors.MarketFeeError());
+
         orderBookType = _type;
         baseAsset = _baseAssetAddress;
         quoteAsset = _quoteAssetAddress;
@@ -406,6 +407,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         returns (uint256)
     {
         OrderBookType _type = orderBookType;
+
         if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin) {
             require(msg.value == _pricePrecisionToQuoteAssetPrecision(_quoteSize), Errors.NativeAssetInsufficient());
         } else {

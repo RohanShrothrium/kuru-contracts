@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 const fs = require('fs');
 
 var configFileName = "devnet.config.json";
@@ -11,18 +12,22 @@ if (devnetName !== "") {
 }
 
 async function main() {
-    const currentProvider = new hre.ethers.providers.JsonRpcProvider("https://eth-sepolia.api.onfinality.io/public");
-    const deployerPvtKey = "e33eae6a73c0c8bb2be71c86d72dc35b6b573468592165cbb24cc66f961c1c2e";
+    const currentProvider = new hre.ethers.providers.JsonRpcProvider("https://devnet1.monad.xyz/rpc/WbScX50z7Xsvsuk6UB1uMci8Ekee3PJqhBZ2RRx0xSjyqx9hjipbfMh60vr7a1gS");
+    const deployerPvtKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     const deployer = new hre.ethers.Wallet(deployerPvtKey, currentProvider);
 
     const userAddress = "0xf109c592d2c9EA712A01c6fCE8f149c5AF0b6672";
 
     // deploy Router Contract
-    const Router = await hre.ethers.getContractFactory("Router", deployer);
-    const router = await Router.deploy();
-    await router.deployed();
+    const Router = await hre.ethers.getContractFactory("Router");
+    const routerImpl = await Router.deploy();
+    await routerImpl.deployed();
+    const Proxy = await hre.ethers.getContractFactory("ERC1967Proxy");
+    const proxy = await Proxy.deploy(routerImpl.address, "0x");
+    await proxy.deployed();
 
-    const routerAddress = router.address;
+    const router = await hre.ethers.getContractAt("Router", proxy.address, deployer);
+    const routerAddress = proxy.address;
     console.log("Router deployed to:", routerAddress);
 
     // deploy Margin Account Contract

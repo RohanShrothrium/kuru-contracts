@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 const fs = require('fs');
 
 function Enum(...options) {
@@ -13,11 +14,11 @@ async function main() {
     const _sizePrecision = 10**10;
     const _pricePrecision = 100;
     const _tickSize = 1;
+    const _spread = 100;
     const _minSize = 10**2;
     const _maxSize = 10**12;
     const _takerFeeBps = 25;
     const _makerFeeBps = 20;
-
     const [deployer, taker] = await hre.ethers.getSigners();
     const userAddress = deployer.address;
     const takerAddress = taker.address;
@@ -47,10 +48,15 @@ async function main() {
 
     // deploy Router Contract
     const Router = await hre.ethers.getContractFactory("Router");
-    const router = await Router.deploy();
-    await router.deployed();
+    const routerImpl = await Router.deploy();
+    await routerImpl.deployed();
+    const Proxy = await hre.ethers.getContractFactory("ERC1967Proxy");
+    const proxy = await Proxy.deploy(routerImpl.address, "0x");
+    await proxy.deployed();
 
-    const routerAddress = router.address;
+    const router = await hre.ethers.getContractAt("Router", proxy.address, deployer);
+
+    const routerAddress = proxy.address;
     console.log("Router deployed to:", routerAddress);
 
     // deploy Margin Account Contract
@@ -76,8 +82,8 @@ async function main() {
     await initializeRouterTx.wait();
     console.log("Router initialized with \n Admin :", userAddress, "\nMargin Account: ", marginAccountAddress, "\nImplementation:", implementation.address);
     
-    const cranklessOrderBookAddress = await router.callStatic.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps);
-    const deployProxyTx = await router.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps);
+    const cranklessOrderBookAddress = await router.callStatic.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps, _spread);
+    const deployProxyTx = await router.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps, _spread);
     await deployProxyTx.wait();
 
     console.log("CranklessOrderBook deployed to:", cranklessOrderBookAddress);
