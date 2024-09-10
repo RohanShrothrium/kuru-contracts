@@ -55,7 +55,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
                 bytes32(keccak256("")),
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
             );
-        router = Router(routerProxy);
+        router = Router(payable(routerProxy));
         marginAccount = new MarginAccount(address(router), address(router));
 
         router.initialize(address(this), address(marginAccount), address(implementation));

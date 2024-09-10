@@ -399,7 +399,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         OrderBookType _type = orderBookType;
         if (_type == OrderBookType.NATIVE_IN_QUOTE) {
             require(
-                msg.value >= ((_quoteSize) * 10 ** quoteAssetDecimals) / pricePrecision,
+                msg.value == ((_quoteSize) * 10 ** quoteAssetDecimals) / pricePrecision,
                 Errors.NativeAssetInsufficient()
             );
         } else {

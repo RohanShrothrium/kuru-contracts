@@ -248,12 +248,18 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         address _creditToken,
         uint256 _amount,
         uint256 _minAmountOut
-    ) external returns (uint256 _amountOut) {
+    ) external payable returns (uint256 _amountOut) {
         require(_marketAddresses.length >= 1, "Router: No markets in input");
         require(_isBuy.length == _marketAddresses.length, "Router: Sizes length mismatch");
         require(_nativeSend.length == _marketAddresses.length, "Router: Sizes length mismatch");
-        _debitToken.safeTransferFrom(msg.sender, address(this), _amount);
+        if (_nativeSend[0] == false) {
+            _debitToken.safeTransferFrom(msg.sender, address(this), _amount);
+        }
+        // @note: We don't validate msg.value cause we do it in the market contract and we assume no funds ever stay on the router.
 
+        // @audit: Do we check if we debit token against token from first market params? Do we check if we credit token against token from last market params?
+        // If router has any balance, it can be drained.
+        // Will the router ever have non zero balances? Idts.
         for (uint256 i = 0; i < _marketAddresses.length; i++) {
             address _currentMarket = _marketAddresses[i];
             MarketParams memory _marketParams = verifiedMarket[_currentMarket];
@@ -291,7 +297,12 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _amount = _amountOut;
         }
         require(_amountOut >= _minAmountOut, "Router: Slippage exceeds expected value!");
-        _creditToken.safeTransfer(msg.sender, _amountOut);
+        if (_creditToken != address(0)) {
+            _creditToken.safeTransfer(msg.sender, _amountOut);
+        } else {
+            (bool _success,) = (msg.sender).call{value: _amountOut}("");
+            require(_success, "Router: Native fund transfer failed");
+        }
     }
 
     /**
@@ -367,4 +378,6 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
 
         return _vault;
     }
+
+    receive() external payable {}
 }
