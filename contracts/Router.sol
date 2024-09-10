@@ -254,13 +254,12 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         require(_nativeSend.length == _marketAddresses.length, "Router: Sizes length mismatch");
         if (_nativeSend[0] == false) {
             _debitToken.safeTransferFrom(msg.sender, address(this), _amount);
-        } else {
-            require(msg.value == _amount, "Router: Amount and value mismatch");
         }
+        // @note: We don't validate msg.value cause we do it in the market contract and we assume no funds ever stay on the router.
 
         // @audit: Do we check if we debit token against token from first market params? Do we check if we credit token against token from last market params?
         // If router has any balance, it can be drained.
-        // Will the router ever have non zero balances?
+        // Will the router ever have non zero balances? Idts.
         for (uint256 i = 0; i < _marketAddresses.length; i++) {
             address _currentMarket = _marketAddresses[i];
             MarketParams memory _marketParams = verifiedMarket[_currentMarket];
