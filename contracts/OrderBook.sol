@@ -725,7 +725,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
             !s_orders[_orderId].isBuy,
             (s_orders[_orderId].price * vaultPricePrecision) / pricePrecision,
             _updatedSize,
-            msg.sender,
+            tx.origin,
             _sizeToBeFilled - remainingSize
         );
     }
