@@ -183,7 +183,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         vm.prank(clearOut);
         quote.approve(address(orderBook), tokensNeed);
         vm.prank(clearOut);
-        orderBook.placeAndExecuteMarketBuy(_quoteAmount, false, false);
+        orderBook.placeAndExecuteMarketBuy(_quoteAmount, 0, false, false);
         return true;
     }
 
@@ -194,7 +194,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         vm.prank(clearOut);
         base.approve(address(orderBook), baseNeed);
         vm.prank(clearOut);
-        orderBook.placeAndExecuteMarketSell(_size, false, false);
+        orderBook.placeAndExecuteMarketSell(_size, 0, false, false);
     }
 
     function echidna_testBaseBalance() public view returns (bool) {

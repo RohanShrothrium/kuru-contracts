@@ -382,12 +382,75 @@ contract OrderBookTest is Test, PropertiesAsserts {
         usdc.mint(_taker, (_totalAmount * 10 ** usdc.decimals()) / PRICE_PRECISION);
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), (_totalAmount * 10 ** decimals) / PRICE_PRECISION);
-        orderBook.placeAndExecuteMarketBuy(_totalAmount, false, false);
+        orderBook.placeAndExecuteMarketBuy(_totalAmount, 0, false, false);
         vm.stopPrank();
 
         orderBook.collectFees();
         assertGte(
             eth.balanceOf(_taker),
+            ((_sizeCreditA + _sizeCreditB - _toleranceInBase) * 10 ** eth.decimals() / SIZE_PRECISION),
+            "Too much size lost"
+        );
+        assertGte(
+            marginAccount.getBalance(_makerA, address(usdc)),
+            ((_amountA * 10 ** decimals) / PRICE_PRECISION) - _toleranceInQuote,
+            "Too less quote credited A"
+        );
+        assertGte(
+            marginAccount.getBalance(_makerB, address(usdc)),
+            ((_amountB * 10 ** decimals) / PRICE_PRECISION) - _toleranceInQuote,
+            "Too less quote credited B"
+        );
+        assertEq(marginAccount.getBalance(_makerA, address(eth)), _makerARebate);
+        assertEq(marginAccount.getBalance(_makerB, address(eth)), _makerBRebate);
+        assertLte(usdc.balanceOf(_taker), 2 * _toleranceInQuote, "Too less quote debited");
+        assertApproxEqAbs(marginAccount.getBalance(address(router), address(eth)), _protocolFee, 10 ** 18);
+    }
+
+    function testMarketBuyMargin(uint24 _priceA, uint96 _sizeA, uint24 _priceB, uint96 _sizeB) public {
+        uint256 decimals = usdc.decimals();
+
+        //Claming price and size of our two sell orders
+        (_priceA, _sizeA) = _adjustPriceAndSize(_priceA, _sizeA);
+        (_priceB, _sizeB) = _adjustPriceAndSize(_priceB, _sizeB);
+
+        address _makerA = _addSellOrder(address(0), _priceA, _sizeA, false);
+        address _makerB = _addSellOrder(address(0), _priceB, _sizeB, false);
+
+        //Expected quote tokens to be supplied for filling each sell order
+        uint24 _amountA = mulDivUp(_priceA, _sizeA);
+        uint24 _amountB = mulDivUp(_priceB, _sizeB);
+
+        //Expected size credited for market order from each sell order
+        uint96 _sizeCreditAFee = uint96(FixedPointMathLib.mulDivUp(_sizeA, _takerFeeBps, 10 ** 4));
+        uint96 _sizeCreditA = _sizeA - _sizeCreditAFee;
+        uint256 _makerARebate = (((_sizeA * 10 ** eth.decimals()) / SIZE_PRECISION) * _makerFeeBps) / 10 ** 4;
+
+        uint96 _sizeCreditBFee = uint96(FixedPointMathLib.mulDivUp(_sizeB, _takerFeeBps, 10 ** 4));
+        uint96 _sizeCreditB = _sizeB - _sizeCreditBFee;
+        uint256 _makerBRebate = (((_sizeB * 10 ** eth.decimals()) / SIZE_PRECISION) * _makerFeeBps) / 10 ** 4;
+
+        (uint256 _protocolFee,) = _calculateFeePortions(((_sizeA + _sizeB) * 10 ** eth.decimals()) / SIZE_PRECISION);
+
+        //Maximum tolerance in credited base tokens from market buy
+        uint96 _toleranceInBase = SIZE_PRECISION / uint96(_priceB);
+
+        //Maximum tolerance in credited quote tokens (1 price precision)
+        uint256 _toleranceInQuote = 10 ** decimals / PRICE_PRECISION;
+
+        uint24 _totalAmount = _amountA + _amountB;
+
+        address _taker = genAddress();
+        usdc.mint(_taker, (_totalAmount * 10 ** usdc.decimals()) / PRICE_PRECISION);
+        vm.startPrank(_taker);
+        usdc.approve(address(marginAccount), (_totalAmount * 10 ** decimals) / PRICE_PRECISION);
+        marginAccount.deposit(_taker, address(usdc), _totalAmount * 10 ** decimals / PRICE_PRECISION);
+        orderBook.placeAndExecuteMarketBuy(_totalAmount, 0, true, false);
+        vm.stopPrank();
+
+        orderBook.collectFees();
+        assertGte(
+            marginAccount.getBalance(_taker, address(eth)),
             ((_sizeCreditA + _sizeCreditB - _toleranceInBase) * 10 ** eth.decimals() / SIZE_PRECISION),
             "Too much size lost"
         );
@@ -421,7 +484,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         usdc.mint(_taker, (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION);
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION);
-        orderBook.placeAndExecuteMarketBuy(_quoteExtra, false, false);
+        orderBook.placeAndExecuteMarketBuy(_quoteExtra, 0, false, false);
         vm.stopPrank();
 
         assertGte(usdc.balanceOf(_taker), (100 * 10 ** _decimals) / PRICE_PRECISION, "Too less refund credit");
@@ -461,7 +524,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION);
         vm.expectRevert(Errors.InsufficientLiquidity.selector);
-        orderBook.placeAndExecuteMarketBuy(_quoteExtra, false, true);
+        orderBook.placeAndExecuteMarketBuy(_quoteExtra, 0, false, true);
         vm.stopPrank();
     }
 
@@ -478,7 +541,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         usdc.mint(_taker, (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION);
         vm.startPrank(_taker);
         vm.expectRevert(Errors.TransferFromFailed.selector);
-        orderBook.placeAndExecuteMarketBuy(_quoteExtra, false, false);
+        orderBook.placeAndExecuteMarketBuy(_quoteExtra, 0, false, false);
         vm.stopPrank();
     }
 
@@ -507,11 +570,57 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth.mint(_taker, _sizeForSale);
         vm.startPrank(_taker);
         eth.approve(address(orderBook), _sizeForSale);
-        orderBook.placeAndExecuteMarketSell((_sizeA + _sizeB), false, true);
+        orderBook.placeAndExecuteMarketSell((_sizeA + _sizeB), 0, false, true);
         vm.stopPrank();
 
         orderBook.collectFees();
         assertGte(usdc.balanceOf(_taker), _expectedQuote - _quoteTolerance, "Too less quote credit");
+        assertGte(
+            marginAccount.getBalance(_makerA, address(eth)),
+            ((_sizeA - 1) * 10 ** _decimals) / SIZE_PRECISION,
+            "Too less size credit A"
+        );
+        assertEq(marginAccount.getBalance(_makerA, address(usdc)), _expectedRebateA);
+        assertGte(
+            marginAccount.getBalance(_makerB, address(eth)),
+            ((_sizeB - 1) * 10 ** _decimals) / SIZE_PRECISION,
+            "Too less size credit B"
+        );
+        assertEq(marginAccount.getBalance(_makerA, address(usdc)), _expectedRebateA);
+        assertGte(marginAccount.getBalance(address(router), address(usdc)), _protocolFee, "Fee collection failed");
+    }
+
+    function testMarketSellMargin(uint24 _priceA, uint96 _sizeA, uint24 _priceB, uint96 _sizeB) public {
+        uint256 _decimals = eth.decimals();
+        (_priceA, _sizeA) = _adjustPriceAndSize(_priceA, _sizeA);
+        (_priceB, _sizeB) = _adjustPriceAndSize(_priceB, _sizeB);
+        //Adding two buy orders which need to get filled
+        address _makerA = _addBuyOrder(address(0), _priceA, _sizeA, 0, false);
+        uint256 _expectedQuoteA = _amountPayableInQuote(_priceA, _sizeA);
+        uint256 _expectedRebateA = (_expectedQuoteA * _makerFeeBps) / 10 ** 4;
+        address _makerB = _addBuyOrder(address(0), _priceB, _sizeB, 0, false);
+        uint256 _expectedQuoteB = _amountPayableInQuote(_priceB, _sizeB);
+        uint256 _expectedRebateB = (_expectedQuoteB * _makerFeeBps) / 10 ** 4;
+
+        uint256 _expectedQuote = _expectedQuoteA + _expectedQuoteB;
+        (uint256 _protocolFee,) = _calculateFeePortions(_expectedQuote);
+        _expectedQuote -= FixedPointMathLib.mulDivUp(_expectedQuote, _takerFeeBps, 10 ** 4);
+
+        console.log(mulDivUp(_priceA, _sizeA));
+        console.log(mulDivUp(_priceB, _sizeB));
+        //quote tolerance is tokens equal to 1 price precision
+        uint256 _quoteTolerance = 10 ** (usdc.decimals()) / PRICE_PRECISION;
+        uint256 _sizeForSale = ((_sizeA + _sizeB) * 10 ** _decimals / SIZE_PRECISION);
+        address _taker = genAddress();
+        eth.mint(_taker, _sizeForSale);
+        vm.startPrank(_taker);
+        eth.approve(address(marginAccount), _sizeForSale);
+        marginAccount.deposit(_taker, address(eth), _sizeForSale);
+        orderBook.placeAndExecuteMarketSell((_sizeA + _sizeB), 0, true, true);
+        vm.stopPrank();
+
+        orderBook.collectFees();
+        assertGte(marginAccount.getBalance(_taker, address(usdc)), _expectedQuote - _quoteTolerance, "Too less quote credit");
         assertGte(
             marginAccount.getBalance(_makerA, address(eth)),
             ((_sizeA - 1) * 10 ** _decimals) / SIZE_PRECISION,
@@ -543,7 +652,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth.mint(_taker, _sizeForSale);
         vm.startPrank(_taker);
         eth.approve(address(orderBook), _sizeForSale);
-        orderBook.placeAndExecuteMarketSell(_size, false, false);
+        orderBook.placeAndExecuteMarketSell(_size, 0, false, false);
         vm.stopPrank();
 
         orderBook.collectFees();
@@ -575,7 +684,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_taker);
         eth.approve(address(orderBook), _sizeForSale);
         vm.expectRevert(Errors.InsufficientLiquidity.selector);
-        orderBook.placeAndExecuteMarketSell(_size + 10 ** 6, false, true);
+        orderBook.placeAndExecuteMarketSell(_size + 10 ** 6, 0, false, true);
         vm.stopPrank();
     }
 
@@ -593,7 +702,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth.mint(_taker, _sizeForSale);
         vm.startPrank(_taker);
         vm.expectRevert(Errors.TransferFromFailed.selector);
-        orderBook.placeAndExecuteMarketSell(_size + 10 ** 6, false, false);
+        orderBook.placeAndExecuteMarketSell(_size + 10 ** 6, 0, false, false);
         vm.stopPrank();
     }
 
@@ -781,7 +890,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth.mint(_taker, _amountBase);
         vm.startPrank(_taker);
         eth.approve(address(orderBook), _amountBase);
-        orderBook.placeAndExecuteMarketSell((_size * 7) / 10, false, false);
+        orderBook.placeAndExecuteMarketSell((_size * 7) / 10, 0, false, false);
         vm.stopPrank();
         uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
         console.log("Vault ETH:", _vaultEthBalance);
@@ -811,7 +920,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         usdc.mint(_taker, _amountQuote);
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), _amountQuote);
-        orderBook.placeAndExecuteMarketBuy(uint24(((_amountQuote / 10) * PRICE_PRECISION) / 10 ** 18), false, false);
+        orderBook.placeAndExecuteMarketBuy(uint24(((_amountQuote / 10) * PRICE_PRECISION) / 10 ** 18), 0, false, false);
         vm.stopPrank();
         uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
         console.log("Vault ETH:", _vaultEthBalance);
@@ -836,7 +945,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         usdc.mint(_taker, 43 * 10 ** 16);
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), 43 * 10 ** 16);
-        orderBook.placeAndExecuteMarketBuy(43, false, true);
+        orderBook.placeAndExecuteMarketBuy(43, 0, false, true);
         vm.stopPrank();
         uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
         console.log("Vault ETH:", _vaultEthBalance);
@@ -867,7 +976,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             eth.mint(_takerAddress, _takerBaseAmount);
             vm.startPrank(_takerAddress);
             eth.approve(address(orderBook), _takerBaseAmount);
-            orderBook.placeAndExecuteMarketSell(_takerBaseSize, false, true);
+            orderBook.placeAndExecuteMarketSell(_takerBaseSize, 0, false, true);
             vm.stopPrank();
         }
         uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
@@ -899,7 +1008,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth.mint(_partialBidTaker, _bidTakerBaseAmount);
         vm.startPrank(_partialBidTaker);
         eth.approve(address(orderBook), _bidTakerBaseAmount);
-        orderBook.placeAndExecuteMarketSell(_vaultBidOrderSize / 2, false, true);
+        orderBook.placeAndExecuteMarketSell(_vaultBidOrderSize / 2, 0, false, true);
         vm.stopPrank();
         address _fullAskTaker = genAddress();
         uint256 _quoteForFillingAsk = (
@@ -908,7 +1017,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         usdc.mint(_fullAskTaker, _quoteForFillingAsk);
         vm.startPrank(_fullAskTaker);
         usdc.approve(address(orderBook), _quoteForFillingAsk);
-        orderBook.placeAndExecuteMarketBuy(uint24((_quoteForFillingAsk * PRICE_PRECISION) / 10 ** 18), false, true);
+        orderBook.placeAndExecuteMarketBuy(uint24((_quoteForFillingAsk * PRICE_PRECISION) / 10 ** 18), 0, false, true);
         (,,, uint256 _vaultBestAskNew,, uint96 _vaultBidOrderSizeNew, uint96 _vaultAskOrderSizeNew) =
             orderBook.getVaultParams();
         console.log(_vaultBestAskNew * 1000 / _vaultBestAsk);
@@ -985,7 +1094,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth.mint(_partialBidTaker, _bidTakerBaseAmount);
         vm.startPrank(_partialBidTaker);
         eth.approve(address(orderBook), _bidTakerBaseAmount);
-        orderBook.placeAndExecuteMarketSell(_vaultBidOrderSize / 2, false, true);
+        orderBook.placeAndExecuteMarketSell(_vaultBidOrderSize / 2, 0, false, true);
         vm.stopPrank();
         vm.startPrank(_vaultMaker);
         vm.expectRevert(KuruAMMVault.NewSizeExceedsPartiallyFilledSize.selector);

@@ -64,6 +64,10 @@ library Errors {
      */
     error InsufficientLiquidity();
     /**
+    @dev Throws when slippage is exceeded in market orders
+     */
+    error SlippageExceeded();
+    /**
      * @dev Thrown when quote size in uint24 overflows
      */
     error TooMuchSizeFilled();

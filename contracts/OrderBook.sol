@@ -399,7 +399,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
      * @param _quoteSize amount of quote asset user is ready to pay.
      * @param _isFillOrKill bool representing if function should revert if full qty is not recieved.
      */
-    function placeAndExecuteMarketBuy(uint24 _quoteSize, bool _isMargin, bool _isFillOrKill)
+    function placeAndExecuteMarketBuy(uint24 _quoteSize, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         public
         payable
         override
@@ -420,7 +420,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         }
 
         uint256 _baseTokensCredited;
-        (_quoteSize, _baseTokensCredited) = _marketBuyMatch(_quoteSize);
+        (_quoteSize, _baseTokensCredited) = _marketBuyMatch(_quoteSize, _isMargin);
         if (_quoteSize > 0) {
             require(!_isFillOrKill, Errors.InsufficientLiquidity());
             if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin) {
@@ -436,6 +436,9 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
             (bool _success,) = address(marginAccount).call{value: msg.value}("");
             require(_success, Errors.NativeAssetTransferFail());
         }
+        unchecked {
+            require(_baseTokensCredited >= _minAmountOut, Errors.SlippageExceeded());
+        }
         return _baseTokensCredited;
     }
 
@@ -444,7 +447,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
      * @param _size Size of the market sell order.
      * @param _isFillOrKill bool representing if function should revert if full qty is not recieved.
      */
-    function placeAndExecuteMarketSell(uint96 _size, bool _isMargin, bool _isFillOrKill)
+    function placeAndExecuteMarketSell(uint96 _size, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         public
         payable
         marketActive
@@ -461,7 +464,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         }
 
         uint256 _quoteCredited;
-        (_size, _quoteCredited) = _matchAggressiveSell(0, _size, false);
+        (_size, _quoteCredited) = _matchAggressiveSell(0, _size, _isMargin);
 
         if (_size > 0) {
             require(!_isFillOrKill, Errors.InsufficientLiquidity());
@@ -474,6 +477,9 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         } else if (_type == OrderBookType.NATIVE_IN_BASE) {
             (bool _success,) = address(marginAccount).call{value: msg.value}("");
             require(_success, Errors.NativeAssetTransferFail());
+        }
+        unchecked {
+            require(_quoteCredited >= _minAmountOut, Errors.SlippageExceeded());
         }
         return _quoteCredited;
     }
@@ -564,7 +570,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
      * @dev Match limit buy orders if it crosses the book.
      * @param _quoteSize amount of quote asset user is ready to pay.
      */
-    function _marketBuyMatch(uint24 _quoteSize) internal returns (uint24, uint256) {
+    function _marketBuyMatch(uint24 _quoteSize, bool _isMargin) internal returns (uint24, uint256) {
         uint96 _sizeToCreditTaker;
         uint96 _sizeToCreditViaVault;
         (bool _isVaultFill, uint256 _bestAsk) = bestAsk();
@@ -615,7 +621,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 baseFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
             }
             marginAccount.creditUsersEncoded(
-                bytes.concat(makerCredits, abi.encode(msg.sender, _baseAsset, _tokenCredit, false))
+                bytes.concat(makerCredits, abi.encode(msg.sender, _baseAsset, _tokenCredit, _isMargin))
             );
         }
 
