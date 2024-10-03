@@ -36,10 +36,6 @@ library Errors {
      */
     error OnlyOwnerAllowedError();
     /**
-     * @dev Thrown when an address which is not a trusted forwarder tries to send a meta transaction
-     */
-    error NotTrustedForwarder();
-    /**
      * @dev Thrown when cancelOrder is called on an order which is already filled or cancelled
      */
     error OrderAlreadyFilledOrCancelled();

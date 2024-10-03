@@ -49,7 +49,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     uint256 baseFeeCollected;
 
     IMarginAccount marginAccount;
-    mapping(address forwarder => bool isWhiteListed) trustedForwarders;
+
     /**
      * @dev Constructor.
      */
@@ -60,11 +60,6 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
 
     modifier marketActive() {
         require(!marketPaused, Errors.MarketStateError());
-        _;
-    }
-
-    modifier onlyTrustedForwarder() {
-        require(trustedForwarders[msg.sender], Errors.NotTrustedForwarder());
         _;
     }
 
