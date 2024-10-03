@@ -110,7 +110,7 @@ interface IOrderBook {
         view
         returns (uint24, uint96, address, uint256, address, uint256, uint24, uint96, uint96, uint256, uint256);
 
-    function getVaultParams() external view returns (address, uint256, uint96, uint256, uint96, uint96, uint96);
+    function getVaultParams() external view returns (address, uint256, uint96, uint256, uint96, uint96, uint96, uint96);
 
     function vaultAskOrderSize() external view returns (uint96);
 

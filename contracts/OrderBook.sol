@@ -915,20 +915,6 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     }
 
     /**
-     * @dev extracts msg.sender in case of meta transactions and returns normal msg.sender otherwise
-     */
-    function _msgSender() internal view returns (address sender) {
-        if (trustedForwarders[msg.sender]) {
-            assembly {
-                sender := shr(96, calldataload(sub(calldatasize(), 20)))
-            }
-        } else {
-            sender = msg.sender;
-        }
-        return sender;
-    }
-
-    /**
      * @notice Returns the Level 2 order book data.
      * @dev Encodes the block number, buy orders, and sell orders.
      * @return Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.

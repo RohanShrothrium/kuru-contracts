@@ -102,7 +102,7 @@ abstract contract AbstractAMM is IOrderBook {
         return bytes.concat(returnData, abi.encode(kuruAmmVault, _creditAsset, _amount, true));
     }
 
-    function getVaultParams() external view returns (address, uint256, uint96, uint256, uint96, uint96, uint96) {
+    function getVaultParams() external view returns (address, uint256, uint96, uint256, uint96, uint96, uint96, uint96) {
         return (
             kuruAmmVault,
             vaultBestBid,
@@ -110,7 +110,8 @@ abstract contract AbstractAMM is IOrderBook {
             vaultBestAsk,
             askPartiallyFilledSize,
             vaultBidOrderSize,
-            vaultAskOrderSize
+            vaultAskOrderSize,
+            SPREAD_CONSTANT * 10
         );
     }
 

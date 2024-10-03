@@ -75,7 +75,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             SPREAD
         );
         orderBook = OrderBook(proxy);
-        (address _kuruVault,,,,,,) = orderBook.getVaultParams();
+        (address _kuruVault,,,,,,,) = orderBook.getVaultParams();
         vault = KuruAMMVault(payable(_kuruVault));
     }
 
@@ -866,7 +866,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth.approve(address(vault), _amountBase);
         usdc.approve(address(vault), _amountQuote);
         vault.deposit(_amountBase, _amountQuote, _maker);
-        (, uint256 _vaultBestBid,, uint256 _vaultBestAsk,,,) = orderBook.getVaultParams();
+        (, uint256 _vaultBestBid,, uint256 _vaultBestAsk,,,,) = orderBook.getVaultParams();
         console.log((_vaultBestAsk * 10000000 / _vaultBestBid));
         vm.stopPrank();
     }
@@ -896,7 +896,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         console.log("Vault ETH:", _vaultEthBalance);
         uint256 _vaultUsdcBalance = marginAccount.getBalance(address(vault), address(usdc));
         console.log("Vault USDC:", _vaultUsdcBalance);
-        (,,, uint256 _askPrice,,,) = orderBook.getVaultParams();
+        (,,, uint256 _askPrice,,,,) = orderBook.getVaultParams();
         console.log((_vaultUsdcBalance * PRICE_PRECISION) / _vaultEthBalance);
         console.log(_askPrice * PRICE_PRECISION / 10 ** 18);
     }
@@ -926,7 +926,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         console.log("Vault ETH:", _vaultEthBalance);
         uint256 _vaultUsdcBalance = marginAccount.getBalance(address(vault), address(usdc));
         console.log("Vault USDC:", _vaultUsdcBalance);
-        (,,, uint256 _askPrice,,,) = orderBook.getVaultParams();
+        (,,, uint256 _askPrice,,,,) = orderBook.getVaultParams();
         console.log((_vaultUsdcBalance * PRICE_PRECISION) / _vaultEthBalance);
         console.log(_askPrice * PRICE_PRECISION / 10 ** 18);
     }
@@ -951,7 +951,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         console.log("Vault ETH:", _vaultEthBalance);
         uint256 _vaultUsdcBalance = marginAccount.getBalance(address(vault), address(usdc));
         console.log("Vault USDC:", _vaultUsdcBalance);
-        (,,, uint256 _askPrice,,,) = orderBook.getVaultParams();
+        (,,, uint256 _askPrice,,,,) = orderBook.getVaultParams();
         console.log((_vaultUsdcBalance * PRICE_PRECISION) / _vaultEthBalance);
         console.log(_askPrice * PRICE_PRECISION / 10 ** 18);
     }
@@ -983,7 +983,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         console.log("Vault ETH:", _vaultEthBalance);
         uint256 _vaultUsdcBalance = marginAccount.getBalance(address(vault), address(usdc));
         console.log("Vault USDC:", _vaultUsdcBalance);
-        (,,, uint256 _askPrice,,,) = orderBook.getVaultParams();
+        (,,, uint256 _askPrice,,,,) = orderBook.getVaultParams();
         uint256 _actualPrice = (_vaultUsdcBalance * 10 ** 18) / _vaultEthBalance;
         console.log(_actualPrice);
         console.log(_askPrice);
@@ -1002,7 +1002,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         usdc.approve(address(vault), _amountQuote);
         vault.deposit(_amountBase, _amountQuote, _vaultMaker);
         vm.stopPrank();
-        (,,, uint256 _vaultBestAsk,, uint96 _vaultBidOrderSize, uint96 _vaultAskOrderSize) = orderBook.getVaultParams();
+        (,,, uint256 _vaultBestAsk,, uint96 _vaultBidOrderSize, uint96 _vaultAskOrderSize,) = orderBook.getVaultParams();
         uint256 _bidTakerBaseAmount = (_vaultBidOrderSize * 10 ** eth.decimals()) / (2 * SIZE_PRECISION); //half of bid order size
         address _partialBidTaker = genAddress();
         eth.mint(_partialBidTaker, _bidTakerBaseAmount);
@@ -1018,7 +1018,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_fullAskTaker);
         usdc.approve(address(orderBook), _quoteForFillingAsk);
         orderBook.placeAndExecuteMarketBuy(uint24((_quoteForFillingAsk * PRICE_PRECISION) / 10 ** 18), 0, false, true);
-        (,,, uint256 _vaultBestAskNew,, uint96 _vaultBidOrderSizeNew, uint96 _vaultAskOrderSizeNew) =
+        (,,, uint256 _vaultBestAskNew,, uint96 _vaultBidOrderSizeNew, uint96 _vaultAskOrderSizeNew,) =
             orderBook.getVaultParams();
         console.log(_vaultBestAskNew * 1000 / _vaultBestAsk);
     }
@@ -1088,7 +1088,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         usdc.approve(address(vault), _amountQuote);
         uint256 _shares = vault.deposit(_amountBase, _amountQuote, _vaultMaker);
         vm.stopPrank();
-        (,,, uint256 _vaultBestAsk,, uint96 _vaultBidOrderSize, uint96 _vaultAskOrderSize) = orderBook.getVaultParams();
+        (,,, uint256 _vaultBestAsk,, uint96 _vaultBidOrderSize, uint96 _vaultAskOrderSize,) = orderBook.getVaultParams();
         uint256 _bidTakerBaseAmount = (_vaultBidOrderSize * 10 ** eth.decimals()) / (2 * SIZE_PRECISION); //half of bid order size
         address _partialBidTaker = genAddress();
         eth.mint(_partialBidTaker, _bidTakerBaseAmount);
