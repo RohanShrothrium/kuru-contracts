@@ -82,14 +82,6 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         return _convertToShares(asset1, asset2, _price, false);
     }
 
-    function returnSpreadProfits() public view returns (uint256, uint256) {
-        (uint256 _reserve1, uint256 _reserve2) = totalAssets();
-        (uint256 _baseAssetNormalized, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice();
-        uint256 _quoteAssetNormalized = _baseAssetNormalized * _currentAskPrice * 10 ** marketParams.quoteAssetDecimals
-            / (vaultPricePrecision * 10 ** marketParams.baseAssetDecimals);
-        return (_reserve1 - _baseAssetNormalized, _reserve2 - _quoteAssetNormalized);
-    }
-
     /**
      * @dev Previews the amount of token1 and token2 to be received for a given amount of shares to be minted.
      */
