@@ -53,7 +53,6 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     /**
      * @dev Constructor.
      */
-
     constructor() {
         _disableInitializers();
     }
@@ -90,7 +89,10 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     ) public initializer {
         _initializeOwner(_owner);
 
-        require(_makerFeeBps <= 8000 * _takerFeeBps / BPS_MULTIPLIER && _takerFeeBps < BPS_MULTIPLIER, Errors.MarketFeeError());
+        require(
+            _makerFeeBps <= 8000 * _takerFeeBps / BPS_MULTIPLIER && _takerFeeBps < BPS_MULTIPLIER,
+            Errors.MarketFeeError()
+        );
         require(_kuruAmmSpread % 10 == 0 && _kuruAmmSpread > 0 && _kuruAmmSpread < 500, Errors.InvalidSpread());
 
         orderBookType = _type;
@@ -404,7 +406,11 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         OrderBookType _type = orderBookType;
 
         if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin) {
-            require(msg.value == _pricePrecisionToQuoteAssetPrecision(_quoteSize), Errors.NativeAssetInsufficient());
+            require(
+                msg.value >= _pricePrecisionToQuoteAssetPrecision(_quoteSize)
+                    && msg.value < _pricePrecisionToQuoteAssetPrecision(_quoteSize + 1),
+                Errors.NativeAssetInsufficient()
+            );
         } else {
             require(msg.value == 0, Errors.NativeAssetNotRequired());
             _isMargin
@@ -450,7 +456,11 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     {
         OrderBookType _type = orderBookType;
         if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin) {
-            require(msg.value == _sizePrecisionToBaseAssetPrecision(_size), Errors.NativeAssetInsufficient());
+            require(
+                msg.value >= _sizePrecisionToBaseAssetPrecision(_size)
+                    && msg.value < _sizePrecisionToBaseAssetPrecision(_size + 1),
+                Errors.NativeAssetInsufficient()
+            );
         } else {
             require(msg.value == 0, Errors.NativeAssetNotRequired());
             _isMargin
@@ -571,8 +581,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         (bool _isVaultFill, uint256 _bestAsk) = bestAsk();
         uint256 _tokenCredit;
         bytes memory makerCredits;
-        while (_quoteSize > 0 && _bestAsk < (type(uint24).max * vaultPricePrecision / pricePrecision) && _bestAsk != 0)
-        {
+        while (_quoteSize > 0 && _bestAsk != 0) {
             //Calculate base size fillable by current unconsumed quote size for a particular price
             uint96 _sizeFillableAtPriceLeft =
                 uint96(_quoteSize * sizePrecision * vaultPricePrecision / (_bestAsk * pricePrecision));

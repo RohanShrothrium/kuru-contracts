@@ -47,10 +47,10 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
 
         Router routerImplementation = new Router();
         address routerProxy = Create2.deploy(
-                0,
-                bytes32(keccak256("")),
-                abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
-            );
+            0,
+            bytes32(keccak256("")),
+            abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
+        );
         router = Router(payable(routerProxy));
 
         marginAccount = new MarginAccount(address(router), address(router));
@@ -361,11 +361,11 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         uint24 _totalAmount = _amountA + _amountB;
 
         address _taker = genAddress();
-        usdc.mint(_taker, (_totalAmount * 10 ** usdc.decimals()) / PRICE_PRECISION);
+        usdc.mint(_taker, ((_totalAmount + 1) * 10 ** usdc.decimals()) / PRICE_PRECISION);
         uint256 _minOut = ((_sizeCreditA + _sizeCreditB - _toleranceInBase) * 10 ** ethDecimals / SIZE_PRECISION);
         vm.startPrank(_taker);
-        usdc.approve(address(orderBook), (_totalAmount * 10 ** decimals) / PRICE_PRECISION);
-        orderBook.placeAndExecuteMarketBuy(_totalAmount, 0, false, false);
+        usdc.approve(address(orderBook), ((_totalAmount + 1) * 10 ** decimals) / PRICE_PRECISION);
+        orderBook.placeAndExecuteMarketBuy((_totalAmount + 1), 0, false, false);
         vm.stopPrank();
 
         orderBook.collectFees();
