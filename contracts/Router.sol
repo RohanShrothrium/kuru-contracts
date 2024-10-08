@@ -218,8 +218,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      */
     function upgradeMultipleProxies(address[] memory proxies) public {
         for (uint256 i = 0; i < proxies.length; i++) {
-            (bool success,) = proxies[i].call(abi.encodeWithSelector(0x3659cfe6, orderBookImplementation));
-            require(success, "Router: Upgrade Failed");
+            UUPSUpgradeable(proxies[i]).upgradeToAndCall(orderBookImplementation, bytes(""));
         }
     }
 
