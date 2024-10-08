@@ -91,9 +91,15 @@ interface IOrderBook {
 
     function placeMultipleSellOrders(uint24[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
 
-    function placeAndExecuteMarketBuy(uint24 _quoteAmount, bool _isFillOrKill) external payable returns (uint256);
+    function placeAndExecuteMarketBuy(uint24 _quoteAmount, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
+        external
+        payable
+        returns (uint256);
 
-    function placeAndExecuteMarketSell(uint96 _size, bool _isFillOrKill) external payable returns (uint256);
+    function placeAndExecuteMarketSell(uint96 _size, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
+        external
+        payable
+        returns (uint256);
 
     function bestBidAsk() external view returns (uint256, uint256);
 
@@ -104,7 +110,7 @@ interface IOrderBook {
         view
         returns (uint24, uint96, address, uint256, address, uint256, uint24, uint96, uint96, uint256, uint256);
 
-    function getVaultParams() external view returns (address, uint256, uint96, uint256, uint96, uint96, uint96);
+    function getVaultParams() external view returns (address, uint256, uint96, uint256, uint96, uint96, uint96, uint96);
 
     function vaultAskOrderSize() external view returns (uint96);
 

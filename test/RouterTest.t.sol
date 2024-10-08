@@ -36,6 +36,7 @@ contract OrderBookTest is Test {
     uint256 SEED = 2;
     address lastGenAddress;
     uint96 SPREAD = 30;
+
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         mon = new MintableERC20("MON", "MON");

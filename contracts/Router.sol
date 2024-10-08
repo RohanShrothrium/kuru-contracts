@@ -280,6 +280,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                                 _marketParams.quoteAssetDecimals
                             )
                         ),
+                        0,
+                        false,
                         true
                     )
                 )
@@ -292,6 +294,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                         _marketParams.baseAssetDecimals,
                         _marketParams.quoteAssetDecimals
                     ),
+                    0,
+                    false,
                     true
                 );
 

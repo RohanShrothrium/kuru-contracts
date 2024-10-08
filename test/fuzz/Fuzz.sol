@@ -35,6 +35,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
     uint24 presetPrice;
     bool priceSet;
     uint96 SPREAD = 30;
+
     constructor() {
         MintableERC20 tokenA = new MintableERC20("A", "A");
         MintableERC20 tokenB = new MintableERC20("B", "B");
@@ -182,7 +183,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         vm.prank(clearOut);
         quote.approve(address(orderBook), tokensNeed);
         vm.prank(clearOut);
-        orderBook.placeAndExecuteMarketBuy(_quoteAmount, false);
+        orderBook.placeAndExecuteMarketBuy(_quoteAmount, 0, false, false);
         return true;
     }
 
@@ -193,7 +194,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         vm.prank(clearOut);
         base.approve(address(orderBook), baseNeed);
         vm.prank(clearOut);
-        orderBook.placeAndExecuteMarketSell(_size, false);
+        orderBook.placeAndExecuteMarketSell(_size, 0, false, false);
     }
 
     function echidna_testBaseBalance() public view returns (bool) {
