@@ -17,13 +17,13 @@ import {PropertiesAsserts} from "./Helper.sol";
 
 contract OrderBookTest is Test, PropertiesAsserts {
     uint96 constant SIZE_PRECISION = 10 ** 10;
-    uint24 constant PRICE_PRECISION = 10 ** 2;
-    uint24 _tickSize;
+    uint32 constant PRICE_PRECISION = 10 ** 2;
+    uint32 _tickSize;
     uint96 _minSize;
     uint96 _maxSize;
     uint96 _takerFeeBps;
     uint256 _makerFeeBps;
-    uint24 _maxPrice;
+    uint32 _maxPrice;
     uint256 vaultPricePrecision;
     OrderBook orderBook;
     KuruAMMVault vault;
@@ -39,12 +39,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
         uint96 _sizePrecision = 10 ** 10;
-        uint24 _pricePrecision = 10 ** 2;
+        uint32 _pricePrecision = 10 ** 2;
         vaultPricePrecision = 10 ** 18;
         _tickSize = _pricePrecision / 2;
         _minSize = 2 * 10 ** 8;
         _maxSize = 10 ** 12;
-        _maxPrice = type(uint24).max / 100;
+        _maxPrice = type(uint32).max / 100;
         _takerFeeBps = 0;
         _makerFeeBps = 0;
         OrderBook.OrderBookType _type;
@@ -88,8 +88,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         return derived;
     }
 
-    function _adjustPriceAndSize(uint24 _price, uint96 _size) internal returns (uint24, uint96) {
-        uint24 _newPrice = uint24(clampBetween(_price, _tickSize, _maxPrice));
+    function _adjustPriceAndSize(uint32 _price, uint96 _size) internal returns (uint32, uint96) {
+        uint32 _newPrice = uint32(clampBetween(_price, _tickSize, _maxPrice));
         uint96 _newSize = uint96(clampBetween(_size, _minSize + 1, _maxSize - 1));
         _newPrice = _newPrice - _newPrice % _tickSize;
 
@@ -102,8 +102,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         return (_price, _size);
     }
 
-    function _amountPayableInQuote(uint24 _price, uint96 _size) internal returns (uint256) {
-        return ((uint256(uint24((_price * _size) / SIZE_PRECISION)) * 10 ** usdc.decimals())) / PRICE_PRECISION;
+    function _amountPayableInQuote(uint32 _price, uint96 _size) internal returns (uint256) {
+        return ((uint256(uint32((_price * _size) / SIZE_PRECISION)) * 10 ** usdc.decimals())) / PRICE_PRECISION;
     }
 
     function _calculateFeePortions(uint256 _amount) internal returns (uint256, uint256) {
@@ -116,7 +116,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         return (0, 0);
     }
 
-    function _addBuyOrder(address _maker, uint24 _price, uint96 _size, uint24 extra, bool _postOnly)
+    function _addBuyOrder(address _maker, uint32 _price, uint96 _size, uint32 extra, bool _postOnly)
         internal
         returns (address)
     {
@@ -134,7 +134,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         return _maker;
     }
 
-    function _addSellOrder(address _maker, uint24 _price, uint96 _size, bool _postOnly) internal returns (address) {
+    function _addSellOrder(address _maker, uint32 _price, uint96 _size, bool _postOnly) internal returns (address) {
         if (_maker == address(0)) {
             _maker = genAddress();
         }
@@ -149,7 +149,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         return _maker;
     }
 
-    function testAddBuyOrderNoPostOnly(uint24 _price, uint96 _size) public {
+    function testAddBuyOrderNoPostOnly(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addBuyOrder(address(0), _price, _size, 0, false);
@@ -164,7 +164,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertEq(tail, 1);
     }
 
-    function testAddBuyOrderPostOnly(uint24 _price, uint96 _size) public {
+    function testAddBuyOrderPostOnly(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         //Executing dummy sell order with higher price first which should not be filled
         _addSellOrder(address(0), _price + _tickSize, _size, false);
@@ -180,7 +180,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertEq(tail, 2);
     }
 
-    function testAddBuyOrderRevertInsufficientBalance(uint24 _price, uint96 _size) public {
+    function testAddBuyOrderRevertInsufficientBalance(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = genAddress();
@@ -194,8 +194,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testAddBuyOrderRevertPostOnly(uint24 _price, uint96 _size) public {
-        _price = uint24(clampBetween(_price, _tickSize, _maxPrice));
+    function testAddBuyOrderRevertPostOnly(uint32 _price, uint96 _size) public {
+        _price = uint32(clampBetween(_price, _tickSize, _maxPrice));
         _price = _price - _price % _tickSize;
         _size = uint96(clampBetween(_size, _minSize + 2, _maxSize - 2));
 
@@ -213,7 +213,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testAddBuyOrderRevertLessBalance(uint24 _price, uint96 _size) public {
+    function testAddBuyOrderRevertLessBalance(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = genAddress();
@@ -228,7 +228,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testAddSellOrderNoPostOnly(uint24 _price, uint96 _size) public {
+    function testAddSellOrderNoPostOnly(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
@@ -238,7 +238,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertEq(marginAccount.getBalance(_maker, address(eth)), 0);
     }
 
-    function testAddSellOrderPostOnly(uint24 _price, uint96 _size) public {
+    function testAddSellOrderPostOnly(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         //Executing dummy buy order at _price which should not get filled, as sell order will be at _price + _tickSize
         _addBuyOrder(address(0), _price, _size, 0, false);
@@ -254,7 +254,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertEq(tail, 2);
     }
 
-    function testAddSellOrderRevertPostOnly(uint24 _price, uint96 _size) public {
+    function testAddSellOrderRevertPostOnly(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         //Executing dummy buy order at same price
         _addBuyOrder(address(0), _price, _size, 0, false);
@@ -270,13 +270,13 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testBuyAndSellEqualMatch(uint24 _price, uint96 _size) public {
+    function testBuyAndSellEqualMatch(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addBuyOrder(address(0), _price, _size, 0, false);
         address _taker = _addSellOrder(address(0), _price, _size, false);
         uint256 _usdcWithoutFee =
-            uint256((uint24((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
+            uint256((uint32((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
         uint256 _usdcFee = FixedPointMathLib.mulDivUp(_usdcWithoutFee, _takerFeeBps, 10 ** 4);
         uint256 _usdcAfterFee = _usdcWithoutFee - _usdcFee;
         (uint256 _usdcProtocolFee, uint256 _usdcRebate) = _calculateFeePortions(_usdcWithoutFee);
@@ -294,12 +294,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
         console.log("Wasted: ", _usdcWasted);
     }
 
-    function testSellAndBuyEqualMatch(uint24 _price, uint96 _size) public {
+    function testSellAndBuyEqualMatch(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
         address _taker = _addBuyOrder(address(0), _price, _size, 1, false);
-        uint256 _usdc = uint256(uint24((_price * _size) / SIZE_PRECISION)) * 10 ** usdc.decimals() / PRICE_PRECISION;
+        uint256 _usdc = uint256(uint32((_price * _size) / SIZE_PRECISION)) * 10 ** usdc.decimals() / PRICE_PRECISION;
         uint256 _ethWithoutFee = (_size) * 10 ** eth.decimals() / SIZE_PRECISION;
         uint256 _ethFee = FixedPointMathLib.mulDivUp(_ethWithoutFee, _takerFeeBps, 10 ** 4);
         (uint256 _ethProtocolFee, uint256 _ethRebate) = _calculateFeePortions(_ethWithoutFee);
@@ -311,7 +311,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertEq(marginAccount.getBalance(address(router), address(eth)), _ethProtocolFee);
     }
 
-    function testCancelBuyOrder(uint24 _price, uint96 _size) public {
+    function testCancelBuyOrder(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addBuyOrder(address(0), _price, _size, 0, false);
@@ -321,14 +321,14 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         orderBook.batchCancelOrders(_cancelId);
         vm.stopPrank();
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
+        uint256 _amount = (uint256(uint32((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
         assertEq(marginAccount.getBalance(_maker, address(usdc)), _amount);
         vm.prank(_maker);
         marginAccount.withdraw(_amount, address(usdc));
         assertEq(usdc.balanceOf(_maker), _amount);
     }
 
-    function testCancelSellOrder(uint24 _price, uint96 _size) public {
+    function testCancelSellOrder(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
@@ -345,7 +345,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertEq(eth.balanceOf(_maker), _amount);
     }
 
-    function testMarketBuy(uint24 _priceA, uint96 _sizeA, uint24 _priceB, uint96 _sizeB) public {
+    function testMarketBuy(uint32 _priceA, uint96 _sizeA, uint32 _priceB, uint96 _sizeB) public {
         uint256 decimals = usdc.decimals();
 
         //Claming price and size of our two sell orders
@@ -356,8 +356,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         address _makerB = _addSellOrder(address(0), _priceB, _sizeB, false);
 
         //Expected quote tokens to be supplied for filling each sell order
-        uint24 _amountA = mulDivUp(_priceA, _sizeA);
-        uint24 _amountB = mulDivUp(_priceB, _sizeB);
+        uint32 _amountA = mulDivUp(_priceA, _sizeA);
+        uint32 _amountB = mulDivUp(_priceB, _sizeB);
 
         //Expected size credited for market order from each sell order
         uint96 _sizeCreditAFee = uint96(FixedPointMathLib.mulDivUp(_sizeA, _takerFeeBps, 10 ** 4));
@@ -376,7 +376,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         //Maximum tolerance in credited quote tokens (1 price precision)
         uint256 _toleranceInQuote = 10 ** decimals / PRICE_PRECISION;
 
-        uint24 _totalAmount = _amountA + _amountB;
+        uint32 _totalAmount = _amountA + _amountB;
 
         address _taker = genAddress();
         usdc.mint(_taker, (_totalAmount * 10 ** usdc.decimals()) / PRICE_PRECISION);
@@ -407,7 +407,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertApproxEqAbs(marginAccount.getBalance(address(router), address(eth)), _protocolFee, 10 ** 18);
     }
 
-    function testMarketBuyMargin(uint24 _priceA, uint96 _sizeA, uint24 _priceB, uint96 _sizeB) public {
+    function testMarketBuyMargin(uint32 _priceA, uint96 _sizeA, uint32 _priceB, uint96 _sizeB) public {
         uint256 decimals = usdc.decimals();
 
         //Claming price and size of our two sell orders
@@ -418,8 +418,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         address _makerB = _addSellOrder(address(0), _priceB, _sizeB, false);
 
         //Expected quote tokens to be supplied for filling each sell order
-        uint24 _amountA = mulDivUp(_priceA, _sizeA);
-        uint24 _amountB = mulDivUp(_priceB, _sizeB);
+        uint32 _amountA = mulDivUp(_priceA, _sizeA);
+        uint32 _amountB = mulDivUp(_priceB, _sizeB);
 
         //Expected size credited for market order from each sell order
         uint96 _sizeCreditAFee = uint96(FixedPointMathLib.mulDivUp(_sizeA, _takerFeeBps, 10 ** 4));
@@ -438,7 +438,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         //Maximum tolerance in credited quote tokens (1 price precision)
         uint256 _toleranceInQuote = 10 ** decimals / PRICE_PRECISION;
 
-        uint24 _totalAmount = _amountA + _amountB;
+        uint32 _totalAmount = _amountA + _amountB;
 
         address _taker = genAddress();
         usdc.mint(_taker, (_totalAmount * 10 ** usdc.decimals()) / PRICE_PRECISION);
@@ -470,13 +470,13 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertApproxEqAbs(marginAccount.getBalance(address(router), address(eth)), _protocolFee, 10 ** 18);
     }
 
-    function testMarketBuyPartialFill(uint24 _price, uint96 _size) public {
+    function testMarketBuyPartialFill(uint32 _price, uint96 _size) public {
         uint256 _decimals = usdc.decimals(); //caching to avoid startPrank glitch
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
-        uint24 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
-        uint24 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
+        uint32 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
+        uint32 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
         uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
         uint96 _creditSize = _size - uint96(FixedPointMathLib.mulDivUp(_size, _takerFeeBps, 10 ** 4));
 
@@ -510,13 +510,13 @@ contract OrderBookTest is Test, PropertiesAsserts {
         console.log("Market Buy Partial Fill Eth wasted: ", _ethWasted);
     }
 
-    function testMarketBuyRevertFillOrKill(uint24 _price, uint96 _size) public {
+    function testMarketBuyRevertFillOrKill(uint32 _price, uint96 _size) public {
         uint256 _decimals = usdc.decimals(); //caching to avoid startPrank glitch
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
-        uint24 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
-        uint24 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
+        uint32 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
+        uint32 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
         uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
 
         address _taker = genAddress();
@@ -528,13 +528,13 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testMarketBuyInsufficientAllowance(uint24 _price, uint96 _size) public {
+    function testMarketBuyInsufficientAllowance(uint32 _price, uint96 _size) public {
         uint256 _decimals = usdc.decimals(); //caching to avoid startPrank glitch
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
-        uint24 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
-        uint24 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
+        uint32 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
+        uint32 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
         uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
 
         address _taker = genAddress();
@@ -545,7 +545,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testMarketSell(uint24 _priceA, uint96 _sizeA, uint24 _priceB, uint96 _sizeB) public {
+    function testMarketSell(uint32 _priceA, uint96 _sizeA, uint32 _priceB, uint96 _sizeB) public {
         uint256 _decimals = eth.decimals();
         (_priceA, _sizeA) = _adjustPriceAndSize(_priceA, _sizeA);
         (_priceB, _sizeB) = _adjustPriceAndSize(_priceB, _sizeB);
@@ -590,7 +590,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertGte(marginAccount.getBalance(address(router), address(usdc)), _protocolFee, "Fee collection failed");
     }
 
-    function testMarketSellMargin(uint24 _priceA, uint96 _sizeA, uint24 _priceB, uint96 _sizeB) public {
+    function testMarketSellMargin(uint32 _priceA, uint96 _sizeA, uint32 _priceB, uint96 _sizeB) public {
         uint256 _decimals = eth.decimals();
         (_priceA, _sizeA) = _adjustPriceAndSize(_priceA, _sizeA);
         (_priceB, _sizeB) = _adjustPriceAndSize(_priceB, _sizeB);
@@ -636,7 +636,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertGte(marginAccount.getBalance(address(router), address(usdc)), _protocolFee, "Fee collection failed");
     }
 
-    function testMarketSellPartialFill(uint24 _price, uint96 _size) public {
+    function testMarketSellPartialFill(uint32 _price, uint96 _size) public {
         uint256 _decimals = eth.decimals();
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
@@ -669,7 +669,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertGte(marginAccount.getBalance(address(router), address(usdc)), _protocolFee, "Fee collection failed");
     }
 
-    function testMarketSellRevertFillOrKill(uint24 _price, uint96 _size) public {
+    function testMarketSellRevertFillOrKill(uint32 _price, uint96 _size) public {
         uint256 _decimals = eth.decimals();
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
@@ -688,7 +688,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testMarketSellInsufficientAllowance(uint24 _price, uint96 _size) public {
+    function testMarketSellInsufficientAllowance(uint32 _price, uint96 _size) public {
         uint256 _decimals = eth.decimals();
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
@@ -706,7 +706,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testCancelOrder(uint24 _price, uint96 _size, bool _isBuy) public {
+    function testCancelOrder(uint32 _price, uint96 _size, bool _isBuy) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         if (_isBuy) {
@@ -717,7 +717,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             orderBook.batchCancelOrders(_orders);
             vm.stopPrank();
             uint256 _quoteBalance =
-                (uint256(uint24((_price * _size) / SIZE_PRECISION)) * 10 ** usdc.decimals()) / PRICE_PRECISION;
+                (uint256(uint32((_price * _size) / SIZE_PRECISION)) * 10 ** usdc.decimals()) / PRICE_PRECISION;
             assertEq(marginAccount.getBalance(_maker, address(usdc)), _quoteBalance);
         } else {
             address _maker = _addSellOrder(address(0), _price, _size, false);
@@ -730,12 +730,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
         }
     }
 
-    function testAddBuyOrderMinSizeError(uint24 _price, uint96 _size) public {
+    function testAddBuyOrderMinSizeError(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         _size = _minSize - 1;
 
         address _maker = genAddress();
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
+        uint256 _amount = (uint256(uint32((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
         usdc.mint(_maker, _amount);
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
@@ -745,12 +745,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testAddBuyOrderMaxSizeError(uint24 _price, uint96 _size) public {
+    function testAddBuyOrderMaxSizeError(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         _size = _maxSize + 1;
 
         address _maker = genAddress();
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
+        uint256 _amount = (uint256(uint32((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
         usdc.mint(_maker, _amount);
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
@@ -760,12 +760,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testAddBuyOrderTickSizeError(uint24 _price, uint96 _size) public {
+    function testAddBuyOrderTickSizeError(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         _price -= 1; //wrong tick size
 
         address _maker = genAddress();
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
+        uint256 _amount = (uint256(uint32((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
         usdc.mint(_maker, _amount);
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
@@ -775,12 +775,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testAddBuyOrderZeroPriceError(uint24 _price, uint96 _size) public {
+    function testAddBuyOrderZeroPriceError(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         _price = 0;
 
         address _maker = genAddress();
-        uint256 _amount = (uint256(uint24((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
+        uint256 _amount = (uint256(uint32((_price * _size) / SIZE_PRECISION))) * 10 ** usdc.decimals() / PRICE_PRECISION;
         usdc.mint(_maker, _amount);
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
@@ -790,7 +790,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testSellOrderMinSizeError(uint24 _price, uint96 _size) public {
+    function testSellOrderMinSizeError(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         _size = _minSize - 1;
 
@@ -806,7 +806,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testSellOrderMaxSizeError(uint24 _price, uint96 _size) public {
+    function testSellOrderMaxSizeError(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         _size = _maxSize + 1;
 
@@ -822,7 +822,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testAddSellOrderTickSizeError(uint24 _price, uint96 _size) public {
+    function testAddSellOrderTickSizeError(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         _price -= 1; //wrong tick size
 
@@ -838,7 +838,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testAddSellOrderZeroPriceError(uint24 _price, uint96 _size) public {
+    function testAddSellOrderZeroPriceError(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         _price = 0;
 
@@ -854,7 +854,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testKuruVaultInitLiquidityAddition(uint24 _price, uint96 _size) public {
+    function testKuruVaultInitLiquidityAddition(uint32 _price, uint96 _size) public {
         //TODO: VAULT MAY NOT HAVE ADJUSTED PRICE. TRY NOT CONFORMING TO TICK SIZE
         (_price, _size) = _adjustPriceAndSize(_price, _size);
         address _maker = genAddress();
@@ -871,10 +871,10 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testKuruVaultMarketSell(uint24 _price, uint96 _size) public {
+    function testKuruVaultMarketSell(uint32 _price, uint96 _size) public {
         //TODO: VAULT MAY NOT HAVE ADJUSTED PRICE. TRY NOT CONFORMING TO TICK SIZE
         (_price, _size) = _adjustPriceAndSize(_price, _size);
-        _price = uint24(clampBetween(_price, 10000, _maxPrice));
+        _price = uint32(clampBetween(_price, 10000, _maxPrice));
         _size *= 10;
         address _maker = genAddress();
         uint256 _amountBase = (_size * 10 ** eth.decimals()) / SIZE_PRECISION;
@@ -901,10 +901,10 @@ contract OrderBookTest is Test, PropertiesAsserts {
         console.log(_askPrice * PRICE_PRECISION / 10 ** 18);
     }
 
-    function testKuruVaultMarketBuy(uint24 _price, uint96 _size) public {
+    function testKuruVaultMarketBuy(uint32 _price, uint96 _size) public {
         //TODO: VAULT MAY NOT HAVE ADJUSTED PRICE. TRY NOT CONFORMING TO TICK SIZE
         (_price, _size) = _adjustPriceAndSize(_price, _size);
-        _price = uint24(clampBetween(_price, 10000, _maxPrice));
+        _price = uint32(clampBetween(_price, 10000, _maxPrice));
         _size *= 10;
         address _maker = genAddress();
         uint256 _amountBase = (_size * 10 ** eth.decimals()) / SIZE_PRECISION;
@@ -920,7 +920,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         usdc.mint(_taker, _amountQuote);
         vm.startPrank(_taker);
         usdc.approve(address(orderBook), _amountQuote);
-        orderBook.placeAndExecuteMarketBuy(uint24(((_amountQuote / 10) * PRICE_PRECISION) / 10 ** 18), 0, false, false);
+        orderBook.placeAndExecuteMarketBuy(uint32(((_amountQuote / 10) * PRICE_PRECISION) / 10 ** 18), 0, false, false);
         vm.stopPrank();
         uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
         console.log("Vault ETH:", _vaultEthBalance);
@@ -1017,7 +1017,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         usdc.mint(_fullAskTaker, _quoteForFillingAsk);
         vm.startPrank(_fullAskTaker);
         usdc.approve(address(orderBook), _quoteForFillingAsk);
-        orderBook.placeAndExecuteMarketBuy(uint24((_quoteForFillingAsk * PRICE_PRECISION) / 10 ** 18), 0, false, true);
+        orderBook.placeAndExecuteMarketBuy(uint32((_quoteForFillingAsk * PRICE_PRECISION) / 10 ** 18), 0, false, true);
         (,,, uint256 _vaultBestAskNew,, uint96 _vaultBidOrderSizeNew, uint96 _vaultAskOrderSizeNew,) =
             orderBook.getVaultParams();
         console.log(_vaultBestAskNew * 1000 / _vaultBestAsk);
@@ -1102,11 +1102,11 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function mulDivUp(uint24 _price, uint96 _size) internal returns (uint24) {
+    function mulDivUp(uint32 _price, uint96 _size) internal returns (uint32) {
         uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, SIZE_PRECISION);
-        if (_result >= type(uint24).max) {
+        if (_result >= type(uint32).max) {
             revert("OrderBook: Too much size being filled");
         }
-        return uint24(_result);
+        return uint32(_result);
     }
 }

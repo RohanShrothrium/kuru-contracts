@@ -131,7 +131,7 @@ abstract contract AbstractAMM is IOrderBook {
         }
     }
 
-    function _getPricePrecision() internal view virtual returns (uint24);
+    function _getPricePrecision() internal view virtual returns (uint32);
 
     function _getSizePrecision() internal view virtual returns (uint96);
 

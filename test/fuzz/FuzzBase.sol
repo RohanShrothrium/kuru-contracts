@@ -28,7 +28,7 @@ abstract contract FuzzBase {
     MintableERC20 base;
     MintableERC20 quote;
     uint96 constant SIZE_PRECISION = 10 ** 10;
-    uint24 constant PRICE_PRECISION = 10 ** 2;
+    uint32 constant PRICE_PRECISION = 10 ** 2;
 
     function genAddress() internal returns (address) {
         uint256 _seed = SEED;

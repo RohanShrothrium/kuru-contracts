@@ -39,9 +39,9 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         address quoteAsset,
         address market,
         address vaultAddress,
-        uint24 pricePrecision,
+        uint32 pricePrecision,
         uint96 sizePrecision,
-        uint24 tickSize,
+        uint32 tickSize,
         uint96 minSize,
         uint96 maxSize,
         uint256 takerFeeBps,
@@ -79,8 +79,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         address _baseAssetAddress,
         address _quoteAssetAddress,
         uint96 _sizePrecision,
-        uint24 _pricePrecision,
-        uint24 _tickSize,
+        uint32 _pricePrecision,
+        uint32 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
@@ -172,8 +172,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         address _baseAssetAddress,
         address _quoteAssetAddress,
         uint96 _sizePrecision,
-        uint24 _pricePrecision,
-        uint24 _tickSize,
+        uint32 _pricePrecision,
+        uint32 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
@@ -270,7 +270,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _amountOut = _isBuy[i]
                 ? (
                     market.placeAndExecuteMarketBuy{value: _value}(
-                        uint24(
+                        uint32(
                             _amountToSize(
                                 _amount,
                                 true,
@@ -327,13 +327,13 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     function _amountToSize(
         uint256 _amount,
         bool _isBuy,
-        uint24 pricePrecision,
+        uint32 pricePrecision,
         uint96 sizePrecision,
         uint256 baseAssetDecimals,
         uint256 quoteAssetDecimals
     ) internal pure returns (uint96) {
         return _isBuy
-            ? uint24((_amount * pricePrecision) / 10 ** quoteAssetDecimals)
+            ? uint32((_amount * pricePrecision) / 10 ** quoteAssetDecimals)
             : uint96((_amount * sizePrecision) / 10 ** baseAssetDecimals);
     }
 
@@ -341,8 +341,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         address _baseAssetAddress,
         address _quoteAssetAddress,
         uint96 _sizePrecision,
-        uint24 _pricePrecision,
-        uint24 _tickSize,
+        uint32 _pricePrecision,
+        uint32 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,

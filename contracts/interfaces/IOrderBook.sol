@@ -14,7 +14,7 @@ interface IOrderBook {
         uint96 size;
         uint40 prev;
         uint40 next;
-        uint24 price;
+        uint32 price;
         bool isBuy;
     }
 
@@ -26,7 +26,7 @@ interface IOrderBook {
      * @param size Size of the order in the specified precision.
      * @param isBuy Boolean indicating if the order is a buy (true) or sell (false) order.
      */
-    event OrderCreated(uint40 orderId, address owner, uint96 size, uint24 price, bool isBuy);
+    event OrderCreated(uint40 orderId, address owner, uint96 size, uint32 price, bool isBuy);
 
     /**
      * @dev Emitted when one or more orders are completed or canceled.
@@ -62,8 +62,8 @@ interface IOrderBook {
         uint256 _quoteAssetDecimals,
         address _marginAccountAddress,
         uint96 _sizePrecision,
-        uint24 _pricePrecision,
-        uint24 _tickSize,
+        uint32 _pricePrecision,
+        uint32 _tickSize,
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
@@ -72,26 +72,26 @@ interface IOrderBook {
         uint96 _kuruAmmSpread
     ) external;
 
-    function addBuyOrder(uint24 _price, uint96 size, bool _postOnly) external;
+    function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) external;
 
-    function addSellOrder(uint24 _price, uint96 size, bool _postOnly) external;
+    function addSellOrder(uint32 _price, uint96 size, bool _postOnly) external;
 
     function batchCancelOrders(uint40[] calldata _orderIds) external;
 
     function batchUpdate(
-        uint24[] calldata buyPrices,
+        uint32[] calldata buyPrices,
         uint96[] calldata buySizes,
-        uint24[] calldata sellPrices,
+        uint32[] calldata sellPrices,
         uint96[] calldata sellSizes,
         uint40[] calldata orderIdsToCancel,
         bool postOnly
     ) external;
 
-    function placeMultipleBuyOrders(uint24[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
+    function placeMultipleBuyOrders(uint32[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
 
-    function placeMultipleSellOrders(uint24[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
+    function placeMultipleSellOrders(uint32[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
 
-    function placeAndExecuteMarketBuy(uint24 _quoteAmount, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
+    function placeAndExecuteMarketBuy(uint32 _quoteAmount, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         external
         payable
         returns (uint256);
@@ -108,7 +108,7 @@ interface IOrderBook {
     function getMarketParams()
         external
         view
-        returns (uint24, uint96, address, uint256, address, uint256, uint24, uint96, uint96, uint256, uint256);
+        returns (uint32, uint96, address, uint256, address, uint256, uint32, uint96, uint96, uint256, uint256);
 
     function getVaultParams() external view returns (address, uint256, uint96, uint256, uint96, uint96, uint96, uint96);
 

@@ -6,16 +6,16 @@ import {BitMath} from "./BitMath.sol";
 
 /**
  * @title Liquidity Book Tree Math Library
- * @author Trader Joe
- * @notice This library contains functions to interact with a tree of TreeUint24.
+ * @notice This library contains functions to interact with a tree of TreeUint32.
  */
 library TreeMath {
     using BitMath for uint256;
 
-    struct TreeUint24 {
+    struct TreeUint32 {
         bytes32 level0;
         mapping(bytes32 => bytes32) level1;
         mapping(bytes32 => bytes32) level2;
+        mapping(bytes32 => bytes32) level3;
     }
 
     /**
@@ -24,10 +24,10 @@ library TreeMath {
      * @param id The id
      * @return True if the tree contains the id
      */
-    function contains(TreeUint24 storage tree, uint24 id) internal view returns (bool) {
-        bytes32 leaf2 = bytes32(uint256(id) >> 8);
+    function contains(TreeUint32 storage tree, uint32 id) internal view returns (bool) {
+        bytes32 key3 = bytes32(uint256(id) >> 8);
 
-        return tree.level2[leaf2] & bytes32(1 << (id & type(uint8).max)) != 0;
+        return tree.level3[key3] & bytes32(1 << (id & type(uint8).max)) != 0;
     }
 
     /**
@@ -37,22 +37,31 @@ library TreeMath {
      * @param id The id
      * @return True if the id was not already in the tree
      */
-    function add(TreeUint24 storage tree, uint24 id) internal returns (bool) {
-        bytes32 key2 = bytes32(uint256(id) >> 8);
+    function add(TreeUint32 storage tree, uint32 id) internal returns (bool) {
+        bytes32 key3 = bytes32(uint256(id) >> 8);
 
-        bytes32 leaves = tree.level2[key2];
+        bytes32 leaves = tree.level3[key3];
         bytes32 newLeaves = leaves | bytes32(1 << (id & type(uint8).max));
 
         if (leaves != newLeaves) {
-            tree.level2[key2] = newLeaves;
+            tree.level3[key3] = newLeaves;
 
             if (leaves == 0) {
-                bytes32 key1 = key2 >> 8;
-                leaves = tree.level1[key1];
+                bytes32 key2 = key3 >> 8;
+                leaves = tree.level2[key2];
 
-                tree.level1[key1] = leaves | bytes32(1 << (uint256(key2) & type(uint8).max));
+                tree.level2[key2] = leaves | bytes32(1 << (uint256(key3) & type(uint8).max));
 
-                if (leaves == 0) tree.level0 |= bytes32(1 << (uint256(key1) & type(uint8).max));
+                if (leaves == 0) {
+                    bytes32 key1 = key2 >> 8;
+                    leaves = tree.level1[key1];
+
+                    tree.level1[key1] = leaves | bytes32(1 << (uint256(key2) & type(uint8).max));
+
+                    if (leaves == 0) {
+                        tree.level0 |= bytes32(1 << (uint256(key1) & type(uint8).max));
+                    }
+                }
             }
 
             return true;
@@ -68,22 +77,31 @@ library TreeMath {
      * @param id The id
      * @return True if the id was in the tree
      */
-    function remove(TreeUint24 storage tree, uint24 id) internal returns (bool) {
-        bytes32 key2 = bytes32(uint256(id) >> 8);
+    function remove(TreeUint32 storage tree, uint32 id) internal returns (bool) {
+        bytes32 key3 = bytes32(uint256(id) >> 8);
 
-        bytes32 leaves = tree.level2[key2];
+        bytes32 leaves = tree.level3[key3];
         bytes32 newLeaves = leaves & ~bytes32(1 << (id & type(uint8).max));
 
         if (leaves != newLeaves) {
-            tree.level2[key2] = newLeaves;
+            tree.level3[key3] = newLeaves;
 
             if (newLeaves == 0) {
-                bytes32 key1 = key2 >> 8;
-                newLeaves = tree.level1[key1] & ~bytes32(1 << (uint256(key2) & type(uint8).max));
+                bytes32 key2 = key3 >> 8;
+                newLeaves = tree.level2[key2] & ~bytes32(1 << (uint256(key3) & type(uint8).max));
 
-                tree.level1[key1] = newLeaves;
+                tree.level2[key2] = newLeaves;
 
-                if (newLeaves == 0) tree.level0 &= ~bytes32(1 << (uint256(key1) & type(uint8).max));
+                if (newLeaves == 0) {
+                    bytes32 key1 = key2 >> 8;
+                    newLeaves = tree.level1[key1] & ~bytes32(1 << (uint256(key2) & type(uint8).max));
+
+                    tree.level1[key1] = newLeaves;
+
+                    if (newLeaves == 0) {
+                        tree.level0 &= ~bytes32(1 << (uint256(key1) & type(uint8).max));
+                    }
+                }
             }
 
             return true;
@@ -94,22 +112,37 @@ library TreeMath {
 
     /**
      * @dev Returns the first id in the tree that is lower than or equal to the given id.
-     * It will return type(uint24).max if there is no such id.
+     * It will return type(uint32).max if there is no such id.
      * @param tree The tree
      * @param id The id
      * @return The first id in the tree that is lower than or equal to the given id
      */
-    function findFirstRight(TreeUint24 storage tree, uint24 id) internal view returns (uint24) {
+    function findFirstRight(TreeUint32 storage tree, uint32 id) internal view returns (uint32) {
         bytes32 leaves;
 
-        bytes32 key2 = bytes32(uint256(id) >> 8);
+        bytes32 key3 = bytes32(uint256(id) >> 8);
         uint8 bit = uint8(id & type(uint8).max);
+
+        if (bit != 0) {
+            leaves = tree.level3[key3];
+            uint256 closestBit = _closestBitRight(leaves, bit);
+
+            if (closestBit != type(uint256).max) return uint32((uint256(key3) << 8) | closestBit);
+        }
+
+        bytes32 key2 = key3 >> 8;
+        bit = uint8(uint256(key3) & type(uint8).max);
 
         if (bit != 0) {
             leaves = tree.level2[key2];
             uint256 closestBit = _closestBitRight(leaves, bit);
 
-            if (closestBit != type(uint256).max) return uint24(uint256(key2) << 8 | closestBit);
+            if (closestBit != type(uint256).max) {
+                key3 = bytes32((uint256(key2) << 8) | closestBit);
+                leaves = tree.level3[key3];
+
+                return uint32((uint256(key3) << 8) | uint256(leaves).mostSignificantBit());
+            }
         }
 
         bytes32 key1 = key2 >> 8;
@@ -120,10 +153,13 @@ library TreeMath {
             uint256 closestBit = _closestBitRight(leaves, bit);
 
             if (closestBit != type(uint256).max) {
-                key2 = bytes32(uint256(key1) << 8 | closestBit);
+                key2 = bytes32((uint256(key1) << 8) | closestBit);
                 leaves = tree.level2[key2];
 
-                return uint24(uint256(key2) << 8 | uint256(leaves).mostSignificantBit());
+                key3 = bytes32((uint256(key2) << 8) | uint256(leaves).mostSignificantBit());
+                leaves = tree.level3[key3];
+
+                return uint32((uint256(key3) << 8) | uint256(leaves).mostSignificantBit());
             }
         }
 
@@ -137,14 +173,17 @@ library TreeMath {
                 key1 = bytes32(closestBit);
                 leaves = tree.level1[key1];
 
-                key2 = bytes32(uint256(key1) << 8 | uint256(leaves).mostSignificantBit());
+                key2 = bytes32((uint256(key1) << 8) | uint256(leaves).mostSignificantBit());
                 leaves = tree.level2[key2];
 
-                return uint24(uint256(key2) << 8 | uint256(leaves).mostSignificantBit());
+                key3 = bytes32((uint256(key2) << 8) | uint256(leaves).mostSignificantBit());
+                leaves = tree.level3[key3];
+
+                return uint32((uint256(key3) << 8) | uint256(leaves).mostSignificantBit());
             }
         }
 
-        return type(uint24).max;
+        return type(uint32).max;
     }
 
     /**
@@ -154,17 +193,32 @@ library TreeMath {
      * @param id The id
      * @return The first id in the tree that is higher than or equal to the given id
      */
-    function findFirstLeft(TreeUint24 storage tree, uint24 id) internal view returns (uint24) {
+    function findFirstLeft(TreeUint32 storage tree, uint32 id) internal view returns (uint32) {
         bytes32 leaves;
 
-        bytes32 key2 = bytes32(uint256(id) >> 8);
+        bytes32 key3 = bytes32(uint256(id) >> 8);
         uint8 bit = uint8(id & type(uint8).max);
+
+        if (bit != type(uint8).max) {
+            leaves = tree.level3[key3];
+            uint256 closestBit = _closestBitLeft(leaves, bit);
+
+            if (closestBit != type(uint256).max) return uint32((uint256(key3) << 8) | closestBit);
+        }
+
+        bytes32 key2 = key3 >> 8;
+        bit = uint8(uint256(key3) & type(uint8).max);
 
         if (bit != type(uint8).max) {
             leaves = tree.level2[key2];
             uint256 closestBit = _closestBitLeft(leaves, bit);
 
-            if (closestBit != type(uint256).max) return uint24(uint256(key2) << 8 | closestBit);
+            if (closestBit != type(uint256).max) {
+                key3 = bytes32((uint256(key2) << 8) | closestBit);
+                leaves = tree.level3[key3];
+
+                return uint32((uint256(key3) << 8) | uint256(leaves).leastSignificantBit());
+            }
         }
 
         bytes32 key1 = key2 >> 8;
@@ -175,10 +229,13 @@ library TreeMath {
             uint256 closestBit = _closestBitLeft(leaves, bit);
 
             if (closestBit != type(uint256).max) {
-                key2 = bytes32(uint256(key1) << 8 | closestBit);
+                key2 = bytes32((uint256(key1) << 8) | closestBit);
                 leaves = tree.level2[key2];
 
-                return uint24(uint256(key2) << 8 | uint256(leaves).leastSignificantBit());
+                key3 = bytes32((uint256(key2) << 8) | uint256(leaves).leastSignificantBit());
+                leaves = tree.level3[key3];
+
+                return uint32((uint256(key3) << 8) | uint256(leaves).leastSignificantBit());
             }
         }
 
@@ -192,10 +249,13 @@ library TreeMath {
                 key1 = bytes32(closestBit);
                 leaves = tree.level1[key1];
 
-                key2 = bytes32(uint256(key1) << 8 | uint256(leaves).leastSignificantBit());
+                key2 = bytes32((uint256(key1) << 8) | uint256(leaves).leastSignificantBit());
                 leaves = tree.level2[key2];
 
-                return uint24(uint256(key2) << 8 | uint256(leaves).leastSignificantBit());
+                key3 = bytes32((uint256(key2) << 8) | uint256(leaves).leastSignificantBit());
+                leaves = tree.level3[key3];
+
+                return uint32((uint256(key3) << 8) | uint256(leaves).leastSignificantBit());
             }
         }
 
