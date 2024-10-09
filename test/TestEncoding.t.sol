@@ -21,7 +21,7 @@ contract EncodingTest is Test {
         console.log(isMargin[1]);
     }
 
-    function decode(bytes calldata encoded, uint24 numItems)
+    function decode(bytes calldata encoded, uint32 numItems)
         external
         pure
         returns (address[] memory, address[] memory, uint256[] memory, bool[] memory)
