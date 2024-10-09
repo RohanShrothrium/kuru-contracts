@@ -20,6 +20,21 @@ import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     OrderBookType orderBookType;
 
+    struct AggressiveBuyVars {
+        uint96 sizeToCreditTaker;
+        uint96 sizeToCreditViaVault;
+        uint32 fundsConsumed;
+        bytes makerCredits;
+    }
+
+    struct MarketBuyMatchVars {
+        uint96 sizeToCreditTaker;
+        uint96 sizeToCreditViaVault;
+        uint256 tokenCredit;
+        bytes makerCredits;
+    }
+
+
     using SafeTransferLib for address;
 
     mapping(uint40 => Order) public s_orders;
@@ -551,7 +566,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 uint32(FixedPointMathLib.mulDivUp(_bestAsk, pricePrecision, vaultPricePrecision)),
                 sizeFilled
             );
-            makerCredits = bytes.concat(makerCredits, priceUpdate);
+            vars.makerCredits = bytes.concat(vars.makerCredits, priceUpdate);
 
             (_isVaultFill, _bestAsk) = bestAsk();
         }
@@ -571,11 +586,11 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 baseFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
             }
             marginAccount.creditUsersEncoded(
-                bytes.concat(makerCredits, abi.encode(msg.sender, baseAsset, _tokenCredit, true))
+                bytes.concat(vars.makerCredits, abi.encode(msg.sender, baseAsset, _tokenCredit, true))
             );
         }
 
-        return (_sizeToBeFilled, fundsConsumed);
+        return (_sizeToBeFilled, vars.fundsConsumed);
     }
 
 
@@ -619,7 +634,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
             // Calculate current quote size left with size that can be filled at current price point
             _quoteSize = uint32(
                 FixedPointMathLib.mulDiv(
-                    _bestAsk * pricePrecision, _sizeFillableAtPriceLeft, sizePrecision * vaultPricePrecision
+                    _bestAsk * _pricePrecision, _sizeFillableAtPriceLeft, _sizePrecision * _vaultPricePrecision
                 )
             );
 
