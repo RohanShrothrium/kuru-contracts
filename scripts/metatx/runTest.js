@@ -46,7 +46,6 @@ async function main() {
       { name: "from", type: "address" },
       { name: "market", type: "address" },
       { name: "value", type: "uint256" },
-      { name: "gas", type: "uint256" },
       { name: "nonce", type: "uint256" },
       { name: "data", type: "bytes" },
     ],
@@ -64,17 +63,11 @@ async function main() {
 
     // Prepare the forward request
     const nonce = await kuruForwarder.getNonce(signer.address);
-    
-    // Estimate gas for the transaction
-    const estimatedGas = ethers.BigNumber.from(1000000);
-    const gasLimit = estimatedGas.mul(120).div(100); // Add 20% buffer
-    console.log("Estimated gas:", gasLimit);
 
     const forwardRequest = {
       from: signer.address,
       market: orderBookAddress,
       value: 0,
-      gas: gasLimit,
       nonce: nonce.toString(),
       data: data,
     };

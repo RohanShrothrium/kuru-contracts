@@ -1,26 +1,43 @@
 //SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.20;
+
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
 contract KuruForwarder is EIP712 {
     using ECDSA for bytes32;
-    error CustomX(bytes);
+
+    error ExecutionFailed(bytes);
+    error Price(uint256, uint256);
+
     mapping(bytes4 => bool) public allowedInterface;
-    mapping(bytes32 => bool) public executedStopLoss;
-    mapping(bytes32 => bool) public executedTakeProfit;
+    mapping(bytes32 => bool) public executedPriceDependentRequest;
 
     struct ForwardRequest {
         address from;
         address market;
         uint256 value;
-        uint256 gas;
         uint256 nonce;
         bytes data;
     }
 
-    bytes32 private constant _TYPEHASH = keccak256("ForwardRequest(address from,address market,uint256 value,uint256 gas,uint256 nonce,bytes data)");
+    struct PriceDependentRequest {
+        address from;
+        address market;
+        uint256 price;
+        uint256 value;
+        uint256 nonce;
+        bool isBelowPrice;
+        bytes data;
+    }
+
+    bytes32 private constant _TYPEHASH =
+        keccak256("ForwardRequest(address from,address market,uint256 value,uint256 nonce,bytes data)");
+
+    bytes32 private constant _PRICE_DEPENDENT_TYPEHASH =
+        keccak256("PriceDependentRequest(address from,address market,uint256 price,uint256 value,uint256 nonce,bool isBelowPrice,bytes data)");
 
     mapping(address => uint256) private _nonces;
 
@@ -35,30 +52,68 @@ contract KuruForwarder is EIP712 {
     }
 
     function verify(ForwardRequest calldata req, bytes calldata signature) public view returns (bool) {
-        address signer = _hashTypedDataV4(keccak256(abi.encode(_TYPEHASH, req.from, req.market, req.value, req.gas, req.nonce, keccak256(req.data)))).recover(signature);
+        address signer = _hashTypedDataV4(
+            keccak256(abi.encode(_TYPEHASH, req.from, req.market, req.value, req.nonce, keccak256(req.data)))
+        ).recover(signature);
         return _nonces[req.from] == req.nonce && signer == req.from;
     }
 
-    function execute(ForwardRequest calldata req, bytes calldata signature) public payable returns (bool, bytes memory) {
+    //Does not check nonce because price dependent transaction nonces are not iterative
+    //executePriceDependent() has special checks for nonces
+    function verifyPriceDependent(PriceDependentRequest calldata req, bytes calldata signature) public view returns (bool) {
+        address signer = _hashTypedDataV4(
+            keccak256(abi.encode(_PRICE_DEPENDENT_TYPEHASH, req.from, req.market, req.price, req.value, req.nonce, req.isBelowPrice, keccak256(req.data)))
+        ).recover(signature);
+        return signer == req.from;
+    }
+
+    function execute(ForwardRequest calldata req, bytes calldata signature)
+        public
+        payable
+        returns (bool, bytes memory)
+    {
         require(verify(req, signature), "KuruForwarder: signature does not match request");
-        
+
         bytes4 selector = bytes4(req.data[:4]);
         require(allowedInterface[selector], "KuruForwarder: interface not allowed");
-        
+
         _nonces[req.from] = req.nonce + 1;
 
-        (bool success, bytes memory returndata) = req.market.call{gas: req.gas, value: req.value}(
-            abi.encodePacked(req.data, req.from)
-        );
+        (bool success, bytes memory returndata) =
+            req.market.call{gas: 63 * gasleft() / 64, value: req.value}(abi.encodePacked(req.data, req.from));
 
-        if(!success){
-            revert CustomX(returndata);
+        if (!success) {
+            revert ExecutionFailed(returndata);
         }
 
-        if (gasleft() <= req.gas / 63) {
-            assembly {
-                revert(0, 0)
-            }
+        return (success, returndata);
+    }
+
+    function executePriceDependent(PriceDependentRequest calldata req, bytes calldata signature)
+        public
+        payable
+        returns (bool, bytes memory)
+    {
+        require(verifyPriceDependent(req, signature), "KuruForwarder: signature does not match request");
+
+        bytes4 selector = bytes4(req.data[:4]);
+        require(allowedInterface[selector], "KuruForwarder: interface not allowed");
+        require(
+            !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))],
+            "KuruForwarder: nonce already used"
+        );
+        executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))] = true;
+
+        (uint256 _currentBidPrice,) = IOrderBook(req.market).bestBidAsk();
+        require(
+            (req.isBelowPrice && req.price < _currentBidPrice) || (!req.isBelowPrice && req.price > _currentBidPrice),
+            Price(_currentBidPrice, req.price)
+        );
+        (bool success, bytes memory returndata) =
+            req.market.call{gas: 63 * gasleft() / 64, value: req.value}(abi.encodePacked(req.data, req.from));
+
+        if (!success) {
+            revert ExecutionFailed(returndata);
         }
 
         return (success, returndata);
