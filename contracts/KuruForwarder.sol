@@ -33,11 +33,19 @@ contract KuruForwarder is EIP712 {
         bytes data;
     }
 
+    struct CancelPriceDependentRequest {
+        address from;
+        uint256 nonce;
+    }
+
     bytes32 private constant _TYPEHASH =
         keccak256("ForwardRequest(address from,address market,uint256 value,uint256 nonce,bytes data)");
 
     bytes32 private constant _PRICE_DEPENDENT_TYPEHASH =
         keccak256("PriceDependentRequest(address from,address market,uint256 price,uint256 value,uint256 nonce,bool isBelowPrice,bytes data)");
+
+    bytes32 private constant _CANCEL_PRICE_DEPENDENT_TYPEHASH =
+        keccak256("CancelPriceDependentRequest(address from,uint256 nonce)");
 
     mapping(address => uint256) private _nonces;
 
@@ -63,6 +71,13 @@ contract KuruForwarder is EIP712 {
     function verifyPriceDependent(PriceDependentRequest calldata req, bytes calldata signature) public view returns (bool) {
         address signer = _hashTypedDataV4(
             keccak256(abi.encode(_PRICE_DEPENDENT_TYPEHASH, req.from, req.market, req.price, req.value, req.nonce, req.isBelowPrice, keccak256(req.data)))
+        ).recover(signature);
+        return signer == req.from;
+    }
+
+    function verifyCancelPriceDependent(CancelPriceDependentRequest calldata req, bytes calldata signature) public view returns (bool) {
+        address signer = _hashTypedDataV4(
+            keccak256(abi.encode(_CANCEL_PRICE_DEPENDENT_TYPEHASH, req.from, req.nonce))
         ).recover(signature);
         return signer == req.from;
     }
@@ -117,5 +132,11 @@ contract KuruForwarder is EIP712 {
         }
 
         return (success, returndata);
+    }
+
+    function cancelPriceDependent(CancelPriceDependentRequest calldata req, bytes calldata signature) public {
+        require(verifyCancelPriceDependent(req, signature), "KuruForwarder: signature does not match request");
+        require(!executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))], "KuruForwarder: nonce already used");
+        executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))] = true;
     }
 }
