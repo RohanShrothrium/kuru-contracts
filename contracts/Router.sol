@@ -30,7 +30,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
 
     // used to create base/native and native/quote markets
     address private constant NATIVE = 0x0000000000000000000000000000000000000000;
-
+    address private TRUSTED_FORWARDER;
     address orderBookImplementation;
     address marginAccountAddress;
 
@@ -56,10 +56,11 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     /**
      * @param _owner The owner of the contract.
      */
-    function initialize(address _owner, address _marginAccount, address _implementation) public initializer {
+    function initialize(address _owner, address _marginAccount, address _implementation, address _trustedForwarder) public initializer {
         _initializeOwner(_owner);
         marginAccountAddress = _marginAccount;
         orderBookImplementation = _implementation;
+        TRUSTED_FORWARDER = _trustedForwarder;
     }
 
     /**
@@ -130,7 +131,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 _takerFeeBps,
                 _makerFeeBps,
                 address(_kuruAmmVault),
-                _kuruAmmSpread
+                _kuruAmmSpread,
+                address(TRUSTED_FORWARDER)
             );
         }
 

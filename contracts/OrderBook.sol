@@ -6,6 +6,7 @@ import {OrderLinkedList} from "./libraries/OrderLinkedList.sol";
 import {TreeMath} from "./libraries/TreeMath.sol";
 import {OrderBookErrors} from "./libraries/Errors.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
+import {ERC2771Context} from "./libraries/ERC2771Context.sol";
 import {AbstractAMM} from "./AbstractAMM.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 
@@ -17,11 +18,11 @@ import {Ownable} from "solady/src/auth/Ownable.sol";
 import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
-contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
+contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, AbstractAMM {
     OrderBookType orderBookType;
     
+    address _trustedForwarder;
     using SafeTransferLib for address;
-
     mapping(uint40 => Order) public s_orders;
     mapping(uint256 => OrderLinkedList.PricePoint) public s_buyPricePoints;
     mapping(uint256 => OrderLinkedList.PricePoint) public s_sellPricePoints;
@@ -62,6 +63,10 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         _;
     }
 
+    function isTrustedForwarder(address forwarder) public view override returns (bool) {
+        return forwarder == _trustedForwarder;
+    }
+
     /**
      * @param _owner The owner of the contract.
      * @param _baseAssetAddress Address of the first token used for trading.
@@ -85,7 +90,8 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         uint256 _takerFeeBps,
         uint256 _makerFeeBps,
         address _kuruAmmVault,
-        uint96 _kuruAmmSpread
+        uint96 _kuruAmmSpread,
+        address __trustedForwarder
     ) public initializer {
         _initializeOwner(_owner);
 
@@ -114,6 +120,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         kuruAmmVault = _kuruAmmVault;
         SPREAD_CONSTANT = _kuruAmmSpread / 10;
         vaultBestAsk = type(uint256).max;
+        _trustedForwarder = __trustedForwarder;
     }
 
     /**
@@ -155,7 +162,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
 
         _consumedFunds += _calculateFundsConsumed(_price, _remainingSize);
 
-        _consumeFunds(quoteAsset, (((_consumedFunds) * 10 ** quoteAssetDecimals) / pricePrecision), msg.sender);
+        _consumeFunds(quoteAsset, (((_consumedFunds) * 10 ** quoteAssetDecimals) / pricePrecision), _msgSender());
         if (_postOnly) {
             require(size == _remainingSize, OrderBookErrors.PostOnlyError());
         }
@@ -169,7 +176,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
 
             _addOrder(_price, _remainingSize, _orderId, true, _prevOrderId);
 
-            emit OrderCreated(_orderId, msg.sender, _remainingSize, _price, true);
+            emit OrderCreated(_orderId, _msgSender(), _remainingSize, _price, true);
         }
     }
 
@@ -184,7 +191,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price > 0, OrderBookErrors.PriceError());
 
-        _consumeFunds(baseAsset, ((size * 10 ** baseAssetDecimals) / sizePrecision), msg.sender);
+        _consumeFunds(baseAsset, ((size * 10 ** baseAssetDecimals) / sizePrecision), _msgSender());
 
         uint256 _tokenCredit;
         //The sell order is matched and filled aggressively and remaining size is added as limit sell order
@@ -202,7 +209,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId);
         _addOrder(_price, size, _orderId, false, _prevOrderId);
 
-        emit OrderCreated(_orderId, msg.sender, size, _price, false);
+        emit OrderCreated(_orderId, _msgSender(), size, _price, false);
     }
 
     /**
@@ -210,8 +217,8 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
      * @param _price Price of the order.
      * @param _size Size of the order.
      */
-    function _addOrder(uint32 _price, uint96 _size, uint40 _orderId, bool _isBuy, uint40 _prevOrderId) internal {
-        s_orders[_orderId] = Order(msg.sender, _size, _prevOrderId, OrderLinkedList.NULL, _price, _isBuy);
+    function _addOrder(uint24 _price, uint96 _size, uint40 _orderId, bool _isBuy, uint40 _prevOrderId) internal {
+        s_orders[_orderId] = Order(_msgSender(), _size, _prevOrderId, OrderLinkedList.NULL, _price, _isBuy);
         s_orders[_prevOrderId].next = _orderId;
     }
 
@@ -234,7 +241,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
             _cancelOrder(_orderIds[i]);
         }
 
-        emit OrdersCanceled(_orderIds, msg.sender);
+        emit OrdersCanceled(_orderIds, _msgSender());
     }
 
     /**
@@ -244,7 +251,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     function _cancelOrder(uint40 _orderId) internal returns (bool) {
         Order memory _order = s_orders[_orderId];
         _checkIfCancelledOrFilled(_orderId, _order);
-        require(msg.sender == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
+        require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
         // update neighbouring orders
         if (_order.prev != OrderLinkedList.NULL) {
             s_orders[_order.prev].next = _order.next;
@@ -356,7 +363,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         }
 
         // Emit an event for the canceled orders
-        emit OrdersCanceled(orderIdsToCancel, msg.sender);
+        emit OrdersCanceled(orderIdsToCancel, _msgSender());
     }
 
     /**
@@ -414,9 +421,9 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         } else {
             require(msg.value == 0, OrderBookErrors.NativeAssetNotRequired());
             _isMargin
-                ? marginAccount.debitUser(msg.sender, quoteAsset, _pricePrecisionToQuoteAssetPrecision(_quoteSize))
+                ? marginAccount.debitUser(_msgSender(), quoteAsset, _pricePrecisionToQuoteAssetPrecision(_quoteSize))
                 : quoteAsset.safeTransferFrom(
-                    msg.sender, address(marginAccount), _pricePrecisionToQuoteAssetPrecision(_quoteSize)
+                    _msgSender(), address(marginAccount), _pricePrecisionToQuoteAssetPrecision(_quoteSize)
                 );
         }
 
@@ -430,7 +437,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 _handleNativeMarketRefundTransfer(_refund);
             } else {
                 marginAccount.creditUser(
-                    msg.sender, quoteAsset, _pricePrecisionToQuoteAssetPrecision(_quoteSize), _isMargin
+                    _msgSender(), quoteAsset, _pricePrecisionToQuoteAssetPrecision(_quoteSize), _isMargin
                 );
             }
         } else if (_type == OrderBookType.NATIVE_IN_QUOTE) {
@@ -464,8 +471,8 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         } else {
             require(msg.value == 0, OrderBookErrors.NativeAssetNotRequired());
             _isMargin
-                ? marginAccount.debitUser(msg.sender, baseAsset, _sizePrecisionToBaseAssetPrecision(_size))
-                : baseAsset.safeTransferFrom(msg.sender, address(marginAccount), _sizePrecisionToBaseAssetPrecision(_size));
+                ? marginAccount.debitUser(_msgSender(), baseAsset, _sizePrecisionToBaseAssetPrecision(_size))
+                : baseAsset.safeTransferFrom(_msgSender(), address(marginAccount), _sizePrecisionToBaseAssetPrecision(_size));
         }
 
         uint256 _quoteCredited;
@@ -477,7 +484,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 uint256 _refund = _sizePrecisionToBaseAssetPrecision(_size);
                 _handleNativeMarketRefundTransfer(_refund);
             } else {
-                marginAccount.creditUser(msg.sender, baseAsset, _sizePrecisionToBaseAssetPrecision(_size), _isMargin);
+                marginAccount.creditUser(_msgSender(), baseAsset, _sizePrecisionToBaseAssetPrecision(_size), _isMargin);
             }
         } else if (_type == OrderBookType.NATIVE_IN_BASE) {
             (bool _success,) = address(marginAccount).call{value: msg.value}("");
@@ -498,7 +505,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         require(_success, OrderBookErrors.NativeAssetTransferFail());
 
         // @audit: Does this lead to bugs?
-        (_success,) = address(msg.sender).call{value: _refund}("");
+        (_success,) = address(_msgSender()).call{value: _refund}("");
         require(_success, OrderBookErrors.NativeAssetTransferFail());
     }
 
@@ -571,7 +578,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 baseFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
             }
             marginAccount.creditUsersEncoded(
-                bytes.concat(makerCredits, abi.encode(msg.sender, baseAsset, _tokenCredit, true))
+                bytes.concat(makerCredits, abi.encode(_msgSender(), baseAsset, _tokenCredit, true))
             );
         }
 
@@ -640,7 +647,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 baseFeeCollected += ((_feeDebit * (takerFeeBps - makerFeeBps)) / takerFeeBps);
             }
             marginAccount.creditUsersEncoded(
-                bytes.concat(makerCredits, abi.encode(msg.sender, baseAsset, _tokenCredit, _isMargin))
+                bytes.concat(makerCredits, abi.encode(_msgSender(), baseAsset, _tokenCredit, _isMargin))
             );
             return (_quoteSize, _tokenCredit);
         }
@@ -713,7 +720,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 quoteFeeCollected += ((_feeDebit * (takerFeeBps - makerFeeBps)) / takerFeeBps);
             }
             marginAccount.creditUsersEncoded(
-                bytes.concat(makerCredits, abi.encode(msg.sender, quoteAsset, tokenCredit, _useMargin))
+                bytes.concat(makerCredits, abi.encode(_msgSender(), quoteAsset, tokenCredit, _useMargin))
             );
         }
 
@@ -792,7 +799,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
             !s_orders[_orderId].isBuy,
             (s_orders[_orderId].price * vaultPricePrecision) / pricePrecision,
             _updatedSize,
-            tx.origin,
+            _msgSender(),
             _sizeToBeFilled - remainingSize
         );
     }
