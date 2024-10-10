@@ -31,7 +31,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
     address usdc = 0x0000000000000000000000000000000000000000;
     uint256 SEED = 2;
     address lastGenAddress;
-
+    address trustedForwarder = address(0x123);
     uint256 nativeDecimals = 18;
 
     function setUp() public {
@@ -48,16 +48,16 @@ contract OrderBookTest is Test, PropertiesAsserts {
         OrderBook implementation = new OrderBook();
         Router routerImplementation = new Router();
         address routerProxy = Create2.deploy(
-                0,
-                bytes32(keccak256("")),
-                abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
-            );
+            0,
+            bytes32(keccak256("")),
+            abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
+        );
         router = Router(payable(routerProxy));
 
         marginAccount = new MarginAccount(address(router), address(router));
         uint96 SPREAD = 30;
-
-        router.initialize(address(this), address(marginAccount), address(implementation));
+        trustedForwarder = address(0x123);
+        router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
 
         address proxy = router.deployProxy(
             _type,

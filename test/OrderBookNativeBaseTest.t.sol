@@ -31,6 +31,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
     MintableERC20 usdc;
     uint256 SEED = 2;
     address lastGenAddress;
+    address trustedForwarder;
 
     function setUp() public {
         usdc = new MintableERC20("USDC", "USDC");
@@ -54,8 +55,8 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         router = Router(payable(routerProxy));
 
         marginAccount = new MarginAccount(address(router), address(router));
-
-        router.initialize(address(this), address(marginAccount), address(implementation));
+        trustedForwarder = address(0x123);
+        router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
         uint96 SPREAD = 30;
 
         address proxy = router.deployProxy(

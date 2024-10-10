@@ -46,6 +46,19 @@ async function main() {
     var wbtcAddress = wbtc.address;
     var usdcAddress = usdc.address;
 
+    // deploy KuruForwarder Contract
+    const KuruForwarder = await hre.ethers.getContractFactory("KuruForwarder");
+    const OrderBook = await hre.ethers.getContractFactory("OrderBook");
+    const allowedInterfaces = [
+        OrderBook.interface.getSighash('addBuyOrder'),
+        OrderBook.interface.getSighash('addSellOrder'),
+        OrderBook.interface.getSighash('placeAndExecuteMarketBuy'),
+        OrderBook.interface.getSighash('placeAndExecuteMarketSell')
+    ];
+    const kuruForwarder = await KuruForwarder.deploy(allowedInterfaces);
+    await kuruForwarder.deployed();
+    console.log("KuruForwarder deployed to:", kuruForwarder.address);
+
     // deploy Router Contract
     const Router = await hre.ethers.getContractFactory("Router");
     const routerImpl = await Router.deploy();
@@ -74,13 +87,12 @@ async function main() {
     }
     // deploy CranklessOrderBook contract
     const CranklessOrderBook = await hre.ethers.getContractFactory("OrderBook");
-    // const cranklessOrderBook = await CranklessOrderBook.deploy(wbtcAddress, wbtcDecimals, usdcAddress, usdcDecimals, marginAccountAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
     const implementation = await CranklessOrderBook.deploy();
     await implementation.deployed();
     // Initialize Router
-    const initializeRouterTx = await router.initialize(userAddress, marginAccountAddress, implementation.address);    
+    const initializeRouterTx = await router.initialize(userAddress, marginAccountAddress, implementation.address, kuruForwarder.address);    
     await initializeRouterTx.wait();
-    console.log("Router initialized with \n Admin :", userAddress, "\nMargin Account: ", marginAccountAddress, "\nImplementation:", implementation.address);
+    console.log("Router initialized with \n Admin :", userAddress, "\nMargin Account: ", marginAccountAddress, "\nImplementation:", implementation.address, "\nKuruForwarder:", kuruForwarder.address);
     
     const cranklessOrderBookAddress = await router.callStatic.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps, _spread);
     const deployProxyTx = await router.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps, _spread);
@@ -125,6 +137,7 @@ async function main() {
         "marginAccountAddress": marginAccountAddress,
         "cranklessOrderBookAddress": cranklessOrderBookAddress,
         kuruAmmVaultAddress,
+        "kuruForwarderAddress": kuruForwarder.address,
     }
     fs.writeFileSync("config.json", JSON.stringify(config));
 }

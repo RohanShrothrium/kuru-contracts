@@ -36,7 +36,7 @@ contract OrderBookTest is Test {
     uint256 SEED = 2;
     address lastGenAddress;
     uint96 SPREAD = 30;
-
+    address trustedForwarder;
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         mon = new MintableERC20("MON", "MON");
@@ -44,23 +44,27 @@ contract OrderBookTest is Test {
 
         Router routerImplementation = new Router();
         address routerProxy = Create2.deploy(
-                0,
-                bytes32(keccak256("")),
-                abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
-            );
+            0,
+            bytes32(keccak256("")),
+            abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
+        );
         router = Router(payable(routerProxy));
 
         marginAccount = new MarginAccount(address(router), address(router));
 
         OrderBook implementation = new OrderBook();
-
-        router.initialize(address(this), address(marginAccount), address(implementation));
+        trustedForwarder = address(0x123);
+        router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
         OrderBook.OrderBookType _type;
         eth_mon = _createOrderbook(_type, address(eth), address(mon), SIZE_PRECISION, PRICE_PRECISION);
         mon_usdc = _createOrderbook(_type, address(mon), address(usdc), SIZE_PRECISION, PRICE_PRECISION);
         eth_usdc = _createOrderbook(_type, address(eth), address(usdc), SIZE_PRECISION, PRICE_PRECISION);
-        native_mon = _createOrderbook(IOrderBook.OrderBookType.NATIVE_IN_BASE, address(0), address(mon), SIZE_PRECISION, PRICE_PRECISION);
-        mon_native = _createOrderbook(IOrderBook.OrderBookType.NATIVE_IN_QUOTE, address(mon), address(0), SIZE_PRECISION, PRICE_PRECISION * 10);
+        native_mon = _createOrderbook(
+            IOrderBook.OrderBookType.NATIVE_IN_BASE, address(0), address(mon), SIZE_PRECISION, PRICE_PRECISION
+        );
+        mon_native = _createOrderbook(
+            IOrderBook.OrderBookType.NATIVE_IN_QUOTE, address(mon), address(0), SIZE_PRECISION, PRICE_PRECISION * 10
+        );
 
         eth.mint(user1, initEth);
         usdc.mint(user2, initUsdc);
@@ -307,7 +311,7 @@ contract OrderBookTest is Test {
 
         address swapper = genAddress();
         vm.deal(swapper, 1 ether);
-        
+
         vm.startPrank(swapper);
         address[] memory markets = new address[](2);
         markets[0] = address(native_mon);
@@ -321,13 +325,7 @@ contract OrderBookTest is Test {
 
         uint256 expectedUsdcOut = 200 * 10 ** 18; // 1 Native -> 100 MON -> 200 USDC
         router.anyToAnySwap{value: 1 ether}(
-            markets,
-            isBuy,
-            isNativeSend,
-            address(0),
-            address(usdc),
-            1 ether,
-            expectedUsdcOut
+            markets, isBuy, isNativeSend, address(0), address(usdc), 1 ether, expectedUsdcOut
         );
         vm.stopPrank();
 
@@ -350,7 +348,7 @@ contract OrderBookTest is Test {
 
         address swapper = genAddress();
         vm.deal(swapper, 1 ether);
-        
+
         vm.startPrank(swapper);
         address[] memory markets = new address[](3);
         markets[0] = address(native_mon);
@@ -367,13 +365,7 @@ contract OrderBookTest is Test {
 
         uint256 expectedEthOut = 0.1 * 10 ** 18; // 1 Native -> 100 MON -> 200 USDC -> 0.1 ETH
         router.anyToAnySwap{value: 1 ether}(
-            markets,
-            isBuy,
-            isNativeSend,
-            address(0),
-            address(eth),
-            1 ether,
-            expectedEthOut
+            markets, isBuy, isNativeSend, address(0), address(eth), 1 ether, expectedEthOut
         );
         vm.stopPrank();
 
@@ -387,7 +379,7 @@ contract OrderBookTest is Test {
 
         address buyer = genAddress();
         vm.deal(buyer, 1 ether);
-        
+
         vm.startPrank(buyer);
         uint256 initialMonBalance = mon.balanceOf(buyer);
         address[] memory markets = new address[](1);
@@ -399,13 +391,7 @@ contract OrderBookTest is Test {
 
         uint256 expectedMonOut = 0.1 * 10 ** 18; // 0.1 Native should buy 0.1 MON
         router.anyToAnySwap{value: 0.1 ether}(
-            markets,
-            isBuy,
-            isNativeSend,
-            address(0),
-            address(mon),
-            0.1 ether,
-            expectedMonOut
+            markets, isBuy, isNativeSend, address(0), address(mon), 0.1 ether, expectedMonOut
         );
         vm.stopPrank();
 
@@ -428,7 +414,7 @@ contract OrderBookTest is Test {
         vm.startPrank(swapper);
         eth.approve(address(router), 1 * 10 ** 18);
         uint256 initialNativeBalance = address(swapper).balance;
-        
+
         address[] memory markets = new address[](2);
         markets[0] = address(eth_mon);
         markets[1] = address(mon_native);
@@ -440,15 +426,7 @@ contract OrderBookTest is Test {
         isNativeSend[1] = false;
 
         uint256 expectedNativeOut = 2000 ether; // 1 ETH -> 2000 MON -> 2000 Native
-        router.anyToAnySwap(
-            markets,
-            isBuy,
-            isNativeSend,
-            address(eth),
-            address(0),
-            1 * 10 ** 18,
-            expectedNativeOut
-        );
+        router.anyToAnySwap(markets, isBuy, isNativeSend, address(eth), address(0), 1 * 10 ** 18, expectedNativeOut);
         vm.stopPrank();
 
         assertEq(address(swapper).balance - initialNativeBalance, expectedNativeOut);

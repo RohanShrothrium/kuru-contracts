@@ -35,7 +35,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
     uint24 presetPrice;
     bool priceSet;
     uint96 SPREAD = 30;
-
+    address trustedForwarder;
     constructor() {
         MintableERC20 tokenA = new MintableERC20("A", "A");
         MintableERC20 tokenB = new MintableERC20("B", "B");
@@ -54,7 +54,8 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         router = new Router();
         marginAccount = new MarginAccount(address(router), address(router));
         implementation = new OrderBook();
-        router.initialize(address(this), address(marginAccount), address(implementation));
+        trustedForwarder = address(0x123);
+        router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
         OrderBook.OrderBookType _type;
         address proxy = router.deployProxy(
             _type,
