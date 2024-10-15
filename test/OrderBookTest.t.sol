@@ -44,7 +44,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         _tickSize = _pricePrecision / 2;
         _minSize = 2 * 10 ** 8;
         _maxSize = 10 ** 12;
-        _maxPrice = type(uint32).max / 100;
+        _maxPrice = type(uint32).max / 200;
         _takerFeeBps = 0;
         _makerFeeBps = 0;
         OrderBook.OrderBookType _type;
