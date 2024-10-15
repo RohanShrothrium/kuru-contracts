@@ -11,7 +11,7 @@ library Errors {
      */
     error MarketFeeError();
     /**
-    * @dev Thrown when Kuru AMM Vault spread passed to initializer is too high or too low or is not a multiple of 10
+     * @dev Thrown when Kuru AMM Vault spread passed to initializer is too high or too low or is not a multiple of 10
      */
     error InvalidSpread();
     /**
@@ -60,6 +60,10 @@ library Errors {
      */
     error InsufficientLiquidity();
     /**
+    @dev Throws when slippage is exceeded in market orders
+     */
+    error SlippageExceeded();
+    /**
      * @dev Thrown when quote size in uint24 overflows
      */
     error TooMuchSizeFilled();
@@ -67,5 +71,4 @@ library Errors {
      * @dev Thrown when safe transfer from fails
      */
     error TransferFromFailed();
-
 }
