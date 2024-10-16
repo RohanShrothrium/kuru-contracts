@@ -29,6 +29,15 @@ abstract contract AbstractAMM is IOrderBook {
         _;
     }
 
+    function _emitTrade(
+        uint40 orderId,
+        address makerAddress,
+        bool isBuy,
+        uint256 price,
+        uint96 updatedSize,
+        uint96 filledSize
+    ) internal virtual;
+
     function _fillVaultForBuy(uint96 _size) internal returns (uint96 remainingSize, bytes memory makerCredits) {
         uint256 _price = vaultBestAsk;
         uint96 availableSize = vaultAskOrderSize - askPartiallyFilledSize;
@@ -48,7 +57,7 @@ abstract contract AbstractAMM is IOrderBook {
         }
         remainingSize = _size - _fillSize;
         makerCredits = _creditVaultAsMaker(true, _fillSize, _price);
-        emit Trade(0, kuruAmmVault, true, _price, availableSize - _fillSize, msg.sender, _fillSize);
+        _emitTrade(0, kuruAmmVault, true, _price, availableSize - _fillSize, _fillSize);
     }
 
     function _fillVaultForSell(uint96 _size) internal returns (uint96 remainingSize, bytes memory makerCredits) {
@@ -69,7 +78,7 @@ abstract contract AbstractAMM is IOrderBook {
 
         remainingSize = _size - _fillSize;
         makerCredits = _creditVaultAsMaker(false, _fillSize, _price);
-        emit Trade(0, kuruAmmVault, false, _price, availableSize - _fillSize, msg.sender, _fillSize);
+        _emitTrade(0, kuruAmmVault, false, _price, availableSize - _fillSize, _fillSize);
     }
 
     function _creditVaultAsMaker(bool _isMarketBuy, uint96 _size, uint256 _price)
@@ -102,7 +111,11 @@ abstract contract AbstractAMM is IOrderBook {
         return bytes.concat(returnData, abi.encode(kuruAmmVault, _creditAsset, _amount, true));
     }
 
-    function getVaultParams() external view returns (address, uint256, uint96, uint256, uint96, uint96, uint96, uint96) {
+    function getVaultParams()
+        external
+        view
+        returns (address, uint256, uint96, uint256, uint96, uint96, uint96, uint96)
+    {
         return (
             kuruAmmVault,
             vaultBestBid,

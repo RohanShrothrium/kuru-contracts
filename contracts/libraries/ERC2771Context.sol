@@ -13,19 +13,9 @@ import {Errors} from "../libraries/Errors.sol";
  * recovery.
  */
 abstract contract ERC2771Context is Context {
+    function isTrustedForwarder(address) public view virtual returns (bool) {}
 
-    function isTrustedForwarder(address) public view virtual returns (bool){
-    }
-
-    function _msgSender() internal view virtual override returns (address) {
-        uint256 calldataLength = msg.data.length;
-        uint256 contextSuffixLength = _contextSuffixLength();
-        if (isTrustedForwarder(msg.sender) && calldataLength >= contextSuffixLength) {
-            return address(bytes20(msg.data[calldataLength - contextSuffixLength:]));
-        } else {
-            return super._msgSender();
-        }
-    }
+    function _msgSender() internal view virtual override returns (address) {}
 
     function _msgData() internal view virtual override returns (bytes calldata) {
         uint256 calldataLength = msg.data.length;

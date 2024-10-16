@@ -50,6 +50,7 @@ interface IOrderBook {
         uint256 price,
         uint96 updatedSize,
         address takerAddress,
+        address txOrigin,
         uint96 filledSize
     );
 
