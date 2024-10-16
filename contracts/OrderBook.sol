@@ -23,6 +23,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
     
     address _trustedForwarder;
     using SafeTransferLib for address;
+
     mapping(uint40 => Order) public s_orders;
     mapping(uint256 => OrderLinkedList.PricePoint) public s_buyPricePoints;
     mapping(uint256 => OrderLinkedList.PricePoint) public s_sellPricePoints;
@@ -65,6 +66,27 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
     function isTrustedForwarder(address forwarder) public view override returns (bool) {
         return forwarder == _trustedForwarder;
+    }
+
+    function _msgSender() internal view virtual override returns (address) {
+        uint256 calldataLength = msg.data.length;
+        uint256 contextSuffixLength = _contextSuffixLength();
+        if (isTrustedForwarder(msg.sender) && calldataLength >= contextSuffixLength) {
+            return address(bytes20(msg.data[calldataLength - contextSuffixLength:]));
+        } else {
+            return super._msgSender();
+        }
+    }
+
+    function _emitTrade(
+        uint40 orderId,
+        address makerAddress,
+        bool isBuy,
+        uint256 price,
+        uint96 updatedSize,
+        uint96 filledSize
+    ) internal override {
+        emit Trade(orderId, makerAddress, isBuy, price, updatedSize, _msgSender(), tx.origin, filledSize);
     }
 
     /**
@@ -472,7 +494,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             require(msg.value == 0, OrderBookErrors.NativeAssetNotRequired());
             _isMargin
                 ? marginAccount.debitUser(_msgSender(), baseAsset, _sizePrecisionToBaseAssetPrecision(_size))
-                : baseAsset.safeTransferFrom(_msgSender(), address(marginAccount), _sizePrecisionToBaseAssetPrecision(_size));
+                : baseAsset.safeTransferFrom(
+                    _msgSender(), address(marginAccount), _sizePrecisionToBaseAssetPrecision(_size)
+                );
         }
 
         uint256 _quoteCredited;
@@ -793,13 +817,12 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             s_orders[_orderId].size = _updatedSize;
         }
         // What if the whole book gets filled or the whole price point gets filled up?
-        emit Trade(
+        _emitTrade(
             _orderId,
             s_orders[_orderId].ownerAddress,
             !s_orders[_orderId].isBuy,
             (s_orders[_orderId].price * vaultPricePrecision) / pricePrecision,
             _updatedSize,
-            _msgSender(),
             _sizeToBeFilled - remainingSize
         );
     }
