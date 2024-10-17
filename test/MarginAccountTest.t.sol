@@ -35,7 +35,7 @@ contract OrderBookTest is Test {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USD", "USDC");
 
-        marginAccount = new MarginAccount(address(this), address(this));
+        marginAccount = new MarginAccount(address(this), address(this), address(0));
 
         eth.mint(user1, initEth);
         usdc.mint(user2, initUsdc);

@@ -49,7 +49,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context {
         if (isTrustedForwarder(msg.sender) && calldataLength >= contextSuffixLength) {
             return address(bytes20(msg.data[calldataLength - contextSuffixLength:]));
         } else {
-            return super._msgSender();
+            return msg.sender;
         }
     }
 

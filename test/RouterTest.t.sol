@@ -38,6 +38,7 @@ contract OrderBookTest is Test {
     address lastGenAddress;
     uint96 SPREAD = 30;
     address trustedForwarder;
+
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         mon = new MintableERC20("MON", "MON");
@@ -51,7 +52,8 @@ contract OrderBookTest is Test {
         );
         router = Router(payable(routerProxy));
 
-        marginAccount = new MarginAccount(address(router), address(router));
+        trustedForwarder = address(0x123);
+        marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
 
         OrderBook implementation = new OrderBook();
         trustedForwarder = address(0x123);

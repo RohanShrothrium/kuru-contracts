@@ -35,6 +35,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
     uint256 SEED = 2;
     address lastGenAddress;
     address trustedForwarder;
+
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
@@ -56,9 +57,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
             abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
         );
         router = Router(payable(routerProxy));
-        marginAccount = new MarginAccount(address(router), address(router));
-        uint96 SPREAD = 100;
         trustedForwarder = address(0x123);
+        marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
+        uint96 SPREAD = 100;
         router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
 
         address proxy = router.deployProxy(
