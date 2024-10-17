@@ -9,6 +9,7 @@ import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 
 // ============ Internal Library Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
+import {RouterErrors} from "./libraries/Errors.sol";
 
 // ============ Internal Contract Imports ============
 import {KuruAMMVault} from "./KuruAMMVault.sol";
@@ -87,7 +88,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint256 _makerFeeBps,
         uint96 _kuruAmmSpread
     ) public returns (address proxy) {
-        require(_baseAssetAddress != _quoteAssetAddress, "Router: Base and quote assets are the same!");
+        require(_baseAssetAddress != _quoteAssetAddress, RouterErrors.BaseAndQuoteAssetSame());
         {
             bytes32 _salt = _getSalt(
                 _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? NATIVE : _baseAssetAddress,
@@ -250,9 +251,9 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint256 _amount,
         uint256 _minAmountOut
     ) external payable returns (uint256 _amountOut) {
-        require(_marketAddresses.length >= 1, "Router: No markets in input");
-        require(_isBuy.length == _marketAddresses.length, "Router: Sizes length mismatch");
-        require(_nativeSend.length == _marketAddresses.length, "Router: Sizes length mismatch");
+        require(_marketAddresses.length >= 1, RouterErrors.NoMarketsPassed());
+        require(_isBuy.length == _marketAddresses.length, RouterErrors.LengthMismatch());
+        require(_nativeSend.length == _marketAddresses.length, RouterErrors.LengthMismatch());
         if (_nativeSend[0] == false) {
             _debitToken.safeTransferFrom(msg.sender, address(this), _amount);
         }
@@ -264,7 +265,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         for (uint256 i = 0; i < _marketAddresses.length; i++) {
             address _currentMarket = _marketAddresses[i];
             MarketParams memory _marketParams = verifiedMarket[_currentMarket];
-            require(_marketParams.pricePrecision > 0, "Router: Invalid market!");
+            require(_marketParams.pricePrecision > 0, RouterErrors.InvalidMarket());
             IOrderBook market = IOrderBook(_currentMarket);
             uint256 _value = _nativeSend[i] ? _amount : 0;
             _amountOut = _isBuy[i]
@@ -301,12 +302,12 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
 
             _amount = _amountOut;
         }
-        require(_amountOut >= _minAmountOut, "Router: Slippage exceeds expected value!");
+        require(_amountOut >= _minAmountOut, RouterErrors.SlippageExceeded());
         if (_creditToken != address(0)) {
             _creditToken.safeTransfer(msg.sender, _amountOut);
         } else {
             (bool _success,) = (msg.sender).call{value: _amountOut}("");
-            require(_success, "Router: Native fund transfer failed");
+            require(_success, RouterErrors.NativeAssetTransferFail());
         }
     }
 
