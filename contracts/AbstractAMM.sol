@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import {OrderLinkedList} from "./libraries/OrderLinkedList.sol";
 import {TreeMath} from "./libraries/TreeMath.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
+import {OrderBookErrors} from "./libraries/Errors.sol";
 
 // ============ Internal Interfaces Imports ============
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
@@ -25,7 +26,7 @@ abstract contract AbstractAMM is IOrderBook {
     uint96 SPREAD_CONSTANT;
 
     modifier onlyVault() {
-        require(msg.sender == kuruAmmVault, "OrderBook: Only Vault");
+        require(msg.sender == kuruAmmVault, OrderBookErrors.OnlyVaultAllowed());
         _;
     }
 

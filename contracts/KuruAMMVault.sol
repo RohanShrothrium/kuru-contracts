@@ -5,6 +5,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
+import {KuruAMMVaultErrors} from "./libraries/Errors.sol";
 
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 import {IKuruAMMVault} from "./interfaces/IKuruAMMVault.sol";
@@ -28,8 +29,6 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     uint256 constant MIN_LIQUIDITY = 10 ** 3;
     //TODO: Add vault share precision
     uint96 immutable SPREAD_CONSTANT;
-
-    error NewSizeExceedsPartiallyFilledSize();
 
     constructor(
         address token1_,
@@ -118,7 +117,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
             (token1 == address(0) || token2 == address(0))
                 ? msg.value >= (token1 == address(0) ? amount1 : amount2)
                 : msg.value == 0,
-            "KuruAMMVault: incorrect amount"
+            KuruAMMVaultErrors.NativeAssetMismatch()
         );
 
         return _depositAndMint(amount1, amount2, receiver);
@@ -137,7 +136,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
                         * 10 ** marketParams.quoteAssetDecimals
                 )
             ) / 10 ** marketParams.baseAssetDecimals;
-            require(_expectedQuoteAmount <= amount2, "KuruAMMVault: INSUFFICIENT TOKEN SUPPLIED");
+            require(_expectedQuoteAmount <= amount2, KuruAMMVaultErrors.InsufficientQuoteToken());
             _shares = _convertToShares(amount1, _expectedQuoteAmount, _currentAskPrice, false);
             amount2 = _expectedQuoteAmount;
             _mint(receiver, _shares);
@@ -147,7 +146,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
             _shares -= MIN_LIQUIDITY;
             _mint(receiver, _shares);
         }
-        require(_shares > 0, "KuruAMMVault: INSUFFICIENT_LIQUIDITY_MINTED");
+        require(_shares > 0, KuruAMMVaultErrors.InsufficientLiquidityMinted());
         _updateMarketVaultOrderSize(amount1, amount2, _baseAmount, _currentAskPrice, true);
         _depositToMarginAccount(amount1, token1);
         _depositToMarginAccount(amount2, token2);
@@ -201,7 +200,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
                 / (2000 * 10 ** _marketParams.baseAssetDecimals)
         );
         if (_newAskSize <= _partiallyFilledAskSize || _newBidSize <= _partiallyFilledBidSize) {
-            revert NewSizeExceedsPartiallyFilledSize();
+            revert KuruAMMVaultErrors.NewSizeExceedsPartiallyFilledSize();
         }
         market.updateVaultOrdSz(_newAskSize, _newBidSize, _newAskPrice, _newBidPrice);
     }
@@ -210,7 +209,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
      * @dev Withdraws token1 and token2 from the vault by burning the specified amount of shares.
      */
     function withdraw(uint256 shares, address receiver, address owner) public returns (uint256, uint256) {
-        require(shares <= balanceOf(owner), "KuruAMMVault: withdraw more than balance");
+        require(shares <= balanceOf(owner), KuruAMMVaultErrors.InsufficientBalance());
 
         if (msg.sender != owner) {
             _spendAllowance(owner, msg.sender, shares);
@@ -257,7 +256,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     function _transferTokensToUser(uint256 amount, address token, address receiver) internal {
         if (token == address(0)) {
             (bool success,) = receiver.call{value: amount}("");
-            require(success, "KuruAMMVault: failed to transfer native token");
+            require(success, KuruAMMVaultErrors.NativeAssetTransferFail());
         } else {
             ERC20(token).safeTransfer(receiver, amount);
         }
@@ -278,7 +277,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
      * @dev Redeems shares by burning the specified amount and withdrawing token1 and token2 to the receiver.
      */
     function redeem(uint256 shares, address receiver, address owner) public returns (uint256, uint256) {
-        require(shares <= balanceOf(owner), "KuruAMMVault: redeem more than balance");
+        require(shares <= balanceOf(owner), KuruAMMVaultErrors.InsufficientBalance());
 
         if (msg.sender != owner) {
             _spendAllowance(owner, msg.sender, shares);

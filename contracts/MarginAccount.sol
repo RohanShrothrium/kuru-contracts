@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 // ============ Internal Library Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
+import {MarginAccountErrors} from "./libraries/Errors.sol";
 
 // ============ Internal Interface Imports ============
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
@@ -31,7 +32,7 @@ contract MarginAccount is IMarginAccount {
     }
 
     modifier onlyRouter() {
-        require(msg.sender == routerContractAddress, "MarginAccount: Only router can update markets");
+        require(msg.sender == routerContractAddress, MarginAccountErrors.OnlyRouterAllowed());
         _;
     }
 
@@ -51,7 +52,7 @@ contract MarginAccount is IMarginAccount {
      * @param _feeB Fee amount of _assetB to be credited
      */
     function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external returns (bool) {
-        require(verifiedMarket[msg.sender], "MarginAccount: Only verified markets can credit fee");
+        require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         balances[_accountKey(feeCollector, _assetA)] += _feeA;
         balances[_accountKey(feeCollector, _assetB)] += _feeB;
@@ -66,8 +67,8 @@ contract MarginAccount is IMarginAccount {
      * @param _amount amount to debit.
      */
     function debitUser(address _user, address _token, uint256 _amount) external {
-        require(verifiedMarket[msg.sender], "MarginAccount: Only verified markets can credit users");
-        require(balances[_accountKey(_user, _token)] >= _amount, "MarginAccoiunt: Insufficient Balance");
+        require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
+        require(balances[_accountKey(_user, _token)] >= _amount, MarginAccountErrors.InsufficientBalance());
 
         balances[_accountKey(_user, _token)] -= _amount;
     }
@@ -79,14 +80,14 @@ contract MarginAccount is IMarginAccount {
      * @param _amount amount to credit.
      */
     function creditUser(address _user, address _token, uint256 _amount, bool _useMargin) external returns (bool) {
-        require(verifiedMarket[msg.sender], "MarginAccount: Only verified markets can credit users");
+        require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         if (_useMargin) {
             balances[_accountKey(_user, _token)] += _amount;
         } else {
             if (_token == NATIVE) {
                 (bool success,) = _user.call{value: _amount}("");
-                require(success, "MarginAccount: Failed to credit user native tokens");
+                require(success, MarginAccountErrors.NativeAssetTransferFail());
             } else {
                 _token.safeTransfer(_user, _amount);
             }
@@ -100,7 +101,7 @@ contract MarginAccount is IMarginAccount {
      * @param _encodedData Address of the user whose account should be credited.
      */
     function creditUsersEncoded(bytes calldata _encodedData) external returns (bool) {
-        require(verifiedMarket[msg.sender], "MarginAccount: Only verified markets can credit users");
+        require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         uint256 offset = 0;
         while (offset < _encodedData.length) {
@@ -115,7 +116,7 @@ contract MarginAccount is IMarginAccount {
                     _token.safeTransfer(_user, _amount);
                 } else {
                     (bool success,) = _user.call{value: _amount}("");
-                    require(success, "MarginAccount: Failed to credit user native tokens");
+                    require(success, MarginAccountErrors.NativeAssetTransferFail());
                 }
             }
         }
@@ -130,12 +131,12 @@ contract MarginAccount is IMarginAccount {
      * @param _amount amount to credit.
      */
     function deposit(address _user, address _token, uint256 _amount) external payable {
-        require(_user != address(0), "MarginAccount: zero address not allowed");
+        require(_user != address(0), MarginAccountErrors.ZeroAddressNotAllowed());
         if (_token == NATIVE) {
-            require(msg.value == _amount, "MarginAccount: amount and value mismatch");
+            require(msg.value == _amount, MarginAccountErrors.NativeAssetMismatch());
             balances[_accountKey(_user, NATIVE)] += _amount;
         } else {
-            require(msg.value == 0, "MarginAccount: msg.value not zero");
+            require(msg.value == 0, MarginAccountErrors.NativeAssetMismatch());
             _token.safeTransferFrom(msg.sender, address(this), _amount);
             balances[_accountKey(_user, _token)] += _amount;
         }
@@ -149,11 +150,11 @@ contract MarginAccount is IMarginAccount {
      * @param _token address of token to be withdrawn.
      */
     function withdraw(uint256 _amount, address _token) external {
-        require(_amount <= balances[_accountKey(msg.sender, _token)], "Insufficient balance");
+        require(_amount <= balances[_accountKey(msg.sender, _token)], MarginAccountErrors.InsufficientBalance());
         balances[_accountKey(msg.sender, _token)] -= _amount;
         if (_token == NATIVE) {
             (bool _success,) = (msg.sender).call{value: _amount}("");
-            require(_success, "MarginAccount: Native fund withdrawal failed");
+            require(_success, MarginAccountErrors.NativeAssetTransferFail());
         } else {
             _token.safeTransfer(msg.sender, _amount);
         }
