@@ -47,13 +47,16 @@ async function main() {
     var usdcAddress = usdc.address;
 
     // deploy KuruForwarder Contract
+    const MarginAccount = await hre.ethers.getContractFactory("MarginAccount");
     const KuruForwarder = await hre.ethers.getContractFactory("KuruForwarder");
     const OrderBook = await hre.ethers.getContractFactory("OrderBook");
     const allowedInterfaces = [
         OrderBook.interface.getSighash('addBuyOrder'),
         OrderBook.interface.getSighash('addSellOrder'),
         OrderBook.interface.getSighash('placeAndExecuteMarketBuy'),
-        OrderBook.interface.getSighash('placeAndExecuteMarketSell')
+        OrderBook.interface.getSighash('placeAndExecuteMarketSell'),
+        MarginAccount.interface.getSighash('deposit'),
+        MarginAccount.interface.getSighash('withdraw'),
     ];
     const kuruForwarder = await KuruForwarder.deploy(allowedInterfaces);
     await kuruForwarder.deployed();
@@ -73,8 +76,7 @@ async function main() {
     console.log("Router deployed to:", routerAddress);
 
     // deploy Margin Account Contract
-    const MarginAccount = await hre.ethers.getContractFactory("MarginAccount");
-    const marginAccount = await MarginAccount.deploy(routerAddress, userAddress);
+    const marginAccount = await MarginAccount.deploy(routerAddress, userAddress, kuruForwarder.address);
     await marginAccount.deployed();
 
     const marginAccountAddress = marginAccount.address;
