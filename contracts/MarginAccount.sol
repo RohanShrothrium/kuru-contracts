@@ -4,14 +4,16 @@ pragma solidity ^0.8.0;
 // ============ Internal Library Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
+import {ERC2771Context} from "./libraries/ERC2771Context.sol";
 
 // ============ Internal Interface Imports ============
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
-contract MarginAccount is IMarginAccount {
+contract MarginAccount is IMarginAccount, ERC2771Context {
     using SafeTransferLib for address;
     // Mapping from user addresses to their NATIVE balance
 
+    address trustedForwarder;
     mapping(bytes32 => uint256) public balances;
 
     // Mapping of hash of token pairs to their market contract addresses
@@ -25,14 +27,29 @@ contract MarginAccount is IMarginAccount {
     event Deposit(address owner, address token, uint256 amount);
     event Withdrawal(address owner, address token, uint256 amount);
 
-    constructor(address _router, address _feeCollector) {
+    constructor(address _router, address _feeCollector, address _trustedForwarder) {
         routerContractAddress = _router;
         feeCollector = _feeCollector;
+        trustedForwarder = _trustedForwarder;
     }
 
     modifier onlyRouter() {
         require(msg.sender == routerContractAddress, "MarginAccount: Only router can update markets");
         _;
+    }
+
+    function isTrustedForwarder(address forwarder) public view override returns (bool) {
+        return forwarder == trustedForwarder;
+    }
+    
+    function _msgSender() internal view virtual override returns (address) {
+        uint256 calldataLength = msg.data.length;
+        uint256 contextSuffixLength = _contextSuffixLength();
+        if (isTrustedForwarder(msg.sender) && calldataLength >= contextSuffixLength) {
+            return address(bytes20(msg.data[calldataLength - contextSuffixLength:]));
+        } else {
+            return super._msgSender();
+        }
     }
 
     /**
@@ -136,7 +153,7 @@ contract MarginAccount is IMarginAccount {
             balances[_accountKey(_user, NATIVE)] += _amount;
         } else {
             require(msg.value == 0, "MarginAccount: msg.value not zero");
-            _token.safeTransferFrom(msg.sender, address(this), _amount);
+            _token.safeTransferFrom(_msgSender(), address(this), _amount);
             balances[_accountKey(_user, _token)] += _amount;
         }
 
@@ -149,16 +166,16 @@ contract MarginAccount is IMarginAccount {
      * @param _token address of token to be withdrawn.
      */
     function withdraw(uint256 _amount, address _token) external {
-        require(_amount <= balances[_accountKey(msg.sender, _token)], "Insufficient balance");
-        balances[_accountKey(msg.sender, _token)] -= _amount;
+        require(_amount <= balances[_accountKey(_msgSender(), _token)], "Insufficient balance");
+        balances[_accountKey(_msgSender(), _token)] -= _amount;
         if (_token == NATIVE) {
-            (bool _success,) = (msg.sender).call{value: _amount}("");
+            (bool _success,) = (_msgSender()).call{value: _amount}("");
             require(_success, "MarginAccount: Native fund withdrawal failed");
         } else {
-            _token.safeTransfer(msg.sender, _amount);
+            _token.safeTransfer(_msgSender(), _amount);
         }
 
-        emit Withdrawal(msg.sender, _token, _amount);
+        emit Withdrawal(_msgSender(), _token, _amount);
     }
 
     /**
