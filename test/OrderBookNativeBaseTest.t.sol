@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import {FixedPointMathLib} from "../contracts/libraries/FixedPointMathLib.sol";
-import {OrderBookErrors} from "../contracts/libraries/Errors.sol";
+import {OrderBookErrors, MarginAccountErrors} from "../contracts/libraries/Errors.sol";
 import {IOrderBook} from "../contracts/interfaces/IOrderBook.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
@@ -177,7 +177,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("MarginAccoiunt: Insufficient Balance");
+        vm.expectRevert(MarginAccountErrors.InsufficientBalance.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -211,7 +211,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("MarginAccoiunt: Insufficient Balance");
+        vm.expectRevert(MarginAccountErrors.InsufficientBalance.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }

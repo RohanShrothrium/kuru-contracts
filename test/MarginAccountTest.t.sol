@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
+import {MarginAccountErrors} from "../contracts/libraries/Errors.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
 import {Router} from "../contracts/Router.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
@@ -43,7 +44,7 @@ contract OrderBookTest is Test {
 
     function testRevertUnauthorizedVerifyMarket() public {
         vm.startPrank(address(12345));
-        vm.expectRevert("MarginAccount: Only router can update markets");
+        vm.expectRevert(MarginAccountErrors.OnlyRouterAllowed.selector);
         marginAccount.updateMarkets(address(80085));
         vm.stopPrank();
     }

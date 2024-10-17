@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
+import {RouterErrors} from "../contracts/libraries/Errors.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
 import {IOrderBook} from "../contracts/interfaces/IOrderBook.sol";
 import {Router} from "../contracts/Router.sol";
@@ -200,7 +201,7 @@ contract OrderBookTest is Test {
         bool[] memory isNativeSend = new bool[](2);
         isNativeSend[0] = false;
         isNativeSend[1] = false;
-        vm.expectRevert("Router: Slippage exceeds expected value!");
+        vm.expectRevert(RouterErrors.SlippageExceeded.selector);
         router.anyToAnySwap(markets, isBuy, isNativeSend, address(eth), address(usdc), 3 * 10 ** 18, 5600 * 10 ** 18);
         vm.stopPrank();
     }
@@ -226,7 +227,7 @@ contract OrderBookTest is Test {
         bool[] memory isNativeSend = new bool[](2);
         isNativeSend[0] = false;
         isNativeSend[1] = false;
-        vm.expectRevert("Router: Invalid market!");
+        vm.expectRevert(RouterErrors.InvalidMarket.selector);
         router.anyToAnySwap(markets, isBuy, isNativeSend, address(eth), address(usdc), 3 * 10 ** 18, 5400 * 10 ** 18);
         vm.stopPrank();
     }
@@ -250,7 +251,7 @@ contract OrderBookTest is Test {
         isBuy[0] = false;
         bool[] memory isNativeSend = new bool[](1);
         isNativeSend[0] = false;
-        vm.expectRevert("Router: Sizes length mismatch");
+        vm.expectRevert(RouterErrors.LengthMismatch.selector);
         router.anyToAnySwap(markets, isBuy, isNativeSend, address(eth), address(usdc), 3 * 10 ** 18, 5400 * 10 ** 18);
         vm.stopPrank();
     }

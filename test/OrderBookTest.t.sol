@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import {FixedPointMathLib} from "../contracts/libraries/FixedPointMathLib.sol";
-import {OrderBookErrors, KuruAMMVaultErrors} from "../contracts/libraries/Errors.sol";
+import {OrderBookErrors, KuruAMMVaultErrors, MarginAccountErrors} from "../contracts/libraries/Errors.sol";
 import {IOrderBook} from "../contracts/interfaces/IOrderBook.sol";
 import {KuruAMMVault} from "../contracts/KuruAMMVault.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
@@ -189,7 +189,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("MarginAccoiunt: Insufficient Balance");
+        vm.expectRevert(MarginAccountErrors.InsufficientBalance.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -223,7 +223,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        vm.expectRevert("MarginAccoiunt: Insufficient Balance");
+        vm.expectRevert(MarginAccountErrors.InsufficientBalance.selector);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
@@ -1049,7 +1049,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_vaultMaker);
         eth.approve(address(vault), _amountBase);
         usdc.approve(address(vault), _amountQuote);
-        vm.expectRevert("KuruAMMVault: INSUFFICIENT TOKEN SUPPLIED");
+        vm.expectRevert(KuruAMMVaultErrors.InsufficientQuoteToken.selector);
         vault.deposit(_amountBase, _amountQuote, _vaultMaker);
         vm.stopPrank();
     }
@@ -1068,7 +1068,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         _amountBase = 0;
         _amountQuote = 0;
         vm.startPrank(_vaultMaker);
-        vm.expectRevert("KuruAMMVault: INSUFFICIENT_LIQUIDITY_MINTED");
+        vm.expectRevert(KuruAMMVaultErrors.InsufficientLiquidityMinted.selector);
         vault.deposit(0, 0, _vaultMaker);
         vm.stopPrank();
     }
