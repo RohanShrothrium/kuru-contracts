@@ -75,7 +75,7 @@ contract KuruForwarder is EIP712 {
         address signer = _hashTypedDataV4(
             keccak256(abi.encode(_TYPEHASH, req.from, req.market, req.value, req.nonce, keccak256(req.data)))
         ).recover(signature);
-        return _nonces[req.from] == req.nonce && signer == req.from;
+        return _nonces[req.from] >= req.nonce && signer == req.from;
     }
 
     //Does not check nonce because price dependent transaction nonces are not iterative
@@ -119,7 +119,7 @@ contract KuruForwarder is EIP712 {
     {
         address signer = _hashTypedDataV4(keccak256(abi.encode(_MARGIN_ACCOUNT_REQUEST_TYPEHASH, req.from, req.marginAccount, req.value, req.nonce, keccak256(req.data))))
             .recover(signature);
-        return signer == req.from && _nonces[req.from] == req.nonce;
+        return signer == req.from && _nonces[req.from] >= req.nonce;
     }
 
     function executeMarginAccountRequest(MarginAccountRequest calldata req, bytes calldata signature)

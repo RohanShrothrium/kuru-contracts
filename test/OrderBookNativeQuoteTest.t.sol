@@ -53,10 +53,10 @@ contract OrderBookTest is Test, PropertiesAsserts {
             abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
         );
         router = Router(payable(routerProxy));
-
-        marginAccount = new MarginAccount(address(router), address(router));
-        uint96 SPREAD = 30;
+        
         trustedForwarder = address(0x123);
+        marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
+        uint96 SPREAD = 30;
         router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
 
         address proxy = router.deployProxy(

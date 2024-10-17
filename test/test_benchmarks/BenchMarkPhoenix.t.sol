@@ -31,6 +31,7 @@ contract BenchMarkTest is Test, Gas {
     uint256 SEED = 2;
     uint24 _initPrice = 1800;
     address trustedForwarder;
+
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
@@ -49,10 +50,10 @@ contract BenchMarkTest is Test, Gas {
         u1 = genAddress();
         u2 = genAddress();
         u3 = genAddress();
-        marginAccount = new MarginAccount(address(router), address(router));
+        trustedForwarder = address(0x123);
+        marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
         uint96 SPREAD = 30;
         OrderBook implementation = new OrderBook();
-        trustedForwarder = address(0x123);
         router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
         OrderBook.OrderBookType _type;
         address proxy = router.deployProxy(

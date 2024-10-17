@@ -28,6 +28,7 @@ contract BenchMarkTest is Test, Gas {
     uint256 SEED = 2;
     uint96 SPREAD = 30;
     address trustedForwarder;
+
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
@@ -43,7 +44,8 @@ contract BenchMarkTest is Test, Gas {
             abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
         );
         router = Router(payable(routerProxy));
-        marginAccount = new MarginAccount(address(router), address(router));
+        trustedForwarder = address(0x123);
+        marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
 
         OrderBook implementation = new OrderBook();
         trustedForwarder = address(0x123);
