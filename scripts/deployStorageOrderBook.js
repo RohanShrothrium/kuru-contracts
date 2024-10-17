@@ -49,12 +49,14 @@ async function main() {
     // deploy KuruForwarder Contract
     const MarginAccount = await hre.ethers.getContractFactory("MarginAccount");
     const KuruForwarder = await hre.ethers.getContractFactory("KuruForwarder");
-    const OrderBook = await hre.ethers.getContractFactory("OrderBook");
+    const Proxy = await hre.ethers.getContractFactory("ERC1967Proxy");
+    const Router = await hre.ethers.getContractFactory("Router");
+    const CranklessOrderBook = await hre.ethers.getContractFactory("OrderBook");
     const allowedInterfaces = [
-        OrderBook.interface.getSighash('addBuyOrder'),
-        OrderBook.interface.getSighash('addSellOrder'),
-        OrderBook.interface.getSighash('placeAndExecuteMarketBuy'),
-        OrderBook.interface.getSighash('placeAndExecuteMarketSell'),
+        CranklessOrderBook.interface.getSighash('addBuyOrder'),
+        CranklessOrderBook.interface.getSighash('addSellOrder'),
+        CranklessOrderBook.interface.getSighash('placeAndExecuteMarketBuy'),
+        CranklessOrderBook.interface.getSighash('placeAndExecuteMarketSell'),
         MarginAccount.interface.getSighash('deposit'),
         MarginAccount.interface.getSighash('withdraw'),
     ];
@@ -63,10 +65,8 @@ async function main() {
     console.log("KuruForwarder deployed to:", kuruForwarder.address);
 
     // deploy Router Contract
-    const Router = await hre.ethers.getContractFactory("Router");
     const routerImpl = await Router.deploy();
     await routerImpl.deployed();
-    const Proxy = await hre.ethers.getContractFactory("ERC1967Proxy");
     const proxy = await Proxy.deploy(routerImpl.address, "0x");
     await proxy.deployed();
 
@@ -88,7 +88,6 @@ async function main() {
         usdcAddress = temp;
     }
     // deploy CranklessOrderBook contract
-    const CranklessOrderBook = await hre.ethers.getContractFactory("OrderBook");
     const implementation = await CranklessOrderBook.deploy();
     await implementation.deployed();
     // Initialize Router
@@ -138,7 +137,7 @@ async function main() {
         "routerAddress": routerAddress,
         "marginAccountAddress": marginAccountAddress,
         "cranklessOrderBookAddress": cranklessOrderBookAddress,
-        kuruAmmVaultAddress,
+        "kuruAmmVaultAddress": kuruAmmVaultAddress,
         "kuruForwarderAddress": kuruForwarder.address,
     }
     fs.writeFileSync("config.json", JSON.stringify(config));
