@@ -188,18 +188,19 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         if (_postOnly) {
             require(size == _remainingSize, Errors.PostOnlyError());
         }
-        if (_remainingSize > 0) {
-            uint40 _orderId = s_orderIdCounter + 1;
-            s_orderIdCounter = _orderId;
 
-            // Add price to the tree and update DLL of price poit.
-            TreeMath.add(s_buyTree, _price);
-            uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId);
+        if (_remainingSize == 0) return;
 
-            _addOrder(_price, _remainingSize, _orderId, true, _prevOrderId);
+        uint40 _orderId = s_orderIdCounter + 1;
+        s_orderIdCounter = _orderId;
 
-            emit OrderCreated(_orderId, _msgSender(), _remainingSize, _price, true);
-        }
+        // Add price to the tree and update DLL of price poit.
+        TreeMath.add(s_buyTree, _price);
+        uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId);
+
+        _addOrder(_price, _remainingSize, _orderId, true, _prevOrderId);
+
+        emit OrderCreated(_orderId, _msgSender(), _remainingSize, _price, true);
     }
 
     /**
