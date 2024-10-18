@@ -30,7 +30,7 @@ abstract contract ERC2771Context  {
     /**
      * @dev ERC-2771 specifies the context as being a single address (20 bytes).
      */
-    function _contextSuffixLength() internal view returns (uint256) {
+    function _contextSuffixLength() internal pure returns (uint256) {
         return 20;
     }
 }
