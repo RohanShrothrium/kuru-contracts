@@ -189,7 +189,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             require(size == _remainingSize, OrderBookErrors.PostOnlyError());
         }
 
-        if (_remainingSize == 0) return;
+        if (_remainingSize > 0) {
 
         uint40 _orderId = s_orderIdCounter + 1;
         s_orderIdCounter = _orderId;
@@ -201,6 +201,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         _addOrder(_price, _remainingSize, _orderId, true, _prevOrderId);
 
         emit OrderCreated(_orderId, _msgSender(), _remainingSize, _price, true);
+        }
     }
 
     /**
@@ -223,7 +224,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             require(_tokenCredit == 0, OrderBookErrors.PostOnlyError());
         }
 
-        if (size == 0) return;
+        if (size > 0) {
 
         uint40 _orderId = s_orderIdCounter + 1;
         s_orderIdCounter = _orderId;
@@ -233,6 +234,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         _addOrder(_price, size, _orderId, false, _prevOrderId);
 
         emit OrderCreated(_orderId, _msgSender(), size, _price, false);
+        }
     }
 
     /**
