@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {ECDSA} from "solady/src/utils/ECDSA.sol";
+import {EIP712} from "solady/src/utils/EIP712.sol";
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
 contract KuruForwarder is EIP712 {
@@ -61,10 +61,15 @@ contract KuruForwarder is EIP712 {
 
     mapping(address => uint256) private _nonces;
 
-    constructor(bytes4[] memory allowedInterfaces) EIP712("KuruForwarder", "1.0.0") {
+    constructor(bytes4[] memory allowedInterfaces) {
         for (uint256 i = 0; i < allowedInterfaces.length; i++) {
             allowedInterface[allowedInterfaces[i]] = true;
         }
+    }
+
+    function _domainNameAndVersion() internal pure override returns (string memory name, string memory version) {
+        name = "KuruForwarder";
+        version = "1.0.0";
     }
 
     function getNonce(address from) public view returns (uint256) {
@@ -72,7 +77,7 @@ contract KuruForwarder is EIP712 {
     }
 
     function verify(ForwardRequest calldata req, bytes calldata signature) public view returns (bool) {
-        address signer = _hashTypedDataV4(
+        address signer = _hashTypedData(
             keccak256(abi.encode(_TYPEHASH, req.from, req.market, req.value, req.nonce, keccak256(req.data)))
         ).recover(signature);
         return _nonces[req.from] >= req.nonce && signer == req.from;
@@ -85,7 +90,7 @@ contract KuruForwarder is EIP712 {
         view
         returns (bool)
     {
-        address signer = _hashTypedDataV4(
+        address signer = _hashTypedData(
             keccak256(
                 abi.encode(
                     _PRICE_DEPENDENT_TYPEHASH,
@@ -107,7 +112,7 @@ contract KuruForwarder is EIP712 {
         view
         returns (bool)
     {
-        address signer = _hashTypedDataV4(keccak256(abi.encode(_CANCEL_PRICE_DEPENDENT_TYPEHASH, req.from, req.nonce)))
+        address signer = _hashTypedData(keccak256(abi.encode(_CANCEL_PRICE_DEPENDENT_TYPEHASH, req.from, req.nonce)))
             .recover(signature);
         return signer == req.from;
     }
@@ -117,7 +122,7 @@ contract KuruForwarder is EIP712 {
         view
         returns (bool)
     {
-        address signer = _hashTypedDataV4(keccak256(abi.encode(_MARGIN_ACCOUNT_REQUEST_TYPEHASH, req.from, req.marginAccount, req.value, req.nonce, keccak256(req.data))))
+        address signer = _hashTypedData(keccak256(abi.encode(_MARGIN_ACCOUNT_REQUEST_TYPEHASH, req.from, req.marginAccount, req.value, req.nonce, keccak256(req.data))))
             .recover(signature);
         return signer == req.from && _nonces[req.from] >= req.nonce;
     }
