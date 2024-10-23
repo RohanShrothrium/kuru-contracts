@@ -903,8 +903,9 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         uint24 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0);
         if (firstLeft != 0) {
             if (vaultBestAsk != type(uint256).max) {
-                return (FixedPointMathLib.min(firstLeft * vaultPricePrecision / pricePrecision, vaultBestAsk))
-                    == vaultBestAsk ? (true, vaultBestAsk) : (false, firstLeft * vaultPricePrecision / pricePrecision);
+                return (FixedPointMathLib.min(firstLeft * vaultPricePrecision / pricePrecision, vaultBestAsk)) == vaultBestAsk
+                    ? (false, firstLeft * vaultPricePrecision / pricePrecision)
+                    : (true, vaultBestAsk);
             }
             return (false, firstLeft * vaultPricePrecision / pricePrecision);
         }
@@ -915,8 +916,9 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         uint24 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint24).max);
         if (firstRight != type(uint24).max) {
             if (vaultBestBid != 0) {
-                return (FixedPointMathLib.max(firstRight * vaultPricePrecision / pricePrecision, vaultBestBid))
-                    == vaultBestBid ? (true, vaultBestBid) : (false, firstRight * vaultPricePrecision / pricePrecision);
+                return (FixedPointMathLib.max(firstRight * vaultPricePrecision / pricePrecision, vaultBestBid)) == vaultBestBid
+                    ? (false, firstRight * vaultPricePrecision / pricePrecision)
+                    : (true, vaultBestBid);
             }
             return (false, firstRight * vaultPricePrecision / pricePrecision);
         }
