@@ -20,21 +20,6 @@ import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     OrderBookType orderBookType;
 
-    struct AggressiveBuyVars {
-        uint96 sizeToCreditTaker;
-        uint96 sizeToCreditViaVault;
-        uint32 fundsConsumed;
-        bytes makerCredits;
-    }
-
-    struct MarketBuyMatchVars {
-        uint96 sizeToCreditTaker;
-        uint96 sizeToCreditViaVault;
-        uint256 tokenCredit;
-        bytes makerCredits;
-    }
-
-
     using SafeTransferLib for address;
 
     mapping(uint40 => Order) public s_orders;
@@ -536,48 +521,46 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     }
 
     function _matchAggressiveBuyWithCap(uint32 _limitPrice, uint96 _sizeToBeFilled) internal returns (uint96, uint32) {
-        // Define a struct to hold local variables
-        AggressiveBuyVars memory vars;
-
+        uint96 sizeToCreditTaker;
+        uint96 sizeToCreditViaVault;
+        uint32 fundsConsumed;
+        bytes memory makerCredits;
         (bool _isVaultFill, uint256 _bestAsk) = bestAsk();
-        uint256 _vaultPricePrecision = vaultPricePrecision;
-        uint256 _pricePrecision = pricePrecision;
-        uint256 _baseAssetDecimals = baseAssetDecimals;
 
-        while (_sizeToBeFilled > 0 && _bestAsk <= (_limitPrice * _vaultPricePrecision / _pricePrecision) && _bestAsk != 0) {
+        while (_sizeToBeFilled > 0 && _bestAsk <= (_limitPrice * vaultPricePrecision / pricePrecision) && _bestAsk != 0) {
             uint96 sizeToBeFilledBefore = _sizeToBeFilled; // Capture the size before filling
             bytes memory priceUpdate;
 
             // _sizeToBeFilled always signifies size left to be filled
-            (_sizeToBeFilled, priceUpdate) = _isVaultFill
+            (_sizeToBeFilled, priceUpdate) = _isVaultFill    
                 ? _fillVaultForBuy(_sizeToBeFilled)
                 : _fillSizeForPrice(
                     s_sellTree,
-                    uint32(_bestAsk * _pricePrecision / _vaultPricePrecision),
-                    s_sellPricePoints[_bestAsk * _pricePrecision / _vaultPricePrecision],
+                    uint32(_bestAsk * pricePrecision / vaultPricePrecision),
+                    s_sellPricePoints[_bestAsk * pricePrecision / vaultPricePrecision],
                     _sizeToBeFilled
                 );
 
             uint96 sizeFilled = sizeToBeFilledBefore - _sizeToBeFilled;
-            vars.sizeToCreditTaker += sizeFilled;
+            sizeToCreditTaker += sizeFilled;
             if (_isVaultFill) {
-                vars.sizeToCreditViaVault += sizeFilled;
+                sizeToCreditViaVault += sizeFilled;
             }
 
-            vars.fundsConsumed += _calculateFundsConsumed(
-                uint32(FixedPointMathLib.mulDivUp(_bestAsk, _pricePrecision, _vaultPricePrecision)),
+            fundsConsumed += _calculateFundsConsumed(
+                uint32(FixedPointMathLib.mulDivUp(_bestAsk, pricePrecision, vaultPricePrecision)),
                 sizeFilled
             );
-            vars.makerCredits = bytes.concat(vars.makerCredits, priceUpdate);
+            makerCredits = bytes.concat(makerCredits, priceUpdate);
 
             (_isVaultFill, _bestAsk) = bestAsk();
         }
 
-        if (vars.sizeToCreditTaker > 0) {
-            uint256 _tokenCredit = (vars.sizeToCreditTaker * 10 ** _baseAssetDecimals) / sizePrecision;
-            if (vars.sizeToCreditViaVault > 0) {
+        if (sizeToCreditTaker > 0) {
+            uint256 _tokenCredit = (sizeToCreditTaker * 10 ** baseAssetDecimals) / sizePrecision;
+            if (sizeToCreditViaVault > 0) {
                 marginAccount.debitUser(
-                    kuruAmmVault, baseAsset, (vars.sizeToCreditViaVault * 10 ** _baseAssetDecimals) / sizePrecision
+                    kuruAmmVault, baseAsset, (sizeToCreditViaVault * 10 ** baseAssetDecimals) / sizePrecision
                 );
             }
             uint256 _takerFeeBps = takerFeeBps;
@@ -588,11 +571,11 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 baseFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
             }
             marginAccount.creditUsersEncoded(
-                bytes.concat(vars.makerCredits, abi.encode(msg.sender, baseAsset, _tokenCredit, true))
+                bytes.concat(makerCredits, abi.encode(msg.sender, baseAsset, _tokenCredit, true))
             );
         }
 
-        return (_sizeToBeFilled, vars.fundsConsumed);
+        return (_sizeToBeFilled, fundsConsumed);
     }
 
 
@@ -601,20 +584,15 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
      * @param _quoteSize amount of quote asset user is ready to pay.
      */
     function _marketBuyMatch(uint32 _quoteSize, bool _isMargin) internal returns (uint32, uint256) {
-        MarketBuyMatchVars memory vars;
-
+        uint96 sizeToCreditTaker;
+        uint96 sizeToCreditViaVault;
+        bytes memory makerCredits;
         (bool _isVaultFill, uint256 _bestAsk) = bestAsk();
-        uint256 _vaultPricePrecision = vaultPricePrecision;
-        uint256 _pricePrecision = pricePrecision;
-        uint256 _sizePrecision = sizePrecision;
-        uint256 _baseAssetDecimals = baseAssetDecimals;
-        uint256 _takerFeeBps = takerFeeBps;
-        address _baseAsset = baseAsset;
 
         while (_quoteSize > 0 && _bestAsk != 0) {
             // Calculate base size fillable by current unconsumed quote size for a particular price
             uint96 _sizeFillableAtPriceLeft = uint96(
-                _quoteSize * _sizePrecision * _vaultPricePrecision / (_bestAsk * _pricePrecision)
+                _quoteSize * sizePrecision * vaultPricePrecision / (_bestAsk * pricePrecision)
             );
 
             uint96 _sizeFillableAtPriceBefore = _sizeFillableAtPriceLeft; // Save old size to be filled
@@ -625,48 +603,49 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 ? _fillVaultForBuy(_sizeFillableAtPriceLeft)
                 : _fillSizeForPrice(
                     s_sellTree,
-                    uint32(_bestAsk * _pricePrecision / _vaultPricePrecision),
-                    s_sellPricePoints[uint32(_bestAsk * _pricePrecision / _vaultPricePrecision)],
+                    uint32(_bestAsk * pricePrecision / vaultPricePrecision),
+                    s_sellPricePoints[uint32(_bestAsk * pricePrecision / vaultPricePrecision)],
                     _sizeFillableAtPriceLeft
                 );
 
             uint96 sizeFilled = _sizeFillableAtPriceBefore - _sizeFillableAtPriceLeft;
-            vars.sizeToCreditTaker += sizeFilled;
+            sizeToCreditTaker += sizeFilled;
             if (_isVaultFill) {
-                vars.sizeToCreditViaVault += sizeFilled;
+                sizeToCreditViaVault += sizeFilled;
             }
 
-            vars.makerCredits = bytes.concat(vars.makerCredits, priceUpdate);
+            makerCredits = bytes.concat(makerCredits, priceUpdate);
 
             // Calculate current quote size left with size that can be filled at current price point
             _quoteSize = uint32(
                 FixedPointMathLib.mulDiv(
-                    _bestAsk * _pricePrecision, _sizeFillableAtPriceLeft, _sizePrecision * _vaultPricePrecision
+                    _bestAsk * pricePrecision, _sizeFillableAtPriceLeft, sizePrecision * vaultPricePrecision
                 )
             );
 
             (_isVaultFill, _bestAsk) = bestAsk();
         }
 
-        if (vars.sizeToCreditTaker > 0) {
-            vars.tokenCredit = (vars.sizeToCreditTaker * 10 ** _baseAssetDecimals) / _sizePrecision;
-            if (vars.sizeToCreditViaVault > 0) {
+        if (sizeToCreditTaker > 0) {
+            uint256 _tokenCredit = (sizeToCreditTaker * 10 ** baseAssetDecimals) / sizePrecision;
+            if (sizeToCreditViaVault > 0) {
                 marginAccount.debitUser(
-                    kuruAmmVault, _baseAsset, (vars.sizeToCreditViaVault * 10 ** _baseAssetDecimals) / _sizePrecision
+                    kuruAmmVault, baseAsset, (sizeToCreditViaVault * 10 ** baseAssetDecimals) / sizePrecision
                 );
             }
-            if (_takerFeeBps > 0) {
-                uint256 _feeDebit = FixedPointMathLib.mulDivUp(vars.tokenCredit, _takerFeeBps, BPS_MULTIPLIER);
-                vars.tokenCredit -= _feeDebit;
+            if (takerFeeBps > 0) {
+                uint256 _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, takerFeeBps, BPS_MULTIPLIER);
+                _tokenCredit -= _feeDebit;
                 // Calculate protocol fee part of total fee
-                baseFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
+                baseFeeCollected += ((_feeDebit * (takerFeeBps - makerFeeBps)) / takerFeeBps);
             }
             marginAccount.creditUsersEncoded(
-                bytes.concat(vars.makerCredits, abi.encode(msg.sender, _baseAsset, vars.tokenCredit, _isMargin))
+                bytes.concat(makerCredits, abi.encode(msg.sender, baseAsset, _tokenCredit, _isMargin))
             );
+            return (_quoteSize, _tokenCredit);
         }
 
-        return (_quoteSize, vars.tokenCredit);
+        return (_quoteSize, 0);
     }
 
 
@@ -680,8 +659,9 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         internal
         returns (uint96, uint256)
     {
-        uint32 _quoteCreditTaker = 0;
-        uint256 _quoteCreditVaultTaker;
+        uint32 quoteCreditTaker;
+        uint256 quoteCreditVaultTaker;
+        uint256 tokenCredit;
         (bool _isVaultFill, uint256 _bestBid) = bestBid();
         bytes memory makerCredits;
         while (
@@ -702,10 +682,10 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 );
             // Calculate the quote size which needs to be credited for the size that was filled at the particular price point
             if (_isVaultFill) {
-                _quoteCreditVaultTaker +=
+                quoteCreditVaultTaker +=
                     FixedPointMathLib.mulDiv(_sizeToBeFilledBefore - _sizeToBeFilledLeft, vaultBestBid, sizePrecision);
             } else {
-                _quoteCreditTaker += uint32(
+                quoteCreditTaker += uint32(
                     FixedPointMathLib.mulDiv(
                         _sizeToBeFilledBefore - _sizeToBeFilledLeft,
                         uint32(_bestBid * pricePrecision / vaultPricePrecision),
@@ -718,28 +698,27 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
             (_isVaultFill, _bestBid) = bestBid();
         }
 
-        if (_quoteCreditTaker > 0 || _quoteCreditVaultTaker > 0) {
-            uint256 _tokenCredit = ((_quoteCreditTaker) * 10 ** quoteAssetDecimals) / pricePrecision
-                + (_quoteCreditVaultTaker * 10 ** quoteAssetDecimals) / vaultPricePrecision;
-            if (_quoteCreditVaultTaker > 0) {
+        if (quoteCreditTaker > 0 || quoteCreditVaultTaker > 0) {
+            tokenCredit = ((quoteCreditTaker) * 10 ** quoteAssetDecimals) / pricePrecision
+                + (quoteCreditVaultTaker * 10 ** quoteAssetDecimals) / vaultPricePrecision;
+            if (quoteCreditVaultTaker > 0) {
                 marginAccount.debitUser(
-                    kuruAmmVault, quoteAsset, (_quoteCreditVaultTaker * 10 ** quoteAssetDecimals) / vaultPricePrecision
+                    kuruAmmVault, quoteAsset, (quoteCreditVaultTaker * 10 ** quoteAssetDecimals) / vaultPricePrecision
                 );
             }
             uint256 _takerFeeBps = takerFeeBps;
-            if (_takerFeeBps > 0) {
-                uint256 _feeDebit = FixedPointMathLib.mulDivUp(_tokenCredit, _takerFeeBps, BPS_MULTIPLIER);
-                _tokenCredit -= _feeDebit;
+            if (takerFeeBps > 0) {
+                uint256 _feeDebit = FixedPointMathLib.mulDivUp(tokenCredit, takerFeeBps, BPS_MULTIPLIER);
+                tokenCredit -= _feeDebit;
                 //Calculate protocol fee part of total fee
-                quoteFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
+                quoteFeeCollected += ((_feeDebit * (takerFeeBps - makerFeeBps)) / takerFeeBps);
             }
             marginAccount.creditUsersEncoded(
-                bytes.concat(makerCredits, abi.encode(msg.sender, quoteAsset, _tokenCredit, _useMargin))
+                bytes.concat(makerCredits, abi.encode(msg.sender, quoteAsset, tokenCredit, _useMargin))
             );
-            return (_sizeToBeFilledLeft, _tokenCredit);
         }
 
-        return (_sizeToBeFilledLeft, 0);
+        return (_sizeToBeFilledLeft, tokenCredit);
     }
 
     /**
