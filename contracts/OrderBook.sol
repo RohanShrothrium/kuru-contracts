@@ -706,7 +706,6 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                     kuruAmmVault, quoteAsset, (quoteCreditVaultTaker * 10 ** quoteAssetDecimals) / vaultPricePrecision
                 );
             }
-            uint256 _takerFeeBps = takerFeeBps;
             if (takerFeeBps > 0) {
                 uint256 _feeDebit = FixedPointMathLib.mulDivUp(tokenCredit, takerFeeBps, BPS_MULTIPLIER);
                 tokenCredit -= _feeDebit;
