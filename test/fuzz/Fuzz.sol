@@ -24,7 +24,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
     Fuzz_Mode MODE;
 
     uint40 orders;
-    uint24 MAX_AMOUNT = 16777205;
+    uint32 MAX_AMOUNT = 16777205;
 
     bool buyFlag;
     bool sellFlag;
@@ -32,7 +32,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
     uint96 _minSize = 10 ** 5;
     uint96 _maxSize = 10 ** 12;
 
-    uint24 presetPrice;
+    uint32 presetPrice;
     bool priceSet;
     uint96 SPREAD = 30;
 
@@ -47,7 +47,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
             base = tokenA;
         }
 
-        uint24 _tickSize = PRICE_PRECISION / 2;
+        uint32 _tickSize = PRICE_PRECISION / 2;
 
         uint256 _takerFeeBps = 0;
         uint256 _makerFeeBps = 0;
@@ -72,7 +72,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         orderBook = OrderBook(proxy);
     }
 
-    function makerSellOrder(uint24 _price, uint96 _size) internal {
+    function makerSellOrder(uint32 _price, uint96 _size) internal {
         uint256 _quoteDecimals = quote.decimals();
         address _maker = genAddress();
         uint256 _sizeNeed = _size * 10 ** base.decimals() / SIZE_PRECISION;
@@ -92,7 +92,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         orders = orders + 1;
     }
 
-    function makerBuyOrder(uint24 _price, uint96 _size) internal {
+    function makerBuyOrder(uint32 _price, uint96 _size) internal {
         uint256 _quoteDecimals = quote.decimals();
         uint256 _baseDecimals = base.decimals();
         address _maker = genAddress();
@@ -108,11 +108,11 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         orders = orders + 1;
     }
 
-    function fuzzHandler(uint24 _price, uint96 _size, uint24 _quoteAmount, bool isBuy) public {
+    function fuzzHandler(uint32 _price, uint96 _size, uint32 _quoteAmount, bool isBuy) public {
         _size = uint96(clampBetween(_size, SIZE_PRECISION, _maxSize));
-        _price = uint24(clampBetween(_price, PRICE_PRECISION, type(uint24).max / 100));
+        _price = uint32(clampBetween(_price, PRICE_PRECISION, type(uint32).max / 100));
         _price = _price - _price % 50;
-        _quoteAmount = uint24(clampBetween(_quoteAmount, MAX_AMOUNT / 1000, MAX_AMOUNT));
+        _quoteAmount = uint32(clampBetween(_quoteAmount, MAX_AMOUNT / 1000, MAX_AMOUNT));
         if (orders < 50) {
             if (isBuy) {
                 makerBuyOrder(_price, _size);
@@ -176,7 +176,7 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         }
     }
 
-    function clearOutSellOrders(uint24 _quoteAmount) internal returns (bool) {
+    function clearOutSellOrders(uint32 _quoteAmount) internal returns (bool) {
         uint256 tokensNeed = uint256(_quoteAmount) * 10 ** quote.decimals() / PRICE_PRECISION;
         clearOut = genAddress();
         quote.mint(clearOut, tokensNeed);

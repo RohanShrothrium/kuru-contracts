@@ -19,7 +19,7 @@ contract BenchMarkTest is Test, Gas {
     Router router;
     MarginAccount marginAccount;
     uint96 constant SIZE_PRECISION = 10 ** 10;
-    uint24 constant PRICE_PRECISION = 10 ** 2;
+    uint32 constant PRICE_PRECISION = 10 ** 2;
     bool diffPricePoint = false;
     address deployer;
     address u1;
@@ -29,12 +29,12 @@ contract BenchMarkTest is Test, Gas {
     uint256 initUsdc = 1000000 * 10 ** 18;
     address lastGenAddress;
     uint256 SEED = 2;
-    uint24 _initPrice = 1800;
+    uint32 _initPrice = 1800;
 
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
-        uint24 _tickSize = PRICE_PRECISION / 2;
+        uint32 _tickSize = PRICE_PRECISION / 2;
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 12;
         uint256 _takerFeeBps = 0;
@@ -83,13 +83,13 @@ contract BenchMarkTest is Test, Gas {
         return derived;
     }
 
-    function _addCustomBuyOrder(address _user, uint24 _price, uint96 _size) internal {
+    function _addCustomBuyOrder(address _user, uint32 _price, uint96 _size) internal {
         vm.startPrank(_user);
         orderBook.addBuyOrder(_price, _size, false);
         vm.stopPrank();
     }
 
-    function _addCustomBuyOrderOnlyPriceSize(uint24 _price, uint96 _size) internal {
+    function _addCustomBuyOrderOnlyPriceSize(uint32 _price, uint96 _size) internal {
         address _maker = genAddress();
         uint256 _usdcForEachOrder = _price * _size * 10 ** usdc.decimals();
         usdc.mint(_maker, _usdcForEachOrder);
@@ -100,7 +100,7 @@ contract BenchMarkTest is Test, Gas {
         vm.stopPrank();
     }
 
-    function _addCustomSellOrderOnlyPriceSize(uint24 _price, uint96 _size) internal {
+    function _addCustomSellOrderOnlyPriceSize(uint32 _price, uint96 _size) internal {
         address _maker = genAddress();
         eth.mint(_maker, _size * 10 ** 18);
         vm.startPrank(_maker);
@@ -110,7 +110,7 @@ contract BenchMarkTest is Test, Gas {
         vm.stopPrank();
     }
 
-    function _addCustomSellOrder(address _user, uint24 _price, uint96 _size) internal {
+    function _addCustomSellOrder(address _user, uint32 _price, uint96 _size) internal {
         vm.startPrank(_user);
         orderBook.addSellOrder(_price, _size, false);
         vm.stopPrank();
@@ -130,9 +130,9 @@ contract BenchMarkTest is Test, Gas {
      */
 
     function fillXforNtimes(uint256 _fills, uint256 _num, string memory _label) internal returns (uint256) {
-        uint24 _step = PRICE_PRECISION / 2;
+        uint32 _step = PRICE_PRECISION / 2;
         uint96 _size = 5;
-        uint24 _curPrice = _initPrice;
+        uint32 _curPrice = _initPrice;
         uint256 _gasUse;
         for (uint256 i; i < _num; i++) {
             uint256 _usdcNeeded;
@@ -145,7 +145,7 @@ contract BenchMarkTest is Test, Gas {
             }
             address _user = genAddress();
             usdc.mint(_user, _usdcNeeded);
-            uint24 _input = uint24(_usdcNeeded * PRICE_PRECISION / (10 ** usdc.decimals()));
+            uint32 _input = uint32(_usdcNeeded * PRICE_PRECISION / (10 ** usdc.decimals()));
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _usdcNeeded);
             startMeasuringGas(_label);

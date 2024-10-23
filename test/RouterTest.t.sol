@@ -14,7 +14,7 @@ import {MintableERC20} from "./lib/MintableERC20.sol";
 
 contract OrderBookTest is Test {
     uint96 constant SIZE_PRECISION = 10 ** 10;
-    uint24 constant PRICE_PRECISION = 10 ** 2;
+    uint32 constant PRICE_PRECISION = 10 ** 2;
 
     OrderBook eth_mon;
     OrderBook mon_usdc;
@@ -81,7 +81,7 @@ contract OrderBookTest is Test {
         OrderBook orderBook,
         MintableERC20 token,
         address _maker,
-        uint24 _price,
+        uint32 _price,
         uint96 _size
     ) internal {
         uint256 _tokenForEachOrder = _price * _size * 10 ** token.decimals();
@@ -89,7 +89,7 @@ contract OrderBookTest is Test {
         vm.startPrank(_maker);
         token.approve(address(marginAccount), _tokenForEachOrder);
         marginAccount.deposit(_maker, address(token), _tokenForEachOrder);
-        (uint24 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
+        (uint32 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
         orderBook.addBuyOrder(_price * _pricePrecision, _size * _sizePrecision, false);
         vm.stopPrank();
     }
@@ -98,14 +98,14 @@ contract OrderBookTest is Test {
         OrderBook orderBook,
         MintableERC20 token,
         address _maker,
-        uint24 _price,
+        uint32 _price,
         uint96 _size
     ) internal {
         token.mint(_maker, _size * 10 ** token.decimals());
         vm.startPrank(_maker);
         token.approve(address(marginAccount), _size * 10 ** token.decimals());
         marginAccount.deposit(_maker, address(token), _size * 10 ** token.decimals());
-        (uint24 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
+        (uint32 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
         orderBook.addSellOrder(_price * _pricePrecision, _size * _sizePrecision, false);
         vm.stopPrank();
     }
@@ -113,11 +113,11 @@ contract OrderBookTest is Test {
     function _addCustomBuyOrderOnlyPriceSizeNativeQuote(
         OrderBook orderBook,
         address _maker,
-        uint24 _priceWithoutPrecision,
+        uint32 _priceWithoutPrecision,
         uint96 _sizeWithoutPrecision
     ) internal {
         vm.startPrank(_maker);
-        (uint24 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
+        (uint32 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
         uint256 depositAmount = _priceWithoutPrecision * _sizeWithoutPrecision * 10 ** 18;
         marginAccount.deposit{value: depositAmount}(_maker, address(0), depositAmount);
         orderBook.addBuyOrder(_priceWithoutPrecision * _pricePrecision, _sizeWithoutPrecision * _sizePrecision, false);
@@ -127,11 +127,11 @@ contract OrderBookTest is Test {
     function _addCustomSellOrderOnlyPriceSizeNativeBase(
         OrderBook orderBook,
         address _maker,
-        uint24 _priceWithoutPrecision,
+        uint32 _priceWithoutPrecision,
         uint96 _sizeWithoutPrecision
     ) internal {
         vm.startPrank(_maker);
-        (uint24 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
+        (uint32 _pricePrecision, uint96 _sizePrecision,,,,,,,,,) = orderBook.getMarketParams();
         uint256 depositAmount = _sizeWithoutPrecision * 10 ** 18;
         marginAccount.deposit{value: depositAmount}(_maker, address(0), depositAmount);
         orderBook.addSellOrder(_priceWithoutPrecision * _pricePrecision, _sizeWithoutPrecision * _sizePrecision, false);
@@ -261,9 +261,9 @@ contract OrderBookTest is Test {
         address _baseAsset,
         address _quoteAsset,
         uint96 _sizePrecision,
-        uint24 _pricePrecision
+        uint32 _pricePrecision
     ) internal returns (OrderBook) {
-        uint24 _tickSize = _pricePrecision / 2;
+        uint32 _tickSize = _pricePrecision / 2;
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 15;
         uint256 _takerFeeBps = 0;

@@ -64,7 +64,7 @@ library OrderBookErrors {
      */
     error SlippageExceeded();
     /**
-     * @dev Thrown when quote size in uint24 overflows
+     * @dev Thrown when quote size in uint32 overflows
      */
     error TooMuchSizeFilled();
     /**

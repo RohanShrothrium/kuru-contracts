@@ -115,8 +115,8 @@ async function main() {
 	);
 
     // TODO: Uncomment if you want an AMM
-    const vaultDepositTx = await kuruAmmVault.deposit(hre.ethers.utils.parseEther("206900"), hre.ethers.utils.parseEther("79"), userAddress);
-    await vaultDepositTx.wait();
+    // const vaultDepositTx = await kuruAmmVault.deposit(hre.ethers.utils.parseEther("206900"), hre.ethers.utils.parseEther("79"), userAddress);
+    // await vaultDepositTx.wait();
 
     const config = {
         "usdcAddress": usdcAddress,

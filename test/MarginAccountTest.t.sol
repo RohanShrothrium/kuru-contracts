@@ -76,9 +76,9 @@ contract OrderBookTest is Test {
         MintableERC20 _baseAsset,
         MintableERC20 _quoteAsset,
         uint96 _sizePrecision,
-        uint24 _pricePrecision
+        uint32 _pricePrecision
     ) internal returns (OrderBook) {
-        uint24 _tickSize = _pricePrecision / 2;
+        uint32 _tickSize = _pricePrecision / 2;
         uint96 _minSize = 10 ** 5;
         uint96 _maxSize = 10 ** 15;
         uint256 _takerFeeBps = 0;
