@@ -19,22 +19,7 @@ import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
 contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
     OrderBookType orderBookType;
-
-    struct AggressiveBuyVars {
-        uint96 sizeToCreditTaker;
-        uint96 sizeToCreditViaVault;
-        uint32 fundsConsumed;
-        bytes makerCredits;
-    }
-
-    struct MarketBuyMatchVars {
-        uint96 sizeToCreditTaker;
-        uint96 sizeToCreditViaVault;
-        uint256 tokenCredit;
-        bytes makerCredits;
-    }
-
-
+    
     using SafeTransferLib for address;
 
     mapping(uint40 => Order) public s_orders;
@@ -166,7 +151,6 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
 
         //The buy order is filled aggressively and the leftover size is added as a limit buy order
-        (uint96 _remainingSize, uint32 _consumedFunds) = _matchAggressiveBuyWithCap(_price, size);
         (uint96 _remainingSize, uint32 _consumedFunds) = _matchAggressiveBuyWithCap(_price, size);
 
         _consumedFunds += _calculateFundsConsumed(_price, _remainingSize);
@@ -567,7 +551,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 uint32(FixedPointMathLib.mulDivUp(_bestAsk, pricePrecision, vaultPricePrecision)),
                 sizeFilled
             );
-            vars.makerCredits = bytes.concat(vars.makerCredits, priceUpdate);
+            makerCredits = bytes.concat(makerCredits, priceUpdate);
 
             (_isVaultFill, _bestAsk) = bestAsk();
         }
@@ -587,11 +571,11 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
                 baseFeeCollected += ((_feeDebit * (_takerFeeBps - makerFeeBps)) / _takerFeeBps);
             }
             marginAccount.creditUsersEncoded(
-                bytes.concat(vars.makerCredits, abi.encode(msg.sender, baseAsset, _tokenCredit, true))
+                bytes.concat(makerCredits, abi.encode(msg.sender, baseAsset, _tokenCredit, true))
             );
         }
 
-        return (_sizeToBeFilled, vars.fundsConsumed);
+        return (_sizeToBeFilled, fundsConsumed);
     }
 
 
@@ -635,7 +619,7 @@ contract OrderBook is Ownable, Initializable, AbstractAMM, UUPSUpgradeable {
             // Calculate current quote size left with size that can be filled at current price point
             _quoteSize = uint32(
                 FixedPointMathLib.mulDiv(
-                    _bestAsk * _pricePrecision, _sizeFillableAtPriceLeft, _sizePrecision * _vaultPricePrecision
+                    _bestAsk * pricePrecision, _sizeFillableAtPriceLeft, sizePrecision * vaultPricePrecision
                 )
             );
 
