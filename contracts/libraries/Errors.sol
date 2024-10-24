@@ -158,3 +158,21 @@ library KuruAMMVaultErrors {
     error NewSizeExceedsPartiallyFilledSize();
 }
 
+library KuruForwarderErrors {
+    /**
+    * @dev Thrown when the signature does not match the request
+     */
+    error SignatureMismatch();
+    /**
+    * @dev Thrown when the interface is not allowed
+     */
+    error InterfaceNotAllowed();
+    /**
+    * @dev Thrown when the execution fails
+     */
+    error ExecutionFailed();
+    /**
+    * @dev Thrown when the nonce is already used
+     */
+    error NonceAlreadyUsed();
+}

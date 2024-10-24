@@ -5,6 +5,7 @@ pragma solidity ^0.8.20;
 import {ECDSA} from "solady/src/utils/ECDSA.sol";
 import {EIP712} from "solady/src/utils/EIP712.sol";
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
+import {KuruForwarderErrors} from "./libraries/Errors.sol";
 
 contract KuruForwarder is EIP712 {
     using ECDSA for bytes32;
@@ -80,7 +81,7 @@ contract KuruForwarder is EIP712 {
         address signer = _hashTypedData(
             keccak256(abi.encode(_TYPEHASH, req.from, req.market, req.value, req.nonce, keccak256(req.data)))
         ).recover(signature);
-        return _nonces[req.from] >= req.nonce && signer == req.from;
+        return req.nonce >= _nonces[req.from] && signer == req.from;
     }
 
     //Does not check nonce because price dependent transaction nonces are not iterative
@@ -124,7 +125,7 @@ contract KuruForwarder is EIP712 {
     {
         address signer = _hashTypedData(keccak256(abi.encode(_MARGIN_ACCOUNT_REQUEST_TYPEHASH, req.from, req.marginAccount, req.value, req.nonce, keccak256(req.data))))
             .recover(signature);
-        return signer == req.from && _nonces[req.from] >= req.nonce;
+        return req.nonce >= _nonces[req.from] && signer == req.from;
     }
 
     function executeMarginAccountRequest(MarginAccountRequest calldata req, bytes calldata signature)
@@ -132,10 +133,10 @@ contract KuruForwarder is EIP712 {
         payable
         returns (bool, bytes memory)
     {
-        require(verifyMarginAccountRequest(req, signature), "KuruForwarder: signature does not match request");
+        require(verifyMarginAccountRequest(req, signature), KuruForwarderErrors.SignatureMismatch());
         
         bytes4 selector = bytes4(req.data[:4]);
-        require(allowedInterface[selector], "KuruForwarder: interface not allowed");
+        require(allowedInterface[selector], KuruForwarderErrors.InterfaceNotAllowed());
 
         _nonces[req.from] = req.nonce + 1;
 
@@ -154,10 +155,10 @@ contract KuruForwarder is EIP712 {
         payable
         returns (bool, bytes memory)
     {
-        require(verify(req, signature), "KuruForwarder: signature does not match request");
+        require(verify(req, signature), KuruForwarderErrors.SignatureMismatch());
 
         bytes4 selector = bytes4(req.data[:4]);
-        require(allowedInterface[selector], "KuruForwarder: interface not allowed");
+        require(allowedInterface[selector], KuruForwarderErrors.InterfaceNotAllowed());
 
         _nonces[req.from] = req.nonce + 1;
 
@@ -176,13 +177,13 @@ contract KuruForwarder is EIP712 {
         payable
         returns (bool, bytes memory)
     {
-        require(verifyPriceDependent(req, signature), "KuruForwarder: signature does not match request");
+        require(verifyPriceDependent(req, signature), KuruForwarderErrors.SignatureMismatch());
 
         bytes4 selector = bytes4(req.data[:4]);
-        require(allowedInterface[selector], "KuruForwarder: interface not allowed");
+        require(allowedInterface[selector], KuruForwarderErrors.InterfaceNotAllowed());
         require(
             !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))],
-            "KuruForwarder: nonce already used"
+            KuruForwarderErrors.NonceAlreadyUsed()
         );
         executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))] = true;
 
@@ -202,10 +203,10 @@ contract KuruForwarder is EIP712 {
     }
 
     function cancelPriceDependent(CancelPriceDependentRequest calldata req, bytes calldata signature) public {
-        require(verifyCancelPriceDependent(req, signature), "KuruForwarder: signature does not match request");
+        require(verifyCancelPriceDependent(req, signature), KuruForwarderErrors.SignatureMismatch());
         require(
             !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))],
-            "KuruForwarder: nonce already used"
+            KuruForwarderErrors.NonceAlreadyUsed()
         );
         executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))] = true;
     }

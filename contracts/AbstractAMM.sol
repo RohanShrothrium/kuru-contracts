@@ -26,7 +26,9 @@ abstract contract AbstractAMM is IOrderBook {
     uint96 SPREAD_CONSTANT;
 
     modifier onlyVault() {
-        require(msg.sender == kuruAmmVault, OrderBookErrors.OnlyVaultAllowed());
+        if (msg.sender != kuruAmmVault) {
+            revert OrderBookErrors.OnlyVaultAllowed();
+        }
         _;
     }
 

@@ -9,14 +9,8 @@ module.exports = {
       optimizer: {
         enabled: true,
         runs: 100,
-        details: {
-          yul: true,
-          cse: true,
-          deduplicate: true,
-        },
       },
       viaIR: true,
-      evmVersion: "shanghai",
     },
   },
   defaultNetwork: "localhost",

@@ -64,7 +64,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         _;
     }
 
-    function isTrustedForwarder(address forwarder) public view override returns (bool) {
+    function isTrustedForwarder(address forwarder) public view virtual override returns (bool) {
         return forwarder == _trustedForwarder;
     }
 
@@ -76,17 +76,6 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         } else {
             return msg.sender;
         }
-    }
-
-    function _emitTrade(
-        uint40 orderId,
-        address makerAddress,
-        bool isBuy,
-        uint256 price,
-        uint96 updatedSize,
-        uint96 filledSize
-    ) internal override {
-        emit Trade(orderId, makerAddress, isBuy, price, updatedSize, _msgSender(), tx.origin, filledSize);
     }
 
     /**
@@ -188,9 +177,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         if (_postOnly) {
             require(size == _remainingSize, OrderBookErrors.PostOnlyError());
         }
-
-        if (_remainingSize > 0) {
-
+        if(_remainingSize == 0) {
+            return;
+        }
+        {
         uint40 _orderId = s_orderIdCounter + 1;
         s_orderIdCounter = _orderId;
 
@@ -217,15 +207,17 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         _consumeFunds(baseAsset, ((size * 10 ** baseAssetDecimals) / sizePrecision), _msgSender());
 
-        uint256 _tokenCredit;
+        // uint256 _tokenCredit;
         //The sell order is matched and filled aggressively and remaining size is added as limit sell order
-        (size, _tokenCredit) = _matchAggressiveSell(_price, size, true);
+        (uint96 _size, ) = _matchAggressiveSell(_price, size, true);
         if (_postOnly) {
-            require(_tokenCredit == 0, OrderBookErrors.PostOnlyError());
+            require(_size == size, OrderBookErrors.PostOnlyError());
         }
 
-        if (size > 0) {
-
+        if (size == 0) {
+            return;
+        }
+        {
         uint40 _orderId = s_orderIdCounter + 1;
         s_orderIdCounter = _orderId;
         // Add price to the tree and update DLL of price poit.
@@ -242,7 +234,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @param _price Price of the order.
      * @param _size Size of the order.
      */
-    function _addOrder(uint24 _price, uint96 _size, uint40 _orderId, bool _isBuy, uint40 _prevOrderId) internal {
+    function _addOrder(uint32 _price, uint96 _size, uint40 _orderId, bool _isBuy, uint40 _prevOrderId) internal {
         s_orders[_orderId] = Order(_msgSender(), _size, _prevOrderId, OrderLinkedList.NULL, _price, _isBuy);
         s_orders[_prevOrderId].next = _orderId;
     }
@@ -308,7 +300,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                     //If there are no more orders remaining in price point, we can remove the price point
                     TreeMath.remove(s_sellTree, _order.price);
                 }
-            }
+            } 
             OrderLinkedList.deleteOrder(s_sellPricePoints[_order.price], _order.prev, _order.next);
             marginAccount.creditUser(
                 _order.ownerAddress, baseAsset, ((_order.size * 10 ** baseAssetDecimals) / sizePrecision), true
@@ -553,7 +545,6 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         baseFeeCollected = 0;
         quoteFeeCollected = 0;
     }
-
     function _matchAggressiveBuyWithCap(uint32 _limitPrice, uint96 _sizeToBeFilled) internal returns (uint96, uint32) {
         uint96 sizeToCreditTaker;
         uint96 sizeToCreditViaVault;
@@ -590,7 +581,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             (_isVaultFill, _bestAsk) = bestAsk();
         }
 
-        if (sizeToCreditTaker > 0) {
+        if (sizeToCreditTaker == 0) {
+            return (_sizeToBeFilled, 0);
+        }
+        {
             uint256 _tokenCredit = (sizeToCreditTaker * 10 ** baseAssetDecimals) / sizePrecision;
             if (sizeToCreditViaVault > 0) {
                 marginAccount.debitUser(
@@ -660,7 +654,11 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             (_isVaultFill, _bestAsk) = bestAsk();
         }
 
-        if (sizeToCreditTaker > 0) {
+        if (sizeToCreditTaker == 0) {
+            return (_quoteSize, 0);
+        }
+
+        {
             uint256 _tokenCredit = (sizeToCreditTaker * 10 ** baseAssetDecimals) / sizePrecision;
             if (sizeToCreditViaVault > 0) {
                 marginAccount.debitUser(
@@ -678,8 +676,6 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             );
             return (_quoteSize, _tokenCredit);
         }
-
-        return (_quoteSize, 0);
     }
 
 
@@ -732,7 +728,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             (_isVaultFill, _bestBid) = bestBid();
         }
 
-        if (quoteCreditTaker > 0 || quoteCreditVaultTaker > 0) {
+        if (quoteCreditTaker == 0 && quoteCreditVaultTaker == 0) {
+            return (_sizeToBeFilledLeft, 0);
+        }
+        {
             tokenCredit = ((quoteCreditTaker) * 10 ** quoteAssetDecimals) / pricePrecision
                 + (quoteCreditVaultTaker * 10 ** quoteAssetDecimals) / vaultPricePrecision;
             if (quoteCreditVaultTaker > 0) {
@@ -828,6 +827,17 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             _updatedSize,
             _sizeToBeFilled - remainingSize
         );
+    }
+
+    function _emitTrade(
+        uint40 orderId,
+        address makerAddress,
+        bool isBuy,
+        uint256 price,
+        uint96 updatedSize,
+        uint96 filledSize
+    ) internal override {
+        emit Trade(orderId, makerAddress, isBuy, price, updatedSize, _msgSender(), tx.origin, filledSize);
     }
 
     /**
