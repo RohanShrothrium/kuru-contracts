@@ -11,11 +11,8 @@ import {MarginAccountErrors} from "./libraries/Errors.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 contract MarginAccount is IMarginAccount, ERC2771Context {
-contract MarginAccount is IMarginAccount, ERC2771Context {
     using SafeTransferLib for address;
     // Mapping from user addresses to their NATIVE balance
-
-    address trustedForwarder;
     address trustedForwarder;
     mapping(bytes32 => uint256) public balances;
 
@@ -31,10 +28,8 @@ contract MarginAccount is IMarginAccount, ERC2771Context {
     event Withdrawal(address owner, address token, uint256 amount);
 
     constructor(address _router, address _feeCollector, address _trustedForwarder) {
-    constructor(address _router, address _feeCollector, address _trustedForwarder) {
         routerContractAddress = _router;
         feeCollector = _feeCollector;
-        trustedForwarder = _trustedForwarder;
         trustedForwarder = _trustedForwarder;
     }
 
@@ -178,10 +173,8 @@ contract MarginAccount is IMarginAccount, ERC2771Context {
             require(_success, MarginAccountErrors.NativeAssetTransferFail());
         } else {
             _token.safeTransfer(_msgSender(), _amount);
-            _token.safeTransfer(_msgSender(), _amount);
         }
 
-        emit Withdrawal(_msgSender(), _token, _amount);
         emit Withdrawal(_msgSender(), _token, _amount);
     }
 
