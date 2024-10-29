@@ -381,7 +381,6 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         // Emit an event for the canceled orders
         emit OrdersCanceled(orderIdsToCancel, _msgSender());
-        emit OrdersCanceled(orderIdsToCancel, _msgSender());
     }
 
     /**
@@ -436,17 +435,20 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                     && msg.value < _pricePrecisionToQuoteAssetPrecision(_quoteSize + 1),
                 OrderBookErrors.NativeAssetInsufficient()
             );
-        } else {
+        } else if(msg.sender != address(0)) {
             require(msg.value == 0, OrderBookErrors.NativeAssetNotRequired());
             _isMargin
                 ? marginAccount.debitUser(_msgSender(), quoteAsset, _pricePrecisionToQuoteAssetPrecision(_quoteSize))
                 : quoteAsset.safeTransferFrom(
                     _msgSender(), address(marginAccount), _pricePrecisionToQuoteAssetPrecision(_quoteSize)
                 );
-        }
+        } else {}
 
         uint256 _baseTokensCredited;
         (_quoteSize, _baseTokensCredited) = _marketBuyMatch(_quoteSize, _isMargin);
+        if(msg.sender == address(0)) {
+            return _baseTokensCredited;
+        }
         if (_quoteSize > 0) {
             require(!_isFillOrKill, OrderBookErrors.InsufficientLiquidity());
             if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin) {
@@ -486,25 +488,26 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                     && msg.value < _sizePrecisionToBaseAssetPrecision(_size + 1),
                 OrderBookErrors.NativeAssetInsufficient()
             );
-        } else {
+        } else if(msg.sender != address(0)) {
             require(msg.value == 0, OrderBookErrors.NativeAssetNotRequired());
             _isMargin
                 ? marginAccount.debitUser(_msgSender(), baseAsset, _sizePrecisionToBaseAssetPrecision(_size))
                 : baseAsset.safeTransferFrom(
                     _msgSender(), address(marginAccount), _sizePrecisionToBaseAssetPrecision(_size)
                 );
-        }
+        } else {}
 
         uint256 _quoteCredited;
         (_size, _quoteCredited) = _matchAggressiveSell(0, _size, _isMargin);
-
+        if(msg.sender == address(0)) {
+            return _quoteCredited;
+        }
         if (_size > 0) {
             require(!_isFillOrKill, OrderBookErrors.InsufficientLiquidity());
             if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin) {
                 uint256 _refund = _sizePrecisionToBaseAssetPrecision(_size);
                 _handleNativeMarketRefundTransfer(_refund);
             } else {
-                marginAccount.creditUser(_msgSender(), baseAsset, _sizePrecisionToBaseAssetPrecision(_size), _isMargin);
                 marginAccount.creditUser(_msgSender(), baseAsset, _sizePrecisionToBaseAssetPrecision(_size), _isMargin);
             }
         } else if (_type == OrderBookType.NATIVE_IN_BASE) {
@@ -662,7 +665,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         {
             uint256 _tokenCredit = (sizeToCreditTaker * 10 ** baseAssetDecimals) / sizePrecision;
-            if (sizeToCreditViaVault > 0) {
+            if (sizeToCreditViaVault > 0 && msg.sender != address(0)) {
                 marginAccount.debitUser(
                     kuruAmmVault, baseAsset, (sizeToCreditViaVault * 10 ** baseAssetDecimals) / sizePrecision
                 );
@@ -673,9 +676,11 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                 // Calculate protocol fee part of total fee
                 baseFeeCollected += ((_feeDebit * (takerFeeBps - makerFeeBps)) / takerFeeBps);
             }
-            marginAccount.creditUsersEncoded(
+            if(msg.sender!= address(0)) {
+                marginAccount.creditUsersEncoded(
                 bytes.concat(makerCredits, abi.encode(_msgSender(), baseAsset, _tokenCredit, _isMargin))
             );
+            }
             return (_quoteSize, _tokenCredit);
         }
     }
@@ -736,7 +741,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         {
             tokenCredit = ((quoteCreditTaker) * 10 ** quoteAssetDecimals) / pricePrecision
                 + (quoteCreditVaultTaker * 10 ** quoteAssetDecimals) / vaultPricePrecision;
-            if (quoteCreditVaultTaker > 0) {
+            if (quoteCreditVaultTaker > 0 && msg.sender != address(0)) {
                 marginAccount.debitUser(
                     kuruAmmVault, quoteAsset, (quoteCreditVaultTaker * 10 ** quoteAssetDecimals) / vaultPricePrecision
                 );
@@ -747,9 +752,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                 //Calculate protocol fee part of total fee
                 quoteFeeCollected += ((_feeDebit * (takerFeeBps - makerFeeBps)) / takerFeeBps);
             }
-            marginAccount.creditUsersEncoded(
+            if(msg.sender!= address(0)) {
+                marginAccount.creditUsersEncoded(
                 bytes.concat(makerCredits, abi.encode(_msgSender(), quoteAsset, tokenCredit, _useMargin))
-            );
+            );}
         }
 
         return (_sizeToBeFilledLeft, tokenCredit);

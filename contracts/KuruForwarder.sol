@@ -105,7 +105,7 @@ contract KuruForwarder is EIP712 {
                 )
             )
         ).recover(signature);
-        return signer == req.from;
+        return signer == req.from && !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))];
     }
 
     function verifyCancelPriceDependent(CancelPriceDependentRequest calldata req, bytes calldata signature)
@@ -115,7 +115,7 @@ contract KuruForwarder is EIP712 {
     {
         address signer = _hashTypedData(keccak256(abi.encode(_CANCEL_PRICE_DEPENDENT_TYPEHASH, req.from, req.nonce)))
             .recover(signature);
-        return signer == req.from;
+        return signer == req.from && !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))];
     }
 
     function verifyMarginAccountRequest(MarginAccountRequest calldata req, bytes calldata signature)
@@ -181,10 +181,6 @@ contract KuruForwarder is EIP712 {
 
         bytes4 selector = bytes4(req.data[:4]);
         require(allowedInterface[selector], KuruForwarderErrors.InterfaceNotAllowed());
-        require(
-            !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))],
-            KuruForwarderErrors.NonceAlreadyUsed()
-        );
         executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))] = true;
 
         (uint256 _currentBidPrice,) = IOrderBook(req.market).bestBidAsk();
@@ -204,10 +200,7 @@ contract KuruForwarder is EIP712 {
 
     function cancelPriceDependent(CancelPriceDependentRequest calldata req, bytes calldata signature) public {
         require(verifyCancelPriceDependent(req, signature), KuruForwarderErrors.SignatureMismatch());
-        require(
-            !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))],
-            KuruForwarderErrors.NonceAlreadyUsed()
-        );
+
         executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))] = true;
     }
 }
