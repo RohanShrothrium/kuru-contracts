@@ -105,7 +105,8 @@ contract KuruForwarder is EIP712 {
                 )
             )
         ).recover(signature);
-        return signer == req.from && !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))];
+        require(!executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))], KuruForwarderErrors.NonceAlreadyUsed());
+        return signer == req.from;
     }
 
     function verifyCancelPriceDependent(CancelPriceDependentRequest calldata req, bytes calldata signature)
@@ -115,7 +116,8 @@ contract KuruForwarder is EIP712 {
     {
         address signer = _hashTypedData(keccak256(abi.encode(_CANCEL_PRICE_DEPENDENT_TYPEHASH, req.from, req.nonce)))
             .recover(signature);
-        return signer == req.from && !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))];
+        require(!executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))], KuruForwarderErrors.NonceAlreadyUsed());
+        return signer == req.from;
     }
 
     function verifyMarginAccountRequest(MarginAccountRequest calldata req, bytes calldata signature)
