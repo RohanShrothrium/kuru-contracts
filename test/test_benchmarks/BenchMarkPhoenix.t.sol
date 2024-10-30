@@ -48,12 +48,6 @@ contract BenchMarkTest is Test, Gas {
         );
         router = Router(payable(routerProxy));
         u1 = genAddress();
-            0,
-            bytes32(keccak256("")),
-            abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
-        );
-        router = Router(payable(routerProxy));
-        u1 = genAddress();
         u2 = genAddress();
         u3 = genAddress();
         trustedForwarder = address(0x123);
@@ -62,7 +56,6 @@ contract BenchMarkTest is Test, Gas {
         marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
         uint96 SPREAD = 30;
         OrderBook implementation = new OrderBook();
-        router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
         router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
         OrderBook.OrderBookType _type;
         address proxy = router.deployProxy(
