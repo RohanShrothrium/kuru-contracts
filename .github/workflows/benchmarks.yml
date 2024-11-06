@@ -1,7 +1,7 @@
 name: Storage Benchmarks
 
 permissions:
-  contents:write
+  contents: write
 
 on:
   workflow_dispatch:
