@@ -34,6 +34,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
     MintableERC20 usdc;
     uint256 SEED = 2;
     address lastGenAddress;
+    address trustedForwarder;
 
     function setUp() public {
         eth = new MintableERC20("ETH", "ETH");
@@ -51,15 +52,15 @@ contract OrderBookTest is Test, PropertiesAsserts {
         OrderBook implementation = new OrderBook();
         Router routerImplementation = new Router();
         address routerProxy = Create2.deploy(
-                0,
-                bytes32(keccak256("")),
-                abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
-            );
+            0,
+            bytes32(keccak256("")),
+            abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
+        );
         router = Router(payable(routerProxy));
-        marginAccount = new MarginAccount(address(router), address(router));
+        trustedForwarder = address(0x123);
+        marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
         uint96 SPREAD = 100;
-
-        router.initialize(address(this), address(marginAccount), address(implementation));
+        router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
 
         address proxy = router.deployProxy(
             _type,
@@ -620,7 +621,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
 
         orderBook.collectFees();
-        assertGte(marginAccount.getBalance(_taker, address(usdc)), _expectedQuote - _quoteTolerance, "Too less quote credit");
+        assertGte(
+            marginAccount.getBalance(_taker, address(usdc)), _expectedQuote - _quoteTolerance, "Too less quote credit"
+        );
         assertGte(
             marginAccount.getBalance(_makerA, address(eth)),
             ((_sizeA - 1) * 10 ** _decimals) / SIZE_PRECISION,

@@ -46,11 +46,27 @@ async function main() {
     var wbtcAddress = wbtc.address;
     var usdcAddress = usdc.address;
 
-    // deploy Router Contract
+    // deploy KuruForwarder Contract
+    const MarginAccount = await hre.ethers.getContractFactory("MarginAccount");
+    const KuruForwarder = await hre.ethers.getContractFactory("KuruForwarder");
+    const Proxy = await hre.ethers.getContractFactory("ERC1967Proxy");
     const Router = await hre.ethers.getContractFactory("Router");
+    const CranklessOrderBook = await hre.ethers.getContractFactory("OrderBook");
+    const allowedInterfaces = [
+        CranklessOrderBook.interface.getSighash('addBuyOrder'),
+        CranklessOrderBook.interface.getSighash('addSellOrder'),
+        CranklessOrderBook.interface.getSighash('placeAndExecuteMarketBuy'),
+        CranklessOrderBook.interface.getSighash('placeAndExecuteMarketSell'),
+        MarginAccount.interface.getSighash('deposit'),
+        MarginAccount.interface.getSighash('withdraw'),
+    ];
+    const kuruForwarder = await KuruForwarder.deploy(allowedInterfaces);
+    await kuruForwarder.deployed();
+    console.log("KuruForwarder deployed to:", kuruForwarder.address);
+
+    // deploy Router Contract
     const routerImpl = await Router.deploy();
     await routerImpl.deployed();
-    const Proxy = await hre.ethers.getContractFactory("ERC1967Proxy");
     const proxy = await Proxy.deploy(routerImpl.address, "0x");
     await proxy.deployed();
 
@@ -60,8 +76,7 @@ async function main() {
     console.log("Router deployed to:", routerAddress);
 
     // deploy Margin Account Contract
-    const MarginAccount = await hre.ethers.getContractFactory("MarginAccount");
-    const marginAccount = await MarginAccount.deploy(routerAddress, userAddress);
+    const marginAccount = await MarginAccount.deploy(routerAddress, userAddress, kuruForwarder.address);
     await marginAccount.deployed();
 
     const marginAccountAddress = marginAccount.address;
@@ -73,14 +88,12 @@ async function main() {
         usdcAddress = temp;
     }
     // deploy CranklessOrderBook contract
-    const CranklessOrderBook = await hre.ethers.getContractFactory("OrderBook");
-    // const cranklessOrderBook = await CranklessOrderBook.deploy(wbtcAddress, wbtcDecimals, usdcAddress, usdcDecimals, marginAccountAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps);
     const implementation = await CranklessOrderBook.deploy();
     await implementation.deployed();
     // Initialize Router
-    const initializeRouterTx = await router.initialize(userAddress, marginAccountAddress, implementation.address);    
+    const initializeRouterTx = await router.initialize(userAddress, marginAccountAddress, implementation.address, kuruForwarder.address);    
     await initializeRouterTx.wait();
-    console.log("Router initialized with \n Admin :", userAddress, "\nMargin Account: ", marginAccountAddress, "\nImplementation:", implementation.address);
+    console.log("Router initialized with \n Admin :", userAddress, "\nMargin Account: ", marginAccountAddress, "\nImplementation:", implementation.address, "\nKuruForwarder:", kuruForwarder.address);
     
     const cranklessOrderBookAddress = await router.callStatic.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps, _spread);
     const deployProxyTx = await router.deployProxy(Enum('NO_NATIVE', 'NATIVE_IN_BASE', 'NATIVE_IN_QUOTE').NO_NATIVE, wbtcAddress, usdcAddress, _sizePrecision, _pricePrecision, _tickSize, _minSize, _maxSize, _takerFeeBps, _makerFeeBps, _spread);
@@ -124,7 +137,8 @@ async function main() {
         "routerAddress": routerAddress,
         "marginAccountAddress": marginAccountAddress,
         "cranklessOrderBookAddress": cranklessOrderBookAddress,
-        kuruAmmVaultAddress,
+        "kuruAmmVaultAddress": kuruAmmVaultAddress,
+        "kuruForwarderAddress": kuruForwarder.address,
     }
     fs.writeFileSync("config.json", JSON.stringify(config));
 }

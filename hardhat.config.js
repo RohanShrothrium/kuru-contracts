@@ -5,17 +5,12 @@ module.exports = {
   solidity: {
     version: "0.8.26",
     settings: {
+      evmVersion: "shanghai",
       optimizer: {
         enabled: true,
         runs: 100,
-        details: {
-          yul: true,
-          cse: true,
-          deduplicate: true,
-        },
       },
       viaIR: true,
-      evmVersion: "shanghai",
     },
   },
   defaultNetwork: "localhost",
