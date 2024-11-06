@@ -49,6 +49,11 @@ jobs:
           # Kill the background hardhat node process
           kill $(lsof -t -i:8545) || true
 
+      - name: Prettify benchmark results
+        run: |
+          npm install --save-dev prettier
+          npx prettier --write ./cranklessStorageOrderBookMargin.json
+
       - name: Commit changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
