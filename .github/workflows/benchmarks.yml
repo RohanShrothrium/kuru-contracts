@@ -51,8 +51,12 @@ jobs:
 
       - name: Prettify benchmark results
         run: |
-          npm install --save-dev prettier
-          npx prettier --write ./cranklessStorageOrderBookMargin.json
+          node -e '
+          const fs = require("fs");
+          const file = "cranklessStorageOrderBookMargin.json";
+          const data = JSON.parse(fs.readFileSync(file));
+          fs.writeFileSync(file, JSON.stringify(data, null, 2));
+          '
 
       - name: Commit changes
         run: |
