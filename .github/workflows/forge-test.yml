@@ -1,6 +1,7 @@
 name: Run Forge Tests
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
@@ -12,6 +13,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Install Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+      with:
+        version: nightly
 
     - name: Set up Node.js
       uses: actions/setup-node@v2
@@ -22,4 +30,4 @@ jobs:
       run: npm install
 
     - name: Run Forge Tests
-      run: forge test
+      run: forge test --ffi
