@@ -56,7 +56,10 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     /**
      * @param _owner The owner of the contract.
      */
-    function initialize(address _owner, address _marginAccount, address _implementation, address _trustedForwarder) public initializer {
+    function initialize(address _owner, address _marginAccount, address _implementation, address _trustedForwarder)
+        public
+        initializer
+    {
         _initializeOwner(_owner);
         marginAccountAddress = _marginAccount;
         orderBookImplementation = _implementation;

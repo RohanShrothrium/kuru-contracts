@@ -48,7 +48,7 @@ library OrderBookErrors {
      */
     error NativeAssetInsufficient();
     /**
-    * @dev Thrown when msg.value is greater than 0 when native assets are not required
+     * @dev Thrown when msg.value is greater than 0 when native assets are not required
      */
     error NativeAssetNotRequired();
     /**
@@ -60,7 +60,7 @@ library OrderBookErrors {
      */
     error InsufficientLiquidity();
     /**
-    @dev Throws when slippage is exceeded in market orders
+     * @dev Throws when slippage is exceeded in market orders
      */
     error SlippageExceeded();
     /**
@@ -72,7 +72,7 @@ library OrderBookErrors {
      */
     error TransferFromFailed();
     /**
-    * @dev Thrown when the call is not made by the vault
+     * @dev Thrown when the call is not made by the vault
      */
     error OnlyVaultAllowed();
 }
@@ -83,96 +83,96 @@ library MarginAccountErrors {
      */
     error OnlyRouterAllowed();
     /**
-    * @dev Thrown when a non-verified market tries to execute a market action
+     * @dev Thrown when a non-verified market tries to execute a market action
      */
     error OnlyVerifiedMarketsAllowed();
     /**
-    * @dev Thrown when a user has insufficient margin account balance
+     * @dev Thrown when a user has insufficient margin account balance
      */
     error InsufficientBalance();
     /**
-    * @dev Thrown when native asset transfer fails
+     * @dev Thrown when native asset transfer fails
      */
     error NativeAssetTransferFail();
     /**
-    * @dev Thrown when msg.value is not zero when native assets are not required
+     * @dev Thrown when msg.value is not zero when native assets are not required
      */
     error NativeAssetMismatch();
     /**
-    * @dev Thrown when zero address is passed as a parameter
+     * @dev Thrown when zero address is passed as a parameter
      */
     error ZeroAddressNotAllowed();
- }
+}
 
-library RouterErrors { 
+library RouterErrors {
     /**
-    * @dev Thrown when base and quote asset addresses are the same
+     * @dev Thrown when base and quote asset addresses are the same
      */
     error BaseAndQuoteAssetSame();
     /**
-    * @dev Thrown when no markets are passed as input
+     * @dev Thrown when no markets are passed as input
      */
     error NoMarketsPassed();
     /**
-    * @dev Thrown when the length of market addresses, isBuy, and nativeSend arrays are not the same
+     * @dev Thrown when the length of market addresses, isBuy, and nativeSend arrays are not the same
      */
     error LengthMismatch();
     /**
-    * @dev Thrown when the market is invalid
+     * @dev Thrown when the market is invalid
      */
     error InvalidMarket();
     /**
-    * @dev Thrown when the slippage exceeds the expected value
+     * @dev Thrown when the slippage exceeds the expected value
      */
     error SlippageExceeded();
     /**
-    * @dev Thrown when the native asset transfer fails
+     * @dev Thrown when the native asset transfer fails
      */
     error NativeAssetTransferFail();
 }
 
-library KuruAMMVaultErrors { 
+library KuruAMMVaultErrors {
     /**
-    * @dev Thrown when native token passed as argument and msg.value does not match
+     * @dev Thrown when native token passed as argument and msg.value does not match
      */
     error NativeAssetMismatch();
     /**
-    * @dev Thrown when amount of quote tokens passed is insufficient
+     * @dev Thrown when amount of quote tokens passed is insufficient
      */
     error InsufficientQuoteToken();
     /**
-    * @dev Thrown when insufficient liquidity is minted
+     * @dev Thrown when insufficient liquidity is minted
      */
     error InsufficientLiquidityMinted();
     /**
-    * @dev Thrown when balance of owner is too less
+     * @dev Thrown when balance of owner is too less
      */
     error InsufficientBalance();
     /**
-    * @dev Thrown when native asset transfer fails
+     * @dev Thrown when native asset transfer fails
      */
     error NativeAssetTransferFail();
     /**
-    * @dev Thrown when new size exceeds partially filled size
+     * @dev Thrown when new size exceeds partially filled size
      */
     error NewSizeExceedsPartiallyFilledSize();
 }
 
 library KuruForwarderErrors {
     /**
-    * @dev Thrown when the signature does not match the request
+     * @dev Thrown when the signature does not match the request
      */
     error SignatureMismatch();
     /**
-    * @dev Thrown when the interface is not allowed
+     * @dev Thrown when the interface is not allowed
      */
     error InterfaceNotAllowed();
     /**
-    * @dev Thrown when the execution fails
+     * @dev Thrown when the execution fails
      */
     error ExecutionFailed();
     /**
-    * @dev Thrown when the nonce is already used
+     * @dev Thrown when the nonce is already used
      */
     error NonceAlreadyUsed();
 }

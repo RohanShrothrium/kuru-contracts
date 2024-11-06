@@ -9,10 +9,10 @@ pragma solidity ^0.8.20;
  * Any forwarded request to this contract triggering a `delegatecall` to itself will result in an invalid {_msgSender}
  * recovery.
  */
-abstract contract ERC2771Context  {
+abstract contract ERC2771Context {
     function isTrustedForwarder(address) public view virtual returns (bool) {}
 
-    function _msgSender() internal virtual view returns (address);
+    function _msgSender() internal view virtual returns (address);
 
     function _msgData() internal view returns (bytes calldata) {
         uint256 calldataLength = msg.data.length;

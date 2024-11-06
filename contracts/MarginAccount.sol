@@ -13,6 +13,7 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 contract MarginAccount is IMarginAccount, ERC2771Context {
     using SafeTransferLib for address;
     // Mapping from user addresses to their NATIVE balance
+
     address trustedForwarder;
     mapping(bytes32 => uint256) public balances;
 
@@ -41,7 +42,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context {
     function isTrustedForwarder(address forwarder) public view override returns (bool) {
         return forwarder == trustedForwarder;
     }
-    
+
     function _msgSender() internal view virtual override returns (address) {
         uint256 calldataLength = msg.data.length;
         uint256 contextSuffixLength = _contextSuffixLength();

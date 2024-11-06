@@ -3,7 +3,8 @@
 pragma solidity ^0.8.10;
 
 import {TreeMath} from "../contracts/libraries/TreeMath.sol";
-import  "forge-std/Test.sol";
+import "forge-std/Test.sol";
+
 contract TreeMathTest is Test {
     using TreeMath for TreeMath.TreeUint32;
 
@@ -13,15 +14,15 @@ contract TreeMathTest is Test {
         tree.add(1);
         assertEq(tree.contains(1), true);
     }
-    
+
     function testTreeMathWithRandomNumbers(bytes32 seed) public {
         uint32[1000] memory randomNumbers = generateRandomNumbers(seed);
-        
+
         for (uint256 i = 0; i < 500; i++) {
             console.log("Adding ", randomNumbers[i]);
             tree.add(randomNumbers[i]);
         }
-    
+
         for (uint256 i = 0; i < 500; i++) {
             console.log(randomNumbers[i], " ", tree.contains(randomNumbers[i]));
             assertTrue(tree.contains(randomNumbers[i]));
@@ -46,4 +47,3 @@ contract TreeMathTest is Test {
         return numbers;
     }
 }
-

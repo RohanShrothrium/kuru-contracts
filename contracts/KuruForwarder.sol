@@ -57,7 +57,7 @@ contract KuruForwarder is EIP712 {
     bytes32 private constant _CANCEL_PRICE_DEPENDENT_TYPEHASH =
         keccak256("CancelPriceDependentRequest(address from,uint256 nonce)");
 
-    bytes32 private constant _MARGIN_ACCOUNT_REQUEST_TYPEHASH = 
+    bytes32 private constant _MARGIN_ACCOUNT_REQUEST_TYPEHASH =
         keccak256("MarginAccountRequest(address from,address marginAccount,uint256 value,uint256 nonce,bytes data)");
 
     mapping(address => uint256) private _nonces;
@@ -105,7 +105,10 @@ contract KuruForwarder is EIP712 {
                 )
             )
         ).recover(signature);
-        require(!executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))], KuruForwarderErrors.NonceAlreadyUsed());
+        require(
+            !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))],
+            KuruForwarderErrors.NonceAlreadyUsed()
+        );
         return signer == req.from;
     }
 
@@ -116,7 +119,10 @@ contract KuruForwarder is EIP712 {
     {
         address signer = _hashTypedData(keccak256(abi.encode(_CANCEL_PRICE_DEPENDENT_TYPEHASH, req.from, req.nonce)))
             .recover(signature);
-        require(!executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))], KuruForwarderErrors.NonceAlreadyUsed());
+        require(
+            !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))],
+            KuruForwarderErrors.NonceAlreadyUsed()
+        );
         return signer == req.from;
     }
 
@@ -125,8 +131,18 @@ contract KuruForwarder is EIP712 {
         view
         returns (bool)
     {
-        address signer = _hashTypedData(keccak256(abi.encode(_MARGIN_ACCOUNT_REQUEST_TYPEHASH, req.from, req.marginAccount, req.value, req.nonce, keccak256(req.data))))
-            .recover(signature);
+        address signer = _hashTypedData(
+            keccak256(
+                abi.encode(
+                    _MARGIN_ACCOUNT_REQUEST_TYPEHASH,
+                    req.from,
+                    req.marginAccount,
+                    req.value,
+                    req.nonce,
+                    keccak256(req.data)
+                )
+            )
+        ).recover(signature);
         return req.nonce >= _nonces[req.from] && signer == req.from;
     }
 
@@ -136,7 +152,7 @@ contract KuruForwarder is EIP712 {
         returns (bool, bytes memory)
     {
         require(verifyMarginAccountRequest(req, signature), KuruForwarderErrors.SignatureMismatch());
-        
+
         bytes4 selector = bytes4(req.data[:4]);
         require(allowedInterface[selector], KuruForwarderErrors.InterfaceNotAllowed());
 
