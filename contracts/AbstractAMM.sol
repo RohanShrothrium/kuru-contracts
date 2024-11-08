@@ -61,7 +61,7 @@ abstract contract AbstractAMM is IOrderBook {
             askPartiallyFilledSize = 0;
         }
         
-        while(_price < _breakPoint && _quoteInput > 0) {
+        while(_price <= _breakPoint && _quoteInput > 0) {
             uint256 _quoteNeededForFill = FixedPointMathLib.mulDivUp(_price, _availableSize, _getSizePrecision());
             if(_quoteNeededForFill > _quoteInput) {
                 uint96 _sizeFilledAtPrice = uint96(_quoteInput * _getSizePrecision() / _price);
@@ -109,10 +109,11 @@ abstract contract AbstractAMM is IOrderBook {
         if(_availableSize < sizeLeft) {
             askPartiallyFilledSize = 0;
         }
-        while(_price < _breakPoint && sizeLeft > 0) {
+        while(_price <= _breakPoint && sizeLeft > 0) {
             if(_availableSize > sizeLeft) {
                 askPartiallyFilledSize += sizeLeft;
                 _consumedQuote += FixedPointMathLib.mulDivUp(sizeLeft, _price, _getSizePrecision());
+                sizeLeft = 0;
                 break;
             } else {
                 sizeLeft -= _availableSize;
@@ -151,7 +152,7 @@ abstract contract AbstractAMM is IOrderBook {
             bidPartiallyFilledSize = 0;
         }
 
-        while(_price > _breakPoint && sizeLeft > 0) {
+        while(_price >= _breakPoint && sizeLeft > 0) {
             if(_availableSize > sizeLeft) {
                 bidPartiallyFilledSize += sizeLeft;
                 quoteOwedToUser += FixedPointMathLib.mulDivUp(_price, sizeLeft, _getSizePrecision());
@@ -180,7 +181,7 @@ abstract contract AbstractAMM is IOrderBook {
      * @return returnData Encoded credits for the vault
      */
 
-    function _creditVaultOnMarketBuy(uint96 _sizeFilled, uint256 _fundsOwed) internal returns (bytes memory returnData) {
+    function _creditVaultOnMarketBuy(uint96 _sizeFilled, uint256 _fundsOwed) internal view returns (bytes memory returnData) {
         returnData = abi.encode(kuruAmmVault, _getQuoteAsset(), _fundsOwed * 10 ** _getQuoteAssetDecimals() / vaultPricePrecision, true);
         uint256 feeRebate = ((_sizeFilled * 10 ** _getBaseAssetDecimals() / _getSizePrecision()) * _getMakerFeeBps()) / BPS_MULTIPLIER;
         if(feeRebate > 0) {
@@ -195,7 +196,7 @@ abstract contract AbstractAMM is IOrderBook {
      * @return returnData Encoded credits for the vault
      */
 
-    function _creditVaultOnMarketSell(uint96 _sizeOwedToVault, uint256 _fundsOwedToUser) internal returns (bytes memory returnData) {
+    function _creditVaultOnMarketSell(uint96 _sizeOwedToVault, uint256 _fundsOwedToUser) internal view returns (bytes memory returnData) {
         returnData = abi.encode(kuruAmmVault, _getBaseAsset(), _sizeOwedToVault * 10 ** _getBaseAssetDecimals() / _getSizePrecision(), true);
         uint256 feeRebate = ((_fundsOwedToUser * 10 ** _getQuoteAssetDecimals() / vaultPricePrecision) * _getMakerFeeBps()) / BPS_MULTIPLIER;
         if(feeRebate > 0) {
@@ -236,7 +237,6 @@ abstract contract AbstractAMM is IOrderBook {
         }
     }
 
-    function _getOBAsk() internal view virtual returns (uint256);
     function _getPricePrecision() internal view virtual returns (uint32);
 
     function _getSizePrecision() internal view virtual returns (uint96);

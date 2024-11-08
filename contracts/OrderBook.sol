@@ -970,7 +970,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         return (_bestBid, _bestAsk);
     }
 
-    function _getOBAsk() internal view override returns (uint256) {
+    function _getOBAsk() internal view returns (uint256) {
         uint32 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0);
         if (firstLeft != 0) {
             return firstLeft * vaultPricePrecision / pricePrecision;
