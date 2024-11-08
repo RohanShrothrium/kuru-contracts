@@ -49,7 +49,6 @@ abstract contract AbstractAMM is IOrderBook {
      * @return sizeFilled Base asset size that was filled
      * @return makerCredits Encoded credits for the vault
      */
-
     function _fillVaultBuyMatch(uint256 _breakPoint, uint32 _quoteSize) internal returns (uint32 quoteLeft, uint96 sizeFilled, bytes memory makerCredits) {
         uint256 _price = vaultBestAsk;
         uint256 _quoteInput = _quoteSize * vaultPricePrecision / _getPricePrecision();
@@ -80,8 +79,8 @@ abstract contract AbstractAMM is IOrderBook {
                 _cachedPartiallyFilledBid = uint96(FixedPointMathLib.mulDiv(_cachedPartiallyFilledBid, 1000, 1000 + SPREAD_CONSTANT));
             }
         }
-        vaultBestBid = _price;
-        vaultBestAsk = FixedPointMathLib.mulDivRound(_price, 1000, 1000 + SPREAD_CONSTANT);
+        vaultBestAsk = _price;
+        vaultBestBid = FixedPointMathLib.mulDivRound(_price, 1000, 1000 + SPREAD_CONSTANT);
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
         vaultAskOrderSize = _cachedLastVaultSize;
         vaultBidOrderSize = uint96(FixedPointMathLib.mulDivUp(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));

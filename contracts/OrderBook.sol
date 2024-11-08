@@ -180,8 +180,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
         if (_remainingSize == 0) {
             return;
-        }
-        {
+        } else {
             uint40 _orderId = s_orderIdCounter + 1;
             s_orderIdCounter = _orderId;
 
@@ -217,8 +216,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         if (size == 0) {
             return;
-        }
-        {
+        } else {
             uint40 _orderId = s_orderIdCounter + 1;
             s_orderIdCounter = _orderId;
             // Add price to the tree and update DLL of price poit.
@@ -989,8 +987,11 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         uint32 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0);
         if (firstLeft != 0) {
             if (vaultBestAsk != type(uint256).max) {
+                if(firstLeft * vaultPricePrecision / pricePrecision == vaultBestAsk) {
+                    return (false, firstLeft * vaultPricePrecision / pricePrecision);
+                }
                 return (FixedPointMathLib.min(firstLeft * vaultPricePrecision / pricePrecision, vaultBestAsk))
-                    == vaultBestAsk ? (false, firstLeft * vaultPricePrecision / pricePrecision) : (true, vaultBestAsk);
+                    == vaultBestAsk ? (true, vaultBestAsk) : (false, firstLeft * vaultPricePrecision / pricePrecision);
             }
             return (false, firstLeft * vaultPricePrecision / pricePrecision);
         }
@@ -1001,8 +1002,11 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         uint32 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max);
         if (firstRight != type(uint32).max) {
             if (vaultBestBid != 0) {
+                if(firstRight * vaultPricePrecision / pricePrecision == vaultBestBid) {
+                    return (false, firstRight * vaultPricePrecision / pricePrecision);
+                }
                 return (FixedPointMathLib.max(firstRight * vaultPricePrecision / pricePrecision, vaultBestBid))
-                    == vaultBestBid ? (false, firstRight * vaultPricePrecision / pricePrecision) : (true, vaultBestBid);
+                    == vaultBestBid ? (true, vaultBestBid) : (false, firstRight * vaultPricePrecision / pricePrecision);
             }
             return (false, firstRight * vaultPricePrecision / pricePrecision);
         }
