@@ -67,12 +67,14 @@ abstract contract AbstractAMM is IOrderBook {
                 uint96 _sizeFilledAtPrice = uint96(_quoteInput * _getSizePrecision() / _price);
                 sizeFilled += _sizeFilledAtPrice;
                 askPartiallyFilledSize += _sizeFilledAtPrice;
+                _emitTrade(0, kuruAmmVault, true, _price, _availableSize - _sizeFilledAtPrice, _sizeFilledAtPrice);
                 _quoteInput = 0;
                 break;
             } else {
                 sizeFilled += _availableSize;
                 _quoteInput -= _quoteNeededForFill;
                 _cachedLastVaultSize = uint96(FixedPointMathLib.mulDivUp(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
+                _emitTrade(0, kuruAmmVault, true, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
                 _price = FixedPointMathLib.mulDivUp(_price, 1000 + SPREAD_CONSTANT, 1000);
                 _cachedPartiallyFilledBid = uint96(FixedPointMathLib.mulDiv(_cachedPartiallyFilledBid, 1000, 1000 + SPREAD_CONSTANT));
@@ -85,7 +87,6 @@ abstract contract AbstractAMM is IOrderBook {
         vaultBidOrderSize = uint96(FixedPointMathLib.mulDivUp(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
         quoteLeft = uint32(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
         makerCredits = _creditVaultOnMarketBuy(sizeFilled, (_quoteSize * vaultPricePrecision / _getPricePrecision() - _quoteInput));
-        _emitTrade(0, kuruAmmVault, true, (_quoteSize * vaultPricePrecision / _getPricePrecision() - _quoteInput) * _getSizePrecision() / vaultPricePrecision, _availableSize, sizeFilled);
     }
 
     /**
@@ -113,12 +114,14 @@ abstract contract AbstractAMM is IOrderBook {
             if(_availableSize > sizeLeft) {
                 askPartiallyFilledSize += sizeLeft;
                 _consumedQuote += FixedPointMathLib.mulDivUp(sizeLeft, _price, _getSizePrecision());
+                _emitTrade(0, kuruAmmVault, true, _price, _availableSize - sizeLeft, sizeLeft);
                 sizeLeft = 0;
                 break;
             } else {
                 sizeLeft -= _availableSize;
                 _consumedQuote += FixedPointMathLib.mulDivUp(_availableSize, _price, _getSizePrecision());
                 _cachedLastVaultSize = uint96(FixedPointMathLib.mulDivUp(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
+                _emitTrade(0, kuruAmmVault, true, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
                 _price = FixedPointMathLib.mulDivRound(_price, 1000 + SPREAD_CONSTANT, 1000);
                 _cachedPartiallyFilledBid = uint96(FixedPointMathLib.mulDiv(_cachedPartiallyFilledBid, 1000, 1000 + SPREAD_CONSTANT));
@@ -131,7 +134,6 @@ abstract contract AbstractAMM is IOrderBook {
         vaultBidOrderSize = uint96(FixedPointMathLib.mulDivUp(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
         fundsConsumed = uint32(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
         makerCredits = _creditVaultOnMarketBuy(_size - sizeLeft, _consumedQuote);
-        _emitTrade(0, kuruAmmVault, true, _consumedQuote * _getSizePrecision() / (_size - sizeLeft), _availableSize, _size - sizeLeft);
     }
     
     /**
@@ -156,12 +158,14 @@ abstract contract AbstractAMM is IOrderBook {
             if(_availableSize > sizeLeft) {
                 bidPartiallyFilledSize += sizeLeft;
                 quoteOwedToUser += FixedPointMathLib.mulDivUp(_price, sizeLeft, _getSizePrecision());
+                _emitTrade(0, kuruAmmVault, false, _price, _availableSize - sizeLeft, sizeLeft);
                 sizeLeft = 0;
                 break;
             } else {
                 sizeLeft -= _availableSize;
                 quoteOwedToUser += FixedPointMathLib.mulDivUp(_price, _availableSize, _getSizePrecision());
                 _cachedLastVaultSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
+                _emitTrade(0, kuruAmmVault, false, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize; 
                 _price = FixedPointMathLib.mulDivRound(_price, 1000, 1000 + SPREAD_CONSTANT);
             }
@@ -171,7 +175,6 @@ abstract contract AbstractAMM is IOrderBook {
         vaultBidOrderSize = _cachedLastVaultSize;
         vaultAskOrderSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
         makerCredits = _creditVaultOnMarketSell(_size - sizeLeft, quoteOwedToUser);
-        _emitTrade(0, kuruAmmVault, false, quoteOwedToUser * _getSizePrecision() / (_size - sizeLeft), _availableSize, (_size - sizeLeft));
     }
 
     /**
