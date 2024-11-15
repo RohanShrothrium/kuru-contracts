@@ -572,7 +572,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
             if(_isVaultFill) {
                 uint32 _vaultFundsConsumed;
-                (_sizeToBeFilled, _vaultFundsConsumed, priceUpdate) = _fillVaultForBuyNew(_getOBAsk() > _limitPrice? _limitPrice : _getOBAsk(), _sizeToBeFilled);
+                (_sizeToBeFilled, _vaultFundsConsumed, priceUpdate) = _fillVaultForBuy(_getOBAsk() > _limitPrice? _limitPrice : _getOBAsk(), _sizeToBeFilled);
                 fundsConsumed += _vaultFundsConsumed;
             } else {
                 (_sizeToBeFilled, priceUpdate) = _fillSizeForPrice(
