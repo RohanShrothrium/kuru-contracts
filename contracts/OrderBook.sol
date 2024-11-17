@@ -436,7 +436,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
     {
         OrderBookType _type = orderBookType;
 
-        if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin) {
+        if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin && (msg.sender != address(0))) {
             require(
                 msg.value >= _pricePrecisionToQuoteAssetPrecision(_quoteSize)
                     && msg.value < _pricePrecisionToQuoteAssetPrecision(_quoteSize + 1),
@@ -489,7 +489,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         returns (uint256)
     {
         OrderBookType _type = orderBookType;
-        if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin) {
+        if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin && (msg.sender != address(0))) {
             require(
                 msg.value >= _sizePrecisionToBaseAssetPrecision(_size)
                     && msg.value < _sizePrecisionToBaseAssetPrecision(_size + 1),
