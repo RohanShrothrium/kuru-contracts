@@ -209,9 +209,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         // uint256 _tokenCredit;
         //The sell order is matched and filled aggressively and remaining size is added as limit sell order
-        (uint96 _size,) = _matchAggressiveSell(uint256(_price), size, true);
+        (uint96 _remainingSize,) = _matchAggressiveSell(uint256(_price), size, true);
         if (_postOnly) {
-            require(_size == size, OrderBookErrors.PostOnlyError());
+            require(_remainingSize == size, OrderBookErrors.PostOnlyError());
         }
 
         if (size == 0) {
@@ -222,9 +222,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             // Add price to the tree and update DLL of price poit.
             TreeMath.add(s_sellTree, _price);
             uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId);
-            _addOrder(_price, size, _orderId, false, _prevOrderId);
+            _addOrder(_price, _remainingSize, _orderId, false, _prevOrderId);
 
-            emit OrderCreated(_orderId, _msgSender(), size, _price, false);
+            emit OrderCreated(_orderId, _msgSender(), _remainingSize, _price, false);
         }
     }
 
