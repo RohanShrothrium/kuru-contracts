@@ -214,7 +214,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             require(_remainingSize == size, OrderBookErrors.PostOnlyError());
         }
 
-        if (size == 0) {
+        if (_remainingSize == 0) {
             return;
         } else {
             uint40 _orderId = s_orderIdCounter + 1;
