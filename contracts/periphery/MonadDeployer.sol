@@ -9,11 +9,6 @@ import {IKuruAMMVault} from "../interfaces/IKuruAMMVault.sol";
 import {IMarginAccount} from "../interfaces/IMarginAccount.sol";
 
 contract MonadDeployer {
-    IRouter immutable router;
-    uint96 immutable kuruAmmSpread;
-    address kuruCollective;
-    uint256 kuruCollectiveFee; //in native token amount
-    IMarginAccount immutable marginAccount;
 
     struct TokenParams {
         string name;
@@ -35,19 +30,31 @@ contract MonadDeployer {
         uint256 makerFeeBps;
     }
 
-    event PumpingTime(address indexed token, string tokenURI, address dev, uint256 supplyToDev, address market);
+    //INTERNAL VARIABLES
+    IRouter immutable router;
+    uint96 immutable kuruAmmSpread;
+    address kuruCollective;
+    uint256 kuruCollectiveFee; //in native token amount
+    IMarginAccount immutable marginAccount;
 
-    constructor(IRouter _router, address _kuruCollective, uint96 _kuruAmmSpread, uint256 _kuruCollectiveFee) {
+    //EVENTS
+    event PumpingTime(address indexed token, string tokenURI, address dev, uint256 supplyToDev, address market);
+    //ERRORS
+    error InsufficientAssets(uint256 expected, uint256 received);
+
+    //CONSTRUCTOR
+    constructor(IRouter _router, address _marginAccount, address _kuruCollective, uint96 _kuruAmmSpread, uint256 _kuruCollectiveFee) {
         router = _router;
+        marginAccount = IMarginAccount(_marginAccount);
         kuruAmmSpread = _kuruAmmSpread;
         kuruCollective = _kuruCollective;
         kuruCollectiveFee = _kuruCollectiveFee;
     }
 
-    function deployTokenAndMarket(TokenParams memory tokenParams, MarketParams memory marketParams) external payable {
+    function deployTokenAndMarket(TokenParams memory tokenParams, MarketParams memory marketParams) external payable returns (address market) {
         KuruERC20 token = new KuruERC20(tokenParams.name, tokenParams.symbol, tokenParams.initialSupply, address(this));
-        address market = router.deployProxy(
-            IOrderBook.OrderBookType.NATIVE_IN_BASE,
+        market = router.deployProxy(
+            IOrderBook.OrderBookType.NATIVE_IN_QUOTE,
             address(token),
             address(0),
             marketParams.sizePrecision,
@@ -59,12 +66,13 @@ contract MonadDeployer {
             marketParams.makerFeeBps,
             kuruAmmSpread
         );
+        if(msg.value != (marketParams.nativeTokenAmount + kuruCollectiveFee)) revert InsufficientAssets(marketParams.nativeTokenAmount + kuruCollectiveFee, msg.value);
         (address vault,,,,,,,) = IOrderBook(market).getVaultParams();
         uint256 _supplyToVault = tokenParams.initialSupply * (10 ** 4 - tokenParams.supplyToDev) / 10 ** 4;
         token.approve(vault, _supplyToVault);
-        IKuruAMMVault(vault).deposit(_supplyToVault, marketParams.nativeTokenAmount, address(this));
+        IKuruAMMVault(vault).deposit{value: marketParams.nativeTokenAmount}(_supplyToVault, marketParams.nativeTokenAmount, address(this));
         token.transfer(tokenParams.dev, tokenParams.initialSupply - _supplyToVault);
-        marginAccount.deposit(kuruCollective, address(0), kuruCollectiveFee);
+        marginAccount.deposit{value: kuruCollectiveFee}(kuruCollective, address(0), kuruCollectiveFee);
         emit PumpingTime(
             address(token), tokenParams.tokenURI, tokenParams.dev, tokenParams.initialSupply - _supplyToVault, market
         );
