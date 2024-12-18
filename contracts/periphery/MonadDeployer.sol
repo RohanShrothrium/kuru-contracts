@@ -34,7 +34,7 @@ contract MonadDeployer {
     IRouter immutable router;
     uint96 immutable kuruAmmSpread;
     address kuruCollective;
-    uint256 kuruCollectiveFee; //in native token amount
+    uint256 public kuruCollectiveFee; //in native token amount
     IMarginAccount immutable marginAccount;
 
     //EVENTS

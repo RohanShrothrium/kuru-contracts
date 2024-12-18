@@ -8,6 +8,8 @@ import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
 import {KuruForwarder} from "../contracts/KuruForwarder.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {MonadDeployer} from "../contracts/periphery/MonadDeployer.sol";
+import {IRouter} from "../contracts/interfaces/IRouter.sol";
 
 contract Deployer is Script {
     using stdJson for string;
@@ -68,6 +70,9 @@ contract Deployer is Script {
         vm.expectRevert(InvalidInitialization.selector);
         router.initialize(deployerAdmin, address(marginAccount), address(OBImpl), address(kuruForwarder));
         assert(router.owner() == deployerAdmin);
+        vm.startBroadcast(deployerAdmin);
+        MonadDeployer monadDeployer = new MonadDeployer(IRouter(address(router)), address(marginAccount), address(kuruForwarder), 100, 10 * 10 ** 18);
+        console.log("MonadDeployer deployed to:", address(monadDeployer));
         // assert(marginAccount.feeCollector() == deployerAdmin);
     }
 }
