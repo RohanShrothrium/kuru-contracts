@@ -2,14 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import {KuruERC20} from "../test/ERC20.sol";
+import {KuruERC20} from "./ERC20.sol";
 import {IRouter} from "../interfaces/IRouter.sol";
 import {IOrderBook} from "../interfaces/IOrderBook.sol";
 import {IKuruAMMVault} from "../interfaces/IKuruAMMVault.sol";
 import {IMarginAccount} from "../interfaces/IMarginAccount.sol";
 
 contract MonadDeployer {
-
     struct TokenParams {
         string name;
         string symbol;
@@ -40,10 +39,17 @@ contract MonadDeployer {
     //EVENTS
     event PumpingTime(address indexed token, string tokenURI, address dev, uint256 supplyToDev, address market);
     //ERRORS
+
     error InsufficientAssets(uint256 expected, uint256 received);
 
     //CONSTRUCTOR
-    constructor(IRouter _router, address _marginAccount, address _kuruCollective, uint96 _kuruAmmSpread, uint256 _kuruCollectiveFee) {
+    constructor(
+        IRouter _router,
+        address _marginAccount,
+        address _kuruCollective,
+        uint96 _kuruAmmSpread,
+        uint256 _kuruCollectiveFee
+    ) {
         router = _router;
         marginAccount = IMarginAccount(_marginAccount);
         kuruAmmSpread = _kuruAmmSpread;
@@ -51,7 +57,11 @@ contract MonadDeployer {
         kuruCollectiveFee = _kuruCollectiveFee;
     }
 
-    function deployTokenAndMarket(TokenParams memory tokenParams, MarketParams memory marketParams) external payable returns (address market) {
+    function deployTokenAndMarket(TokenParams memory tokenParams, MarketParams memory marketParams)
+        external
+        payable
+        returns (address market)
+    {
         KuruERC20 token = new KuruERC20(tokenParams.name, tokenParams.symbol, tokenParams.initialSupply, address(this));
         market = router.deployProxy(
             IOrderBook.OrderBookType.NATIVE_IN_QUOTE,
@@ -66,11 +76,15 @@ contract MonadDeployer {
             marketParams.makerFeeBps,
             kuruAmmSpread
         );
-        if(msg.value != (marketParams.nativeTokenAmount + kuruCollectiveFee)) revert InsufficientAssets(marketParams.nativeTokenAmount + kuruCollectiveFee, msg.value);
+        if (msg.value != (marketParams.nativeTokenAmount + kuruCollectiveFee)) {
+            revert InsufficientAssets(marketParams.nativeTokenAmount + kuruCollectiveFee, msg.value);
+        }
         (address vault,,,,,,,) = IOrderBook(market).getVaultParams();
         uint256 _supplyToVault = tokenParams.initialSupply * (10 ** 4 - tokenParams.supplyToDev) / 10 ** 4;
         token.approve(vault, _supplyToVault);
-        IKuruAMMVault(vault).deposit{value: marketParams.nativeTokenAmount}(_supplyToVault, marketParams.nativeTokenAmount, address(this));
+        IKuruAMMVault(vault).deposit{value: marketParams.nativeTokenAmount}(
+            _supplyToVault, marketParams.nativeTokenAmount, address(this)
+        );
         token.transfer(tokenParams.dev, tokenParams.initialSupply - _supplyToVault);
         marginAccount.deposit{value: kuruCollectiveFee}(kuruCollective, address(0), kuruCollectiveFee);
         emit PumpingTime(

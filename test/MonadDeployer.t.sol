@@ -13,12 +13,13 @@ import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 import {IRouter} from "../contracts/interfaces/IRouter.sol";
 import "forge-std/Test.sol";
 
-contract MonadDeployerTest is Test { 
+contract MonadDeployerTest is Test {
     MonadDeployer monadDeployer;
     MarginAccount marginAccount;
     OrderBook implementation;
     Router router;
     KuruERC20 token;
+
     event MarketCreated(address market);
 
     function setUp() public {
@@ -31,20 +32,27 @@ contract MonadDeployerTest is Test {
         );
         router = Router(payable(routerProxy));
         marginAccount = new MarginAccount(address(router), address(router), address(0x123));
-        monadDeployer = new MonadDeployer(IRouter(address(router)), address(marginAccount), address(0x123), 100, 10 * 10 ** 18);
+        monadDeployer =
+            new MonadDeployer(IRouter(address(router)), address(marginAccount), address(0x123), 100, 10 * 10 ** 18);
         router.initialize(address(this), address(marginAccount), address(implementation), address(0x123));
     }
 
-    function testDeployMarket() public { 
-        MonadDeployer.TokenParams memory tokenParams = MonadDeployer.TokenParams("CHOG", "CHOG", "https://chog.com/chog.json", 1000000 * 10 ** 18, address(this), 100);
-        MonadDeployer.MarketParams memory marketParams = MonadDeployer.MarketParams(100 * 10 ** 18, 10**10, 10**2, 10, 10**2, 10**10, 10, 5);
+    function testDeployMarket() public {
+        MonadDeployer.TokenParams memory tokenParams = MonadDeployer.TokenParams(
+            "CHOG", "CHOG", "https://chog.com/chog.json", 1000000 * 10 ** 18, address(this), 100
+        );
+        MonadDeployer.MarketParams memory marketParams =
+            MonadDeployer.MarketParams(100 * 10 ** 18, 10 ** 10, 10 ** 2, 10, 10 ** 2, 10 ** 10, 10, 5);
         address market = monadDeployer.deployTokenAndMarket{value: 110 ether}(tokenParams, marketParams);
         emit MarketCreated(market);
     }
 
     function testDeployMarketRevertInsufficientAssets() public {
-        MonadDeployer.TokenParams memory tokenParams = MonadDeployer.TokenParams("CHOG", "CHOG", "https://chog.com/chog.json", 1000000 * 10 ** 18, address(this), 100);
-        MonadDeployer.MarketParams memory marketParams = MonadDeployer.MarketParams(100 * 10 ** 18, 10**10, 10**2, 10, 10**2, 10**10, 10, 5);
+        MonadDeployer.TokenParams memory tokenParams = MonadDeployer.TokenParams(
+            "CHOG", "CHOG", "https://chog.com/chog.json", 1000000 * 10 ** 18, address(this), 100
+        );
+        MonadDeployer.MarketParams memory marketParams =
+            MonadDeployer.MarketParams(100 * 10 ** 18, 10 ** 10, 10 ** 2, 10, 10 ** 2, 10 ** 10, 10, 5);
         vm.expectRevert();
         monadDeployer.deployTokenAndMarket{value: 10 ether}(tokenParams, marketParams);
     }
