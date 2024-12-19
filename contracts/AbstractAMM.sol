@@ -45,24 +45,27 @@ abstract contract AbstractAMM is IOrderBook {
      * @dev Iteratively match discretized AMM orders until a given price point is reached for a particular quote size for market buys
      * @param _breakPoint Price point till which the AMM should fill
      * @param _quoteSize Quote size left to be filled
-     * @return quoteLeft Remaining quote size that is not filled 
+     * @return quoteLeft Remaining quote size that is not filled
      * @return sizeFilled Base asset size that was filled
      * @return makerCredits Encoded credits for the vault
      */
-    function _fillVaultBuyMatch(uint256 _breakPoint, uint32 _quoteSize) internal returns (uint32 quoteLeft, uint96 sizeFilled, bytes memory makerCredits) {
+    function _fillVaultBuyMatch(uint256 _breakPoint, uint32 _quoteSize)
+        internal
+        returns (uint32 quoteLeft, uint96 sizeFilled, bytes memory makerCredits)
+    {
         uint256 _price = vaultBestAsk;
         uint256 _quoteInput = _quoteSize * vaultPricePrecision / _getPricePrecision();
         uint96 _cachedLastVaultSize = vaultAskOrderSize;
         uint96 _cachedPartiallyFilledBid = bidPartiallyFilledSize;
         uint96 _availableSize = _cachedLastVaultSize - askPartiallyFilledSize;
         //handle equal to condition
-        if(_quoteInput > FixedPointMathLib.mulDivUp(_price, _availableSize, _getSizePrecision())) {
+        if (_quoteInput >= FixedPointMathLib.mulDivUp(_price, _availableSize, _getSizePrecision())) {
             askPartiallyFilledSize = 0;
         }
-        
-        while(_price < _breakPoint && _quoteInput > 0) {
+
+        while (_price < _breakPoint && _quoteInput > 0) {
             uint256 _quoteNeededForFill = FixedPointMathLib.mulDivUp(_price, _availableSize, _getSizePrecision());
-            if(_quoteNeededForFill > _quoteInput) {
+            if (_quoteNeededForFill > _quoteInput) {
                 uint96 _sizeFilledAtPrice = uint96(_quoteInput * _getSizePrecision() / _price);
                 sizeFilled += _sizeFilledAtPrice;
                 askPartiallyFilledSize += _sizeFilledAtPrice;
@@ -72,11 +75,13 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeFilled += _availableSize;
                 _quoteInput -= _quoteNeededForFill;
-                _cachedLastVaultSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
+                _cachedLastVaultSize =
+                    uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
                 _emitTrade(0, kuruAmmVault, true, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
                 _price = FixedPointMathLib.mulDivRound(_price, 1000 + SPREAD_CONSTANT, 1000);
-                _cachedPartiallyFilledBid = uint96(FixedPointMathLib.mulDiv(_cachedPartiallyFilledBid, 1000, 1000 + SPREAD_CONSTANT));
+                _cachedPartiallyFilledBid =
+                    uint96(FixedPointMathLib.mulDiv(_cachedPartiallyFilledBid, 1000, 1000 + SPREAD_CONSTANT));
             }
         }
         vaultBestAsk = _price;
@@ -85,19 +90,22 @@ abstract contract AbstractAMM is IOrderBook {
         vaultAskOrderSize = _cachedLastVaultSize;
         vaultBidOrderSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
         quoteLeft = uint32(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
-        makerCredits = _creditVaultOnMarketBuy(sizeFilled, (_quoteSize * vaultPricePrecision / _getPricePrecision() - _quoteInput));
+        makerCredits =
+            _creditVaultOnMarketBuy(sizeFilled, (_quoteSize * vaultPricePrecision / _getPricePrecision() - _quoteInput));
     }
 
     /**
      * @dev Iteratively match discretized AMM orders until a given price point is reached for a particular quote size for limit order buys
      * @param _breakPoint Price point till which the AMM should fill
      * @param _size Base size left to be filled
-     * @return sizeLeft Remaining base size that is not filled 
+     * @return sizeLeft Remaining base size that is not filled
      * @return fundsConsumed Quote size consumed in market price precision
      * @return makerCredits Encoded credits for the vault
      */
-
-    function _fillVaultForBuy(uint256 _breakPoint,uint96 _size) internal returns (uint96 sizeLeft, uint32 fundsConsumed, bytes memory makerCredits) {
+    function _fillVaultForBuy(uint256 _breakPoint, uint96 _size)
+        internal
+        returns (uint96 sizeLeft, uint32 fundsConsumed, bytes memory makerCredits)
+    {
         uint256 _price = vaultBestAsk;
         sizeLeft = _size;
 
@@ -106,11 +114,11 @@ abstract contract AbstractAMM is IOrderBook {
         // should we muldivup here?
         uint256 _consumedQuote;
         uint96 _availableSize = _cachedLastVaultSize - askPartiallyFilledSize;
-        if(_availableSize < sizeLeft) {
+        if (_availableSize <= sizeLeft) {
             askPartiallyFilledSize = 0;
         }
-        while(_price < _breakPoint && sizeLeft > 0) {
-            if(_availableSize > sizeLeft) {
+        while (_price < _breakPoint && sizeLeft > 0) {
+            if (_availableSize > sizeLeft) {
                 askPartiallyFilledSize += sizeLeft;
                 _consumedQuote += FixedPointMathLib.mulDivUp(sizeLeft, _price, _getSizePrecision());
                 _emitTrade(0, kuruAmmVault, true, _price, _availableSize - sizeLeft, sizeLeft);
@@ -119,11 +127,13 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeLeft -= _availableSize;
                 _consumedQuote += FixedPointMathLib.mulDivUp(_availableSize, _price, _getSizePrecision());
-                _cachedLastVaultSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
+                _cachedLastVaultSize =
+                    uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
                 _emitTrade(0, kuruAmmVault, true, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
                 _price = FixedPointMathLib.mulDivRound(_price, 1000 + SPREAD_CONSTANT, 1000);
-                _cachedPartiallyFilledBid = uint96(FixedPointMathLib.mulDiv(_cachedPartiallyFilledBid, 1000, 1000 + SPREAD_CONSTANT));
+                _cachedPartiallyFilledBid =
+                    uint96(FixedPointMathLib.mulDiv(_cachedPartiallyFilledBid, 1000, 1000 + SPREAD_CONSTANT));
             }
         }
         vaultBestAsk = _price;
@@ -134,27 +144,29 @@ abstract contract AbstractAMM is IOrderBook {
         fundsConsumed = uint32(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
         makerCredits = _creditVaultOnMarketBuy(_size - sizeLeft, _consumedQuote);
     }
-    
+
     /**
      * @dev Iteratively match discretized AMM orders until a given price point is reached for a particular base size for limit/market sells
      * @param _breakPoint Price point till which the AMM should fill
      * @param _size Base size left to be filled
-     * @return sizeLeft Remaining base size that is not filled 
+     * @return sizeLeft Remaining base size that is not filled
      * @return quoteOwedToUser Quote size owed to the user in vault price precision
      * @return makerCredits Encoded credits for the vault
      */
-
-    function _fillVaultForSell(uint256 _breakPoint, uint96 _size) internal returns (uint96 sizeLeft, uint256 quoteOwedToUser, bytes memory makerCredits) {
+    function _fillVaultForSell(uint256 _breakPoint, uint96 _size)
+        internal
+        returns (uint96 sizeLeft, uint256 quoteOwedToUser, bytes memory makerCredits)
+    {
         uint256 _price = vaultBestBid;
         uint96 _availableSize = vaultBidOrderSize - bidPartiallyFilledSize;
         uint96 _cachedLastVaultSize = vaultBidOrderSize;
         sizeLeft = _size;
-        if(sizeLeft > _availableSize) {
+        if (sizeLeft > _availableSize) {
             bidPartiallyFilledSize = 0;
         }
 
-        while(_price > _breakPoint && sizeLeft > 0) {
-            if(_availableSize > sizeLeft) {
+        while (_price > _breakPoint && sizeLeft > 0) {
+            if (_availableSize > sizeLeft) {
                 bidPartiallyFilledSize += sizeLeft;
                 quoteOwedToUser += FixedPointMathLib.mulDiv(_price, sizeLeft, _getSizePrecision());
                 _emitTrade(0, kuruAmmVault, false, _price, _availableSize - sizeLeft, sizeLeft);
@@ -163,9 +175,10 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeLeft -= _availableSize;
                 quoteOwedToUser += FixedPointMathLib.mulDiv(_price, _availableSize, _getSizePrecision());
-                _cachedLastVaultSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
+                _cachedLastVaultSize =
+                    uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
                 _emitTrade(0, kuruAmmVault, false, _price, 0, _availableSize);
-                _availableSize = _cachedLastVaultSize; 
+                _availableSize = _cachedLastVaultSize;
                 _price = FixedPointMathLib.mulDivRound(_price, 1000, 1000 + SPREAD_CONSTANT);
             }
         }
@@ -182,11 +195,17 @@ abstract contract AbstractAMM is IOrderBook {
      * @param _fundsOwed Quote size owed to the user in vault price precision
      * @return returnData Encoded credits for the vault
      */
-
-    function _creditVaultOnMarketBuy(uint96 _sizeFilled, uint256 _fundsOwed) internal view returns (bytes memory returnData) {
-        returnData = abi.encode(kuruAmmVault, _getQuoteAsset(), _fundsOwed * 10 ** _getQuoteAssetDecimals() / vaultPricePrecision, true);
-        uint256 feeRebate = ((_sizeFilled * 10 ** _getBaseAssetDecimals() / _getSizePrecision()) * _getMakerFeeBps()) / BPS_MULTIPLIER;
-        if(feeRebate > 0) {
+    function _creditVaultOnMarketBuy(uint96 _sizeFilled, uint256 _fundsOwed)
+        internal
+        view
+        returns (bytes memory returnData)
+    {
+        returnData = abi.encode(
+            kuruAmmVault, _getQuoteAsset(), _fundsOwed * 10 ** _getQuoteAssetDecimals() / vaultPricePrecision, true
+        );
+        uint256 feeRebate =
+            ((_sizeFilled * 10 ** _getBaseAssetDecimals() / _getSizePrecision()) * _getMakerFeeBps()) / BPS_MULTIPLIER;
+        if (feeRebate > 0) {
             bytes.concat(returnData, abi.encode(kuruAmmVault, _getBaseAsset(), feeRebate, true));
         }
     }
@@ -197,11 +216,18 @@ abstract contract AbstractAMM is IOrderBook {
      * @param _fundsOwedToUser Quote size owed to the user in vault price precision
      * @return returnData Encoded credits for the vault
      */
-
-    function _creditVaultOnMarketSell(uint96 _sizeOwedToVault, uint256 _fundsOwedToUser) internal view returns (bytes memory returnData) {
-        returnData = abi.encode(kuruAmmVault, _getBaseAsset(), _sizeOwedToVault * 10 ** _getBaseAssetDecimals() / _getSizePrecision(), true);
-        uint256 feeRebate = ((_fundsOwedToUser * 10 ** _getQuoteAssetDecimals() / vaultPricePrecision) * _getMakerFeeBps()) / BPS_MULTIPLIER;
-        if(feeRebate > 0) {
+    function _creditVaultOnMarketSell(uint96 _sizeOwedToVault, uint256 _fundsOwedToUser)
+        internal
+        view
+        returns (bytes memory returnData)
+    {
+        returnData = abi.encode(
+            kuruAmmVault, _getBaseAsset(), _sizeOwedToVault * 10 ** _getBaseAssetDecimals() / _getSizePrecision(), true
+        );
+        uint256 feeRebate = (
+            (_fundsOwedToUser * 10 ** _getQuoteAssetDecimals() / vaultPricePrecision) * _getMakerFeeBps()
+        ) / BPS_MULTIPLIER;
+        if (feeRebate > 0) {
             bytes.concat(returnData, abi.encode(kuruAmmVault, _getQuoteAsset(), feeRebate, true));
         }
     }

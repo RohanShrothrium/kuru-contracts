@@ -558,21 +558,25 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         quoteFeeCollected = 0;
     }
 
-    function _matchAggressiveBuyWithCap(uint256 _limitPrice, uint96 _sizeToBeFilled) internal returns (uint96, uint32) {
+    function _matchAggressiveBuyWithCap(uint256 _limitPrice, uint96 _sizeToBeFilled)
+        internal
+        returns (uint96, uint32)
+    {
         uint96 sizeToCreditTaker;
         uint96 sizeToCreditViaVault;
         uint32 fundsConsumed;
         bytes memory makerCredits;
         (bool _isVaultFill, uint256 _bestAsk) = bestAsk();
         _limitPrice = _limitPrice * vaultPricePrecision / pricePrecision;
-        while (_sizeToBeFilled > 0 && _bestAsk <= _limitPrice&& _bestAsk != 0)
-        {
+
+        while (_sizeToBeFilled > 0 && _bestAsk <= _limitPrice && _bestAsk != 0) {
             uint96 sizeToBeFilledBefore = _sizeToBeFilled; // Capture the size before filling
             bytes memory priceUpdate;
 
-            if(_isVaultFill) {
+            if (_isVaultFill) {
                 uint32 _vaultFundsConsumed;
-                (_sizeToBeFilled, _vaultFundsConsumed, priceUpdate) = _fillVaultForBuy(_getOBAsk() > _limitPrice? _limitPrice : _getOBAsk(), _sizeToBeFilled);
+                (_sizeToBeFilled, _vaultFundsConsumed, priceUpdate) =
+                    _fillVaultForBuy(_getOBAsk() > _limitPrice ? _limitPrice : _getOBAsk(), _sizeToBeFilled);
                 fundsConsumed += _vaultFundsConsumed;
             } else {
                 (_sizeToBeFilled, priceUpdate) = _fillSizeForPrice(
@@ -589,7 +593,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                 sizeToCreditViaVault += sizeFilled;
             } else {
                 fundsConsumed += _calculateFundsConsumed(
-                uint32(FixedPointMathLib.mulDivUp(_bestAsk, pricePrecision, vaultPricePrecision)), sizeFilled
+                    uint32(FixedPointMathLib.mulDivUp(_bestAsk, pricePrecision, vaultPricePrecision)), sizeFilled
                 );
             }
             makerCredits = bytes.concat(makerCredits, priceUpdate);
@@ -634,7 +638,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         while (_quoteSize > 0 && _bestAsk != 0) {
             bytes memory priceUpdate;
-            if(_isVaultFill) {
+            if (_isVaultFill) {
                 uint96 _sizeFilled;
                 (_quoteSize, _sizeFilled, priceUpdate) = _fillVaultBuyMatch(_getOBAsk(), _quoteSize);
                 sizeToCreditViaVault += _sizeFilled;
@@ -645,16 +649,16 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                     uint96(_quoteSize * sizePrecision * vaultPricePrecision / (_bestAsk * pricePrecision));
                 uint96 _sizeFillableAtPriceBefore = _sizeFillableAtPriceLeft; // Save old size to be filled
                 (_sizeFillableAtPriceLeft, priceUpdate) = _fillSizeForPrice(
-                        s_sellTree,
-                        uint32(_bestAsk * pricePrecision / vaultPricePrecision),
-                        s_sellPricePoints[uint32(_bestAsk * pricePrecision / vaultPricePrecision)],
-                        _sizeFillableAtPriceLeft
-                    );
+                    s_sellTree,
+                    uint32(_bestAsk * pricePrecision / vaultPricePrecision),
+                    s_sellPricePoints[uint32(_bestAsk * pricePrecision / vaultPricePrecision)],
+                    _sizeFillableAtPriceLeft
+                );
                 sizeToCreditTaker += (_sizeFillableAtPriceBefore - _sizeFillableAtPriceLeft);
                 _quoteSize = uint32(
-                FixedPointMathLib.mulDiv(
-                    _bestAsk * pricePrecision, _sizeFillableAtPriceLeft, sizePrecision * vaultPricePrecision
-                )
+                    FixedPointMathLib.mulDiv(
+                        _bestAsk * pricePrecision, _sizeFillableAtPriceLeft, sizePrecision * vaultPricePrecision
+                    )
                 );
             }
             makerCredits = bytes.concat(makerCredits, priceUpdate);
@@ -704,17 +708,15 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         (bool _isVaultFill, uint256 _bestBid) = bestBid();
         bytes memory makerCredits;
         _limitPrice = _limitPrice * vaultPricePrecision / pricePrecision;
-        while (
-            _sizeToBeFilledLeft > 0 && _bestBid >= _limitPrice
-                && _bestBid != type(uint32).max
-        ) {
+        while (_sizeToBeFilledLeft > 0 && _bestBid >= _limitPrice && _bestBid != type(uint256).max) {
             uint96 _sizeToBeFilledBefore = _sizeToBeFilledLeft; //save size left to fill
 
             bytes memory priceUpdate;
 
-            if(_isVaultFill) {
+            if (_isVaultFill) {
                 uint256 _quoteToTaker;
-                (_sizeToBeFilledLeft, _quoteToTaker, priceUpdate) = _fillVaultForSell(_getOBBid() >= _limitPrice? _getOBBid() : _limitPrice, _sizeToBeFilledLeft);
+                (_sizeToBeFilledLeft, _quoteToTaker, priceUpdate) =
+                    _fillVaultForSell(_getOBBid() >= _limitPrice ? _getOBBid() : _limitPrice, _sizeToBeFilledLeft);
                 quoteCreditVaultTaker += _quoteToTaker;
             } else {
                 (_sizeToBeFilledLeft, priceUpdate) = _fillSizeForPrice(
@@ -978,16 +980,17 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
     function _getOBBid() internal view returns (uint256) {
         uint32 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max);
-        if(firstRight != type(uint32).max) {
+        if (firstRight != type(uint32).max) {
             return firstRight * vaultPricePrecision / pricePrecision;
         }
         return 0;
     }
+
     function bestAsk() internal view returns (bool, uint256) {
         uint32 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0);
         if (firstLeft != 0) {
             if (vaultBestAsk != type(uint256).max) {
-                if(firstLeft * vaultPricePrecision / pricePrecision == vaultBestAsk) {
+                if (firstLeft * vaultPricePrecision / pricePrecision == vaultBestAsk) {
                     return (false, firstLeft * vaultPricePrecision / pricePrecision);
                 }
                 return (FixedPointMathLib.min(firstLeft * vaultPricePrecision / pricePrecision, vaultBestAsk))
@@ -1002,7 +1005,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         uint32 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max);
         if (firstRight != type(uint32).max) {
             if (vaultBestBid != 0) {
-                if(firstRight * vaultPricePrecision / pricePrecision == vaultBestBid) {
+                if (firstRight * vaultPricePrecision / pricePrecision == vaultBestBid) {
                     return (false, firstRight * vaultPricePrecision / pricePrecision);
                 }
                 return (FixedPointMathLib.max(firstRight * vaultPricePrecision / pricePrecision, vaultBestBid))
@@ -1010,7 +1013,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             }
             return (false, firstRight * vaultPricePrecision / pricePrecision);
         }
-        return vaultBestBid != 0 ? (true, vaultBestBid) : (false, type(uint32).max);
+        return vaultBestBid != 0 ? (true, vaultBestBid) : (false, type(uint256).max);
     }
 
     /**

@@ -15,4 +15,6 @@ interface IKuruAMMVault {
         uint256 takerFeeBps;
         uint256 makerFeeBps;
     }
+
+    function deposit(uint256 amount1, uint256 amount2, address receiver) external payable returns (uint256);
 }
