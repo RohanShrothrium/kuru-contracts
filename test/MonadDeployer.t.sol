@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import {MonadDeployer} from "../contracts/periphery/MonadDeployer.sol";
-import {KuruERC20} from "../contracts/test/ERC20.sol";
+
 import {KuruAMMVault} from "../contracts/KuruAMMVault.sol";
 import {Router} from "../contracts/Router.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
@@ -18,7 +18,7 @@ contract MonadDeployerTest is Test {
     MarginAccount marginAccount;
     OrderBook implementation;
     Router router;
-    KuruERC20 token;
+
 
     event MarketCreated(address market);
 
