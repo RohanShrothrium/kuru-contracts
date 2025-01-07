@@ -149,7 +149,7 @@ contract BenchMarkTest is Test, Gas {
             }
             address _user = genAddress();
             usdc.mint(_user, _usdcNeeded);
-            uint32 _input = uint32(_usdcNeeded * PRICE_PRECISION / (10 ** usdc.decimals()));
+            uint96 _input = uint96(_usdcNeeded * PRICE_PRECISION / (10 ** usdc.decimals()));
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _usdcNeeded);
             startMeasuringGas(_label);

@@ -201,7 +201,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketBuy(uint32(_consumableFunds * PRICE_PRECISION / (10 ** 18)), 0, false, true);
+            orderBook.placeAndExecuteMarketBuy(uint96(_consumableFunds * PRICE_PRECISION / (10 ** 18)), 0, false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -223,7 +223,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketBuy(uint32(_consumableFunds * PRICE_PRECISION / (10 ** 18)), 0, false, true);
+            orderBook.placeAndExecuteMarketBuy(uint96(_consumableFunds * PRICE_PRECISION / (10 ** 18)), 0, false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -245,7 +245,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketBuy(uint32(_consumableFunds * PRICE_PRECISION / (10 ** 18)), 0, false, true);
+            orderBook.placeAndExecuteMarketBuy(uint96(_consumableFunds * PRICE_PRECISION / (10 ** 18)), 0, false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();
@@ -271,7 +271,7 @@ contract BenchMarkTest is Test, Gas {
             vm.startPrank(_user);
             usdc.approve(address(orderBook), _consumableFunds);
             startMeasuringGas("");
-            orderBook.placeAndExecuteMarketBuy(uint32(_consumableFunds * PRICE_PRECISION / 10 ** 18), 0, false, true);
+            orderBook.placeAndExecuteMarketBuy(uint96(_consumableFunds * PRICE_PRECISION / 10 ** 18), 0, false, true);
             uint256 gasVar = stopMeasuringGas();
             console.log("ITERATION ", i + 1, " GAS USED: ", gasVar);
             vm.stopPrank();

@@ -170,7 +170,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
 
         //The buy order is filled aggressively and the leftover size is added as a limit buy order
-        (uint96 _remainingSize, uint32 _consumedFunds) = _matchAggressiveBuyWithCap(uint256(_price), size);
+        (uint96 _remainingSize, uint96 _consumedFunds) = _matchAggressiveBuyWithCap(uint256(_price), size);
 
         _consumedFunds += _calculateFundsConsumed(_price, _remainingSize);
 
@@ -289,7 +289,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             marginAccount.creditUser(
                 _order.ownerAddress,
                 quoteAsset,
-                (((uint32((_order.size * _order.price) / sizePrecision) * 10 ** quoteAssetDecimals) / pricePrecision)),
+                (((uint96((_order.size * _order.price) / sizePrecision) * 10 ** quoteAssetDecimals) / pricePrecision)),
                 true
             );
         } else {
@@ -427,7 +427,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @param _quoteSize amount of quote asset user is ready to pay.
      * @param _isFillOrKill bool representing if function should revert if full qty is not recieved.
      */
-    function placeAndExecuteMarketBuy(uint32 _quoteSize, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
+    function placeAndExecuteMarketBuy(uint96 _quoteSize, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         public
         payable
         override
@@ -540,7 +540,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         require(_success, OrderBookErrors.NativeAssetTransferFail());
     }
 
-    function _pricePrecisionToQuoteAssetPrecision(uint32 _quote) internal view returns (uint256) {
+    function _pricePrecisionToQuoteAssetPrecision(uint96 _quote) internal view returns (uint256) {
         return (uint256(_quote) * 10 ** quoteAssetDecimals) / pricePrecision;
     }
 
@@ -560,11 +560,11 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
     function _matchAggressiveBuyWithCap(uint256 _limitPrice, uint96 _sizeToBeFilled)
         internal
-        returns (uint96, uint32)
+        returns (uint96, uint96)
     {
         uint96 sizeToCreditTaker;
         uint96 sizeToCreditViaVault;
-        uint32 fundsConsumed;
+        uint96 fundsConsumed;
         bytes memory makerCredits;
         (bool _isVaultFill, uint256 _bestAsk) = bestAsk();
         _limitPrice = _limitPrice * vaultPricePrecision / pricePrecision;
@@ -574,7 +574,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             bytes memory priceUpdate;
 
             if (_isVaultFill) {
-                uint32 _vaultFundsConsumed;
+                uint96 _vaultFundsConsumed;
                 (_sizeToBeFilled, _vaultFundsConsumed, priceUpdate) =
                     _fillVaultForBuy(_getOBAsk() > _limitPrice ? _limitPrice : _getOBAsk(), _sizeToBeFilled);
                 fundsConsumed += _vaultFundsConsumed;
@@ -630,7 +630,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @dev Match limit buy orders if it crosses the book.
      * @param _quoteSize amount of quote asset user is ready to pay.
      */
-    function _marketBuyMatch(uint32 _quoteSize, bool _isMargin) internal returns (uint32, uint256) {
+    function _marketBuyMatch(uint96 _quoteSize, bool _isMargin) internal returns (uint96, uint256) {
         uint96 sizeToCreditTaker;
         uint96 sizeToCreditViaVault;
         bytes memory makerCredits;
@@ -655,7 +655,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                     _sizeFillableAtPriceLeft
                 );
                 sizeToCreditTaker += (_sizeFillableAtPriceBefore - _sizeFillableAtPriceLeft);
-                _quoteSize = uint32(
+                _quoteSize = uint96(
                     FixedPointMathLib.mulDiv(
                         _bestAsk * pricePrecision, _sizeFillableAtPriceLeft, sizePrecision * vaultPricePrecision
                     )
@@ -702,7 +702,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         internal
         returns (uint96, uint256)
     {
-        uint32 quoteCreditTaker;
+        uint96 quoteCreditTaker;
         uint256 quoteCreditVaultTaker;
         uint256 tokenCredit;
         (bool _isVaultFill, uint256 _bestBid) = bestBid();
@@ -725,7 +725,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                     s_buyPricePoints[_bestBid * pricePrecision / vaultPricePrecision],
                     _sizeToBeFilledLeft
                 );
-                quoteCreditTaker += uint32(
+                quoteCreditTaker += uint96(
                     FixedPointMathLib.mulDiv(
                         _sizeToBeFilledBefore - _sizeToBeFilledLeft,
                         uint32(_bestBid * pricePrecision / vaultPricePrecision),
@@ -857,10 +857,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @param _price The price of the order.
      * @param _size The size of the order
      */
-    function _calculateFundsConsumed(uint32 _price, uint96 _size) internal view returns (uint32) {
+    function _calculateFundsConsumed(uint32 _price, uint96 _size) internal view returns (uint96) {
         uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, sizePrecision);
-        require(_result < type(uint32).max, OrderBookErrors.TooMuchSizeFilled());
-        return uint32(_result);
+        require(_result < type(uint96).max, OrderBookErrors.TooMuchSizeFilled());
+        return uint96(_result);
     }
 
     /**

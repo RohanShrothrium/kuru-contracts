@@ -357,8 +357,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         address _makerB = _addSellOrder(address(0), _priceB, _sizeB, false);
 
         //Expected quote tokens to be supplied for filling each sell order
-        uint32 _amountA = mulDivUp(_priceA, _sizeA);
-        uint32 _amountB = mulDivUp(_priceB, _sizeB);
+        uint96 _amountA = mulDivUp(_priceA, _sizeA);
+        uint96 _amountB = mulDivUp(_priceB, _sizeB);
 
         //Expected size credited for market order from each sell order
         uint96 _sizeCreditAFee = uint96(FixedPointMathLib.mulDivUp(_sizeA, _takerFeeBps, 10 ** 4));
@@ -377,7 +377,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         //Maximum tolerance in credited quote tokens (1 price precision)
         uint256 _toleranceInQuote = 10 ** decimals / PRICE_PRECISION;
 
-        uint32 _totalAmount = _amountA + _amountB;
+        uint96 _totalAmount = _amountA + _amountB;
 
         address _taker = genAddress();
         usdc.mint(_taker, (_totalAmount * 10 ** usdc.decimals()) / PRICE_PRECISION);
@@ -419,8 +419,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         address _makerB = _addSellOrder(address(0), _priceB, _sizeB, false);
 
         //Expected quote tokens to be supplied for filling each sell order
-        uint32 _amountA = mulDivUp(_priceA, _sizeA);
-        uint32 _amountB = mulDivUp(_priceB, _sizeB);
+        uint96 _amountA = mulDivUp(_priceA, _sizeA);
+        uint96 _amountB = mulDivUp(_priceB, _sizeB);
 
         //Expected size credited for market order from each sell order
         uint96 _sizeCreditAFee = uint96(FixedPointMathLib.mulDivUp(_sizeA, _takerFeeBps, 10 ** 4));
@@ -439,7 +439,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         //Maximum tolerance in credited quote tokens (1 price precision)
         uint256 _toleranceInQuote = 10 ** decimals / PRICE_PRECISION;
 
-        uint32 _totalAmount = _amountA + _amountB;
+        uint96 _totalAmount = _amountA + _amountB;
 
         address _taker = genAddress();
         usdc.mint(_taker, (_totalAmount * 10 ** usdc.decimals()) / PRICE_PRECISION);
@@ -476,8 +476,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
-        uint32 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
-        uint32 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
+        uint96 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
+        uint96 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
         uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
         uint96 _creditSize = _size - uint96(FixedPointMathLib.mulDivUp(_size, _takerFeeBps, 10 ** 4));
 
@@ -516,8 +516,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
-        uint32 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
-        uint32 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
+        uint96 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
+        uint96 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
         uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
 
         address _taker = genAddress();
@@ -534,8 +534,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
         address _maker = _addSellOrder(address(0), _price, _size, false);
-        uint32 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
-        uint32 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
+        uint96 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
+        uint96 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
         uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
 
         address _taker = genAddress();
@@ -1105,11 +1105,11 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function mulDivUp(uint32 _price, uint96 _size) internal returns (uint32) {
+    function mulDivUp(uint32 _price, uint96 _size) internal returns (uint96) {
         uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, SIZE_PRECISION);
-        if (_result >= type(uint32).max) {
+        if (_result >= type(uint96).max) {
             revert("OrderBook: Too much size being filled");
         }
-        return uint32(_result);
+        return uint96(_result);
     }
 }
