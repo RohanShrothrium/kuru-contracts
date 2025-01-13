@@ -49,9 +49,9 @@ abstract contract AbstractAMM is IOrderBook {
      * @return sizeFilled Base asset size that was filled
      * @return makerCredits Encoded credits for the vault
      */
-    function _fillVaultBuyMatch(uint256 _breakPoint, uint32 _quoteSize)
+    function _fillVaultBuyMatch(uint256 _breakPoint, uint96 _quoteSize)
         internal
-        returns (uint32 quoteLeft, uint96 sizeFilled, bytes memory makerCredits)
+        returns (uint96 quoteLeft, uint96 sizeFilled, bytes memory makerCredits)
     {
         uint256 _price = vaultBestAsk;
         uint256 _quoteInput = _quoteSize * vaultPricePrecision / _getPricePrecision();
@@ -89,7 +89,7 @@ abstract contract AbstractAMM is IOrderBook {
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
         vaultAskOrderSize = _cachedLastVaultSize;
         vaultBidOrderSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
-        quoteLeft = uint32(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
+        quoteLeft = uint96(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
         makerCredits =
             _creditVaultOnMarketBuy(sizeFilled, (_quoteSize * vaultPricePrecision / _getPricePrecision() - _quoteInput));
     }
@@ -104,7 +104,7 @@ abstract contract AbstractAMM is IOrderBook {
      */
     function _fillVaultForBuy(uint256 _breakPoint, uint96 _size)
         internal
-        returns (uint96 sizeLeft, uint32 fundsConsumed, bytes memory makerCredits)
+        returns (uint96 sizeLeft, uint96 fundsConsumed, bytes memory makerCredits)
     {
         uint256 _price = vaultBestAsk;
         sizeLeft = _size;
@@ -141,7 +141,7 @@ abstract contract AbstractAMM is IOrderBook {
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
         vaultAskOrderSize = _cachedLastVaultSize;
         vaultBidOrderSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
-        fundsConsumed = uint32(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
+        fundsConsumed = uint96(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
         makerCredits = _creditVaultOnMarketBuy(_size - sizeLeft, _consumedQuote);
     }
 

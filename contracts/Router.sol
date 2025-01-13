@@ -276,7 +276,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _amountOut = _isBuy[i]
                 ? (
                     market.placeAndExecuteMarketBuy{value: _value}(
-                        uint32(
+                        uint96(
                             _amountToSize(
                                 _amount,
                                 true,
@@ -339,7 +339,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint256 quoteAssetDecimals
     ) internal pure returns (uint96) {
         return _isBuy
-            ? uint32((_amount * pricePrecision) / 10 ** quoteAssetDecimals)
+            ? uint96((_amount * pricePrecision) / 10 ** quoteAssetDecimals)
             : uint96((_amount * sizePrecision) / 10 ** baseAssetDecimals);
     }
 
