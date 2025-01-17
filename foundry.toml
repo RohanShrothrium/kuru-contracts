@@ -1,5 +1,7 @@
 [profile.default]
 via_ir = true
+evm_version = "shanghai"
+fs_permissions = [{ access = "read", path = "script/" }]
 
 [fuzz]
 runs = 100

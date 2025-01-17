@@ -119,7 +119,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         // @note native decimals hardcoded to 18
         {
             IOrderBook(proxy).initialize(
-                owner(),
+                address(this),
                 _type,
                 _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? NATIVE : _baseAssetAddress,
                 _baseAssetDecimals,
