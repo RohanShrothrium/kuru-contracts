@@ -72,6 +72,26 @@ contract OrderBookTest is Test {
         vm.stopPrank();
     }
 
+    function testMaxWithdraw(uint256[] memory _amounts) public {
+        vm.assume(_amounts.length > 0 && _amounts.length == 200);
+        address[] memory _tokens = new address[](_amounts.length);
+        uint256 privateKeyGen = uint256(keccak256(abi.encodePacked(bytes32("key"))));
+        address derived = vm.addr(privateKeyGen);
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            _tokens[i] = address(_createErc20AndMint(derived, _amounts[i]));
+            vm.startPrank(derived);
+            ERC20(_tokens[i]).approve(address(marginAccount), _amounts[i]);
+            marginAccount.deposit(derived, _tokens[i], _amounts[i]);
+            vm.stopPrank();
+        }
+        vm.prank(derived);
+        marginAccount.batchClaimMaxTokens(_tokens);
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            assert(ERC20(_tokens[i]).balanceOf(derived) == _amounts[i]);
+            assert(marginAccount.getBalance(derived, _tokens[i]) == 0);
+        }
+    }
+
     function _createOrderbook(
         MintableERC20 _baseAsset,
         MintableERC20 _quoteAsset,
@@ -99,5 +119,11 @@ contract OrderBookTest is Test {
         );
 
         return OrderBook(proxy);
+    }
+
+    function _createErc20AndMint(address _user, uint256 _amount) internal returns (MintableERC20) {
+        MintableERC20 _erc20 = new MintableERC20("TEST", "TEST");
+        _erc20.mint(_user, _amount);
+        return _erc20;
     }
 }
