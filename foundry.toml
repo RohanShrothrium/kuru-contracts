@@ -2,6 +2,7 @@
 via_ir = true
 evm_version = "shanghai"
 fs_permissions = [{ access = "read", path = "script/" }]
+optimizer = true
 
 [fuzz]
 runs = 100
