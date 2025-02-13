@@ -62,6 +62,21 @@ contract MarginAccount is IMarginAccount, ERC2771Context {
     }
 
     /**
+     * @dev This function allows a user to claim all of their tokens from the margin account.
+     * @param _tokens Array of tokens to claim.
+     */
+    function batchClaimMaxTokens(address[] calldata _tokens) external {
+        uint256 _balance;
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            _balance = balances[_accountKey(_msgSender(), _tokens[i])];
+            if (_balance > 0) {
+                balances[_accountKey(_msgSender(), _tokens[i])] = 0;
+                _tokens[i].safeTransfer(_msgSender(), _balance);
+            }
+        }
+    }
+
+    /**
      * @dev This function allows a verified market to register fee collected
      * @param _assetA Address of first asset
      * @param _feeA Fee amount of _assetA to be credited
