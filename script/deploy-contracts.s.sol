@@ -10,6 +10,7 @@ import {KuruForwarder} from "../contracts/KuruForwarder.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {MonadDeployer} from "../contracts/periphery/MonadDeployer.sol";
 import {IRouter} from "../contracts/interfaces/IRouter.sol";
+import {KuruUtils} from "../contracts/periphery/KuruUtils.sol";
 
 contract Deployer is Script {
     using stdJson for string;
@@ -72,9 +73,14 @@ contract Deployer is Script {
         assert(router.owner() == deployerAdmin);
         vm.startBroadcast(deployerAdmin);
         MonadDeployer monadDeployer = new MonadDeployer(
-            IRouter(address(router)), address(marginAccount), address(kuruForwarder), 100, 10 * 10 ** 18
+            IRouter(address(proxy)), address(marginAccount), address(kuruForwarder), 100, 0
         );
         console.log("MonadDeployer deployed to:", address(monadDeployer));
+        vm.stopBroadcast();
+        vm.startBroadcast(deployerAdmin);
+        KuruUtils kuruUtils = new KuruUtils();
+        console.log("KuruUtils deployed to:", address(kuruUtils));
+        vm.stopBroadcast();
         // assert(marginAccount.feeCollector() == deployerAdmin);
     }
 }
