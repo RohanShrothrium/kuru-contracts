@@ -387,7 +387,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
 
         // Emit an event for the canceled orders
-        emit OrdersCanceled(orderIdsToCancel, _msgSender());
+        if(orderIdsToCancel.length > 0) {
+            emit OrdersCanceled(orderIdsToCancel, _msgSender());
+        }
     }
 
     /**
