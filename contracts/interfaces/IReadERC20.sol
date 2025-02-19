@@ -21,6 +21,12 @@ interface IReadERC20 {
     function decimals() external view returns (uint8);
 
     /** 
+     * @notice Returns the total supply of the token
+     * @return The total supply of the token
+     */
+    function totalSupply() external view returns (uint256);
+
+    /** 
      * @notice Returns the balance of the token for a given address
      * @param account The address to get the balance of
      * @return The balance of the token

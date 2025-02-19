@@ -11,6 +11,7 @@ contract KuruUtils {
         string symbol;
         uint256 balance;
         uint8 decimals;
+        uint256 totalSupply;
     }
 
     function calculatePriceOverRoute(address[] memory route, bool[] memory isBuy) public view returns (uint256) {
@@ -36,7 +37,8 @@ contract KuruUtils {
                 token.name(),
                 token.symbol(),
                 token.balanceOf(holder),
-                token.decimals()
+                token.decimals(),
+                token.totalSupply()
             );
         }
         
