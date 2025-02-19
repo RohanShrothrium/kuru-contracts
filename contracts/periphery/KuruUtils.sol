@@ -33,12 +33,45 @@ contract KuruUtils {
         
         for(uint256 i = 0; i < tokens.length; i++) {
             IReadERC20 token = IReadERC20(tokens[i]);
+            
+            // Default empty values
+            string memory name = "";
+            string memory symbol = "";
+            uint256 balance = 0;
+            uint8 decimals = 0;
+            uint256 totalSupply = 0;
+            
+            // Try to get name
+            try token.name() returns (string memory _name) {
+                name = _name;
+            } catch {}
+            
+            // Try to get symbol
+            try token.symbol() returns (string memory _symbol) {
+                symbol = _symbol;
+            } catch {}
+            
+            // Try to get balance
+            try token.balanceOf(holder) returns (uint256 _balance) {
+                balance = _balance;
+            } catch {}
+            
+            // Try to get decimals
+            try token.decimals() returns (uint8 _decimals) {
+                decimals = _decimals;
+            } catch {}
+            
+            // Try to get total supply
+            try token.totalSupply() returns (uint256 _totalSupply) {
+                totalSupply = _totalSupply;
+            } catch {}
+            
             info[i] = TokenInfo(
-                token.name(),
-                token.symbol(),
-                token.balanceOf(holder),
-                token.decimals(),
-                token.totalSupply()
+                name,
+                symbol,
+                balance,
+                decimals,
+                totalSupply
             );
         }
         
