@@ -104,7 +104,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
     }
 
     function _amountPayableInQuote(uint32 _price, uint96 _size) internal returns (uint256) {
-        return ((uint256(uint32((_price * _size) / SIZE_PRECISION)) * 10 ** usdc.decimals())) / PRICE_PRECISION;
+        return ((uint256(((_price * _size) / SIZE_PRECISION)) * 10 ** usdc.decimals())) / PRICE_PRECISION;
     }
 
     function _calculateFeePortions(uint256 _amount) internal returns (uint256, uint256) {

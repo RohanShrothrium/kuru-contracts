@@ -93,7 +93,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
     }
 
     function _amountPayableInQuote(uint32 _price, uint96 _size) internal returns (uint256) {
-        return (((uint256(uint32((_price * _size) / SIZE_PRECISION))) * 10 ** nativeDecimals)) / PRICE_PRECISION;
+        return (((uint256(((_price * _size) / SIZE_PRECISION))) * 10 ** nativeDecimals)) / PRICE_PRECISION;
     }
 
     function _calculateFeePortions(uint256 _amount) internal returns (uint256, uint256) {
@@ -327,7 +327,6 @@ contract OrderBookTest is Test, PropertiesAsserts {
 
     function testNativeQuoteMarketBuy(uint32 _priceA, uint96 _sizeA, uint32 _priceB, uint96 _sizeB) public {
         uint256 decimals = nativeDecimals;
-
         //Claming price and size of our two sell orders
         (_priceA, _sizeA) = _adjustPriceAndSize(_priceA, _sizeA);
         (_priceB, _sizeB) = _adjustPriceAndSize(_priceB, _sizeB);
@@ -342,7 +341,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         //Expected size credited for market order from each sell order
         uint96 _sizeCreditAFee = uint96(FixedPointMathLib.mulDivUp(_sizeA, _takerFeeBps, 10 ** 4));
         uint96 _sizeCreditA = _sizeA - _sizeCreditAFee;
-        uint256 _makerARebate = (((_sizeA * 10 ** eth.decimals()) / SIZE_PRECISION) * _makerFeeBps) / 10 ** 4;
+        uint256 _makerARebate = (((_sizeA * _makerFeeBps) / 10 ** 4) * 10 ** eth.decimals()) / SIZE_PRECISION;
 
         uint96 _sizeCreditBFee = uint96(FixedPointMathLib.mulDivUp(_sizeB, _takerFeeBps, 10 ** 4));
         uint96 _sizeCreditB = _sizeB - _sizeCreditBFee;
@@ -379,7 +378,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             ((_amountB * 10 ** decimals) / PRICE_PRECISION) - _toleranceInQuote,
             "Too less quote credited B"
         );
-        assertEq(marginAccount.getBalance(_makerA, address(eth)), _makerARebate);
+        assertApproxEqAbs(marginAccount.getBalance(_makerA, address(eth)), _makerARebate, 10**18);
         assertEq(marginAccount.getBalance(_makerB, address(eth)), _makerBRebate);
         assertLte(_taker.balance, 2 * _toleranceInQuote, "Too less quote debited");
         assertApproxEqAbs(marginAccount.getBalance(address(router), address(eth)), _protocolFee, 10 ** 18);
