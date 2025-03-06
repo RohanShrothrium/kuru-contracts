@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IOrderBook} from "../interfaces/IOrderBook.sol";
 import {IReadERC20} from "../interfaces/IReadERC20.sol";
+import {IMarginAccount} from "../interfaces/IMarginAccount.sol";
 
 /// @title A periphery contract for Kuru
 contract KuruUtils {
@@ -26,6 +27,15 @@ contract KuruUtils {
             }
         }
         return price;
+    }
+
+    function getMarginBalances(address marginAccountAddress, address[] calldata users, address[] calldata tokens) public view returns (uint256[] memory) {
+        IMarginAccount marginAccount = IMarginAccount(marginAccountAddress);
+        uint256[] memory balances = new uint256[](users.length);
+        for(uint256 i = 0; i < users.length; i++) {
+            balances[i] = marginAccount.getBalance(users[i], tokens[i]);
+        }
+        return balances;
     }
 
     function getTokensInfo(address[] memory tokens, address holder) public view returns (TokenInfo[] memory) {
