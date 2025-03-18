@@ -14,7 +14,9 @@ interface IOrderBook {
         uint96 size;
         uint40 prev;
         uint40 next;
+        uint40 flippedId;
         uint32 price;
+        uint32 flippedPrice;
         bool isBuy;
     }
 
