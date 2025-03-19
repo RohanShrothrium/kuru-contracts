@@ -30,6 +30,8 @@ interface IOrderBook {
      */
     event OrderCreated(uint40 orderId, address owner, uint96 size, uint32 price, bool isBuy);
 
+    event FlipOrderCreated(uint40 orderId, address owner, uint96 size, uint32 price, uint32 flippedPrice, bool isBuy);
+
     /**
      * @dev Emitted when one or more orders are completed or canceled.
      * @param orderId Array of order identifiers that were completed or canceled.

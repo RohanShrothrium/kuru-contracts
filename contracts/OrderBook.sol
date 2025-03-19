@@ -188,7 +188,6 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId);
 
             _addOrder(_price, 0, _remainingSize, _orderId, OrderLinkedList.NULL, true, _prevOrderId);
-
         }
     }
 
@@ -206,7 +205,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         uint40 _orderId = s_orderIdCounter + 1;
         s_orderIdCounter = _orderId;
         uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId);
-        _addOrder(_price, _flippedPrice, _size, _orderId, OrderLinkedList.NULL, true, _prevOrderId);
+        _addFlipOrder(_price, _flippedPrice, _size, _msgSender(), _orderId, OrderLinkedList.NULL, true, _prevOrderId);
     }
 
     /**
@@ -254,7 +253,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         uint40 _orderId = s_orderIdCounter + 1;
         s_orderIdCounter = _orderId;
         uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId);
-        _addOrder(_price, _flippedPrice, _size, _orderId, OrderLinkedList.NULL, false, _prevOrderId);
+        _addFlipOrder(_price, _flippedPrice, _size, _msgSender(), _orderId, OrderLinkedList.NULL, false, _prevOrderId);
     }
 
     /**
@@ -280,6 +279,27 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             Order(_msgSender(), _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, _flippedPrice, _isBuy);
         s_orders[_prevOrderId].next = _orderId;
         emit OrderCreated(_orderId, _msgSender(), _size, _price, _isBuy);
+    }
+
+    function _addFlipOrder(
+        uint32 _price,
+        uint32 _flippedPrice,
+        uint96 _size,
+        address _owner,
+        uint40 _orderId,
+        uint40 _flippedId,
+        bool _isBuy,
+        uint40 _prevOrderId
+    ) internal {
+        if (_isBuy) {
+            TreeMath.add(s_buyTree, _price);
+        } else {
+            TreeMath.add(s_sellTree, _price);
+        }
+        s_orders[_orderId] =
+            Order(_owner, _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, _flippedPrice, _isBuy);
+        s_orders[_prevOrderId].next = _orderId;
+        emit FlipOrderCreated(_orderId, _owner, _size, _price, _flippedPrice, _isBuy);
     }
 
     /**
@@ -312,13 +332,13 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         Order memory _order = s_orders[_orderId];
         _checkIfCancelledOrFilled(_orderId, _order);
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
-        if(_order.flippedId != OrderLinkedList.NULL) {
+        if (_order.flippedId != OrderLinkedList.NULL) {
             _executeCancel(_order.flippedId, s_orders[_order.flippedId]);
         }
         return _executeCancel(_orderId, _order);
     }
 
-    function _executeCancel(uint40 _orderId, Order memory _order) internal returns (bool){
+    function _executeCancel(uint40 _orderId, Order memory _order) internal returns (bool) {
         // update neighbouring orders
         if (_order.prev != OrderLinkedList.NULL) {
             s_orders[_order.prev].next = _order.next;
@@ -860,7 +880,6 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @return remainingSize The remaining size after attempting to fill this order.
      * @return _nextHead next head of the price point.
      */
-
     function _fillOrder(uint40 _orderId, uint96 _sizeToBeFilled)
         internal
         returns (uint96 remainingSize, uint40 _nextHead, bytes memory _orderUpdate)
@@ -890,7 +909,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                 _nextHead = _orderId;
             }
             s_orders[_orderId].size = _updatedSize;
-        } 
+        }
 
         if (s_orders[_orderId].flippedPrice != 0) {
             _handleFlipOrderUpdate(_orderId, _sizeToBeFilled - remainingSize, _updatedSize == 0 ? true : false);
@@ -909,31 +928,36 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
     function _handleFlipOrderUpdate(uint40 _orderId, uint96 _size, bool nullify) internal {
         //check if flip order id exists
         if (s_orders[_orderId].flippedId == OrderLinkedList.NULL) {
+            Order memory _filledOrder = s_orders[_orderId];
             //create flip order
             uint40 _flipOrderId = s_orderIdCounter + 1;
             s_orderIdCounter = _flipOrderId;
             uint40 _prevOrderId;
-            if(!s_orders[_orderId].isBuy) {
+            if (!s_orders[_orderId].isBuy) {
                 _size = _size * s_orders[_orderId].price / s_orders[_orderId].flippedPrice;
-                _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[s_orders[_orderId].flippedPrice], _flipOrderId);
+                _prevOrderId =
+                    OrderLinkedList.insertAtTail(s_buyPricePoints[s_orders[_orderId].flippedPrice], _flipOrderId);
             } else {
-                _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[s_orders[_orderId].flippedPrice], _flipOrderId);
+                _prevOrderId =
+                    OrderLinkedList.insertAtTail(s_sellPricePoints[s_orders[_orderId].flippedPrice], _flipOrderId);
             }
             s_orders[_orderId].flippedId = _flipOrderId;
-            _addOrder(
-                s_orders[_orderId].flippedPrice,
-                s_orders[_orderId].price,
+            _addFlipOrder(
+                _filledOrder.flippedPrice,
+                _filledOrder.price,
                 _size,
+                _filledOrder.ownerAddress,
                 _flipOrderId,
                 nullify ? OrderLinkedList.NULL : _orderId,
-                !s_orders[_orderId].isBuy,
+                !_filledOrder.isBuy,
                 _orderId
             );
         } else {
             //transfer size
             uint40 _flipOrderId = s_orders[_orderId].flippedId;
-            if(!s_orders[_orderId].isBuy) 
+            if (!s_orders[_orderId].isBuy) {
                 _size = _size * s_orders[_orderId].flippedPrice / s_orders[_orderId].price;
+            }
             s_orders[_flipOrderId].size += _size;
             if (nullify) {
                 s_orders[_flipOrderId].flippedId = OrderLinkedList.NULL;
