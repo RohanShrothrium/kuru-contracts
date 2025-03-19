@@ -13,12 +13,14 @@ module.exports = {
       viaIR: true,
     },
   },
-  defaultNetwork: "hardhat",
+  defaultNetwork: "localhost",
   networks: {
     hardhat: {
-      url: "http://127.0.0.1:8545/",
-      gas: "auto",
-      allowUnlimitedContractSize: true, // Enables unlimited contract size
+      allowUnlimitedContractSize: true,
     },
-  },
+    localhost: {
+      allowUnlimitedContractSize: true,
+      url: "http://127.0.0.1:8545/",
+    },
+  }
 };

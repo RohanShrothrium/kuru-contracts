@@ -187,7 +187,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             // Add price to the tree and update DLL of price poit.
             uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId);
 
-            _addOrder(_price, _remainingSize, _orderId, OrderLinkedList.NULL, true, _prevOrderId);
+            _addOrder(_price, _remainingSize, _orderId, true, _prevOrderId);
         }
     }
 
@@ -235,7 +235,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             s_orderIdCounter = _orderId;
             // Add price to the tree and update DLL of price poit.
             uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId);
-            _addOrder(_price, _remainingSize, _orderId, OrderLinkedList.NULL, false, _prevOrderId);
+            _addOrder(_price, _remainingSize, _orderId, false, _prevOrderId);
         }
     }
 
@@ -288,7 +288,6 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         uint32 _price,
         uint96 _size,
         uint40 _orderId,
-        uint40 _flippedId,
         bool _isBuy,
         uint40 _prevOrderId
     ) internal {
@@ -298,7 +297,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             TreeMath.add(s_sellTree, _price);
         }
         s_orders[_orderId] =
-            Order(_msgSender(), _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, 0, _isBuy);
+            Order(_msgSender(), _size, _prevOrderId, OrderLinkedList.NULL, OrderLinkedList.NULL, _price, 0, _isBuy);
         s_orders[_prevOrderId].next = _orderId;
         emit OrderCreated(_orderId, _msgSender(), _size, _price, _isBuy);
     }
