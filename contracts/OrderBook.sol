@@ -369,6 +369,11 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         // Ensure that the lengths of the sell prices and sizes match
         require(sellPrices.length == sellSizes.length, OrderBookErrors.LengthMismatch());
 
+        // Cancel multiple orders
+        for (uint256 i = 0; i < orderIdsToCancel.length; i++) {
+            _cancelOrder(orderIdsToCancel[i]);
+        }
+
         // Place multiple buy orders
         for (uint256 i = 0; i < buyPrices.length; i++) {
             if (buyPrices[i] == 0) break;
@@ -381,13 +386,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             addSellOrder(sellPrices[i], sellSizes[i], postOnly);
         }
 
-        // Cancel multiple orders
-        for (uint256 i = 0; i < orderIdsToCancel.length; i++) {
-            _cancelOrder(orderIdsToCancel[i]);
-        }
-
         // Emit an event for the canceled orders
-        emit OrdersCanceled(orderIdsToCancel, _msgSender());
+        if(orderIdsToCancel.length > 0) {
+            emit OrdersCanceled(orderIdsToCancel, _msgSender());
+        }
     }
 
     /**
