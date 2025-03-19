@@ -903,7 +903,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @param _price conversion price from A to B
      */
     function _amountPayable(uint96 _size, uint32 _price) internal view returns (uint256) {
-        return (uint256(uint32((_price * _size) / sizePrecision)) * 10 ** quoteAssetDecimals) / pricePrecision;
+        return (uint256(((_price * _size) / sizePrecision)) * 10 ** quoteAssetDecimals) / pricePrecision;
     }
 
     function _getPricePrecision() internal view override returns (uint32) {
