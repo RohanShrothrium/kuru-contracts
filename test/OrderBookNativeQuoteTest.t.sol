@@ -92,6 +92,15 @@ contract OrderBookTest is Test, PropertiesAsserts {
         return (_newPrice, _newSize);
     }
 
+    function _adjustPriceAndSizeFlip(uint32 _price, uint32 _flipPrice, uint96 _size, bool isBuy) internal returns (uint32, uint32, uint96) {
+        uint32 _newPrice = uint32(clampBetween(_price, _tickSize, _maxPrice - 3 * _tickSize));
+        uint32 _newFlipPrice = uint32(clampBetween(_flipPrice, isBuy ? _newPrice + _tickSize : _tickSize, isBuy ? _maxPrice : _newPrice - _tickSize));
+        uint96 _newSize = uint96(clampBetween(_size, _minSize + 1, _maxSize - 1));
+        _newPrice = _newPrice - _newPrice % _tickSize;
+        _newFlipPrice = _newFlipPrice - _newFlipPrice % _tickSize;
+        return (_newPrice, _newFlipPrice, _newSize);
+    }
+
     function _amountPayableInQuote(uint32 _price, uint96 _size) internal returns (uint256) {
         return (((uint256(uint32((_price * _size) / SIZE_PRECISION))) * 10 ** nativeDecimals)) / PRICE_PRECISION;
     }
@@ -177,8 +186,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         _flippedPrice = uint32(bound(_flippedPrice, _price + _tickSize, _maxPrice));
-        (_price, _size) = _adjustPriceAndSize(_price, _size);
-        (_flippedPrice,) = _adjustPriceAndSize(_flippedPrice, 0);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, true);
         address _maker = _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
         assertEq(orderBook.s_orderIdCounter(), 1);
         (uint40 head, uint40 tail) = orderBook.s_buyPricePoints(_price);
@@ -191,8 +199,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         _flippedPrice = uint32(bound(_flippedPrice, _price + _tickSize, _maxPrice));
-        (_price, _size) = _adjustPriceAndSize(_price, _size);
-        (_flippedPrice,) = _adjustPriceAndSize(_flippedPrice, 0);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, true);
         address _maker = _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
         uint256 _sizeToSell = (_size / 2) * 10 ** eth.decimals() / SIZE_PRECISION; //half the size
         address _taker = genAddress();
@@ -214,8 +221,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         _flippedPrice = uint32(bound(_flippedPrice, _price + _tickSize, _maxPrice));
-        (_price, _size) = _adjustPriceAndSize(_price, _size);
-        (_flippedPrice,) = _adjustPriceAndSize(_flippedPrice, 0);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, true);
         address _maker = _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
         uint256 _sizeToSell = (_size + 10 ** 6) * 10 ** eth.decimals() / SIZE_PRECISION; //half the size
         address _taker = genAddress();
@@ -225,7 +231,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         orderBook.placeAndExecuteMarketSell(_size + 10 ** 6, 0, false, false);
         vm.stopPrank();
         (,,,, uint40 initFlippedId,, uint32 initFlippedPrice,) = orderBook.s_orders(1);
-        assertEq(initFlippedId, 2);
+        assertEq(initFlippedId, 0);
         assertEq(initFlippedPrice, _flippedPrice);
         (,,,, uint40 flippedFlippedId,, uint32 flippedFlippedPrice,) = orderBook.s_orders(2);
         assertEq(flippedFlippedId, 0);
@@ -237,8 +243,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         _flippedPrice = uint32(bound(_flippedPrice, _price + _tickSize, _maxPrice));
-        (_price, _size) = _adjustPriceAndSize(_price, _size);
-        (_flippedPrice,) = _adjustPriceAndSize(_flippedPrice, 0);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, true);
         testNativeQuoteAddBuyFlipOrderFullFill(_price, _flippedPrice, _size);
         uint96 _sizeToBuy = _size / 2;
         uint256 _quoteToBuy = ((_sizeToBuy * _flippedPrice) / SIZE_PRECISION) * 10 ** nativeDecimals / PRICE_PRECISION;
@@ -250,7 +255,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         );
         vm.stopPrank();
         (,,,, uint40 flippedId1,, uint32 flippedPrice1,) = orderBook.s_orders(1);
-        assertEq(flippedId1, 2);
+        assertEq(flippedId1, 0);
         assertEq(flippedPrice1, _flippedPrice);
         (,,,, uint40 flippedId2,, uint32 flippedPrice2,) = orderBook.s_orders(2);
         assertEq(flippedId2, 3);
@@ -341,8 +346,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_flippedPrice > _tickSize && _price > 2 * _tickSize);
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         vm.assume(_size > _minSize && _size < _maxSize);
-        (_price, _size) = _adjustPriceAndSize(_price, _size);
-        (_flippedPrice,) = _adjustPriceAndSize(_flippedPrice, 0);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, false);
         address _maker = _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
         assertEq(orderBook.s_orderIdCounter(), 1);
         (uint40 head, uint40 tail) = orderBook.s_sellPricePoints(_price);
@@ -355,8 +359,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_flippedPrice > _tickSize && _price > 2 * _tickSize);
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         vm.assume(_size > _minSize && _size < _maxSize);
-        (_price, _size) = _adjustPriceAndSize(_price, _size);
-        (_flippedPrice,) = _adjustPriceAndSize(_flippedPrice, 0);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, false);
         address _maker = _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
         uint96 _sizeToBuy = _size / 2;
         uint256 _quoteToBuy = ((_sizeToBuy * _price) / SIZE_PRECISION) * 10 ** nativeDecimals / PRICE_PRECISION;
@@ -380,8 +383,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_flippedPrice > _tickSize && _price > 2 * _tickSize);
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         vm.assume(_size > _minSize && _size < _maxSize);
-        (_price, _size) = _adjustPriceAndSize(_price, _size);
-        (_flippedPrice,) = _adjustPriceAndSize(_flippedPrice, 0);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, false);
         address _maker = _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
         uint256 _sizeToBuy = _size + 10 ** 10;
         uint256 _quoteToBuy =
@@ -394,7 +396,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         );
         vm.stopPrank();
         (,,,, uint40 flippedId1,, uint32 flippedPrice1,) = orderBook.s_orders(1);
-        assertEq(flippedId1, 2);
+        assertEq(flippedId1, 0);
         assertEq(flippedPrice1, _flippedPrice);
         (,,,, uint40 flippedId2,, uint32 flippedPrice2,) = orderBook.s_orders(2);
         assertEq(flippedId2, 0);
@@ -406,8 +408,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_flippedPrice > _tickSize && _price > 2 * _tickSize);
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         vm.assume(_size > _minSize && _size < _maxSize);
-        (_price, _size) = _adjustPriceAndSize(_price, _size);
-        (_flippedPrice,) = _adjustPriceAndSize(_flippedPrice, 0);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, false);
         testNativeQuoteAddSellFlipOrderFullFill(_price, _flippedPrice, _size);
         uint256 _sizeToSell = (_size / 2) * 10 ** eth.decimals() / SIZE_PRECISION;
         address _taker = genAddress();
@@ -417,7 +418,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         orderBook.placeAndExecuteMarketSell(_size / 2, 0, false, false);
         vm.stopPrank();
         (,,,, uint40 flippedId1,, uint32 flippedPrice1,) = orderBook.s_orders(1);
-        assertEq(flippedId1, 2);
+        assertEq(flippedId1, 0);
         assertEq(flippedPrice1, _flippedPrice);
         (,,,, uint40 flippedId2,, uint32 flippedPrice2,) = orderBook.s_orders(2);
         assertEq(flippedId2, 3);

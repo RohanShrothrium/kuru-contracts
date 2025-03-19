@@ -187,7 +187,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             // Add price to the tree and update DLL of price poit.
             uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId);
 
-            _addOrder(_price, 0, _remainingSize, _orderId, OrderLinkedList.NULL, true, _prevOrderId);
+            _addOrder(_price, _remainingSize, _orderId, OrderLinkedList.NULL, true, _prevOrderId);
         }
     }
 
@@ -199,7 +199,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         {
             (, uint256 _bestAsk) = bestAsk();
-            require((_flippedPrice < _bestAsk) || (_bestAsk == 0), OrderBookErrors.PostOnlyError());
+            require((_price < _bestAsk) || (_bestAsk == 0), OrderBookErrors.PostOnlyError());
         }
 
         uint40 _orderId = s_orderIdCounter + 1;
@@ -235,7 +235,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             s_orderIdCounter = _orderId;
             // Add price to the tree and update DLL of price poit.
             uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId);
-            _addOrder(_price, 0, _remainingSize, _orderId, OrderLinkedList.NULL, false, _prevOrderId);
+            _addOrder(_price, _remainingSize, _orderId, OrderLinkedList.NULL, false, _prevOrderId);
         }
     }
 
@@ -247,13 +247,36 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         {
             (, uint256 _bestBid) = bestBid();
-            require((_flippedPrice > _bestBid) || (_bestBid == type(uint256).max), OrderBookErrors.PostOnlyError());
+            require((_price > _bestBid) || (_bestBid == type(uint256).max), OrderBookErrors.PostOnlyError());
         }
 
         uint40 _orderId = s_orderIdCounter + 1;
         s_orderIdCounter = _orderId;
         uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId);
         _addFlipOrder(_price, _flippedPrice, _size, _msgSender(), _orderId, OrderLinkedList.NULL, false, _prevOrderId);
+    }
+
+    function addPairedLiquidity(uint32 _bidPrice, uint32 _askPrice, uint96 _bidSize, uint96 _askSize) public marketActive {
+        require(_bidPrice > 0 && _askPrice > 0, OrderBookErrors.PriceError());
+        require(_bidPrice % tickSize == 0 && _askPrice % tickSize == 0, OrderBookErrors.TickSizeError());
+        require(_bidPrice < _askPrice, OrderBookErrors.PriceError());
+        require(_bidSize > minSize && _bidSize < maxSize, OrderBookErrors.SizeError());
+        require(_askSize > minSize && _askSize < maxSize, OrderBookErrors.SizeError());
+        {
+            (, uint256 _bestBid) = bestBid();
+            (, uint256 _bestAsk) = bestAsk();
+            require((_bidPrice < _bestAsk) || (_bestAsk == 0), OrderBookErrors.PostOnlyError());
+            require((_askPrice > _bestBid) || (_bestBid == type(uint256).max), OrderBookErrors.PostOnlyError());
+        }
+
+        uint40 _bidOrderId = s_orderIdCounter + 1;
+        uint40 _askOrderId = _bidOrderId + 1;
+        s_orderIdCounter = _askOrderId;
+
+        uint40 _bidPrevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_bidPrice], _bidOrderId);
+        uint40 _askPrevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_askPrice], _askOrderId);
+        _addFlipOrder(_bidPrice, _askPrice, _bidSize, _msgSender(), _bidOrderId, _askOrderId, true, _bidPrevOrderId);
+        _addFlipOrder(_askPrice, _bidPrice, _askSize, _msgSender(), _askOrderId, _bidOrderId, false, _askPrevOrderId);
     }
 
     /**
@@ -263,7 +286,6 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      */
     function _addOrder(
         uint32 _price,
-        uint32 _flippedPrice,
         uint96 _size,
         uint40 _orderId,
         uint40 _flippedId,
@@ -276,7 +298,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             TreeMath.add(s_sellTree, _price);
         }
         s_orders[_orderId] =
-            Order(_msgSender(), _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, _flippedPrice, _isBuy);
+            Order(_msgSender(), _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, 0, _isBuy);
         s_orders[_prevOrderId].next = _orderId;
         emit OrderCreated(_orderId, _msgSender(), _size, _price, _isBuy);
     }
@@ -299,7 +321,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         s_orders[_orderId] =
             Order(_owner, _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, _flippedPrice, _isBuy);
         s_orders[_prevOrderId].next = _orderId;
-        emit FlipOrderCreated(_orderId, _owner, _size, _price, _flippedPrice, _isBuy);
+        emit FlipOrderCreated(_orderId, _flippedId, _owner, _size, _price, _flippedPrice, _isBuy);
     }
 
     /**
@@ -414,6 +436,18 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                     s_sellPricePoints[_order.price].head == _orderId, OrderBookErrors.OrderAlreadyFilledOrCancelled()
                 );
             }
+        }
+    }
+
+    function batchAddPairedLiquidity(
+        uint32[] calldata bidPrices,
+        uint32[] calldata askPrices,
+        uint96[] calldata bidSizes,
+        uint96[] calldata askSizes
+    ) external marketActive {
+        require(bidPrices.length == bidSizes.length && askPrices.length == askSizes.length, OrderBookErrors.LengthMismatch());
+        for (uint256 i = 0; i < bidPrices.length; i++) {
+            addPairedLiquidity(bidPrices[i], askPrices[i], bidSizes[i], askSizes[i]);
         }
     }
 
@@ -934,14 +968,16 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             s_orderIdCounter = _flipOrderId;
             uint40 _prevOrderId;
             if (!s_orders[_orderId].isBuy) {
-                _size = _size * s_orders[_orderId].price / s_orders[_orderId].flippedPrice;
+                _size = uint96(FixedPointMathLib.mulDiv(_size, _filledOrder.price, _filledOrder.flippedPrice));
                 _prevOrderId =
-                    OrderLinkedList.insertAtTail(s_buyPricePoints[s_orders[_orderId].flippedPrice], _flipOrderId);
+                    OrderLinkedList.insertAtTail(s_buyPricePoints[_filledOrder.flippedPrice], _flipOrderId);
             } else {
                 _prevOrderId =
-                    OrderLinkedList.insertAtTail(s_sellPricePoints[s_orders[_orderId].flippedPrice], _flipOrderId);
+                    OrderLinkedList.insertAtTail(s_sellPricePoints[_filledOrder.flippedPrice], _flipOrderId);
             }
-            s_orders[_orderId].flippedId = _flipOrderId;
+            if(!nullify) {
+                s_orders[_orderId].flippedId = _flipOrderId;
+            }
             _addFlipOrder(
                 _filledOrder.flippedPrice,
                 _filledOrder.price,
@@ -950,13 +986,13 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                 _flipOrderId,
                 nullify ? OrderLinkedList.NULL : _orderId,
                 !_filledOrder.isBuy,
-                _orderId
+                _prevOrderId
             );
         } else {
             //transfer size
             uint40 _flipOrderId = s_orders[_orderId].flippedId;
             if (!s_orders[_orderId].isBuy) {
-                _size = _size * s_orders[_orderId].flippedPrice / s_orders[_orderId].price;
+                _size = uint96(FixedPointMathLib.mulDiv(_size, s_orders[_orderId].price, s_orders[_orderId].flippedPrice));
             }
             s_orders[_flipOrderId].size += _size;
             if (nullify) {
