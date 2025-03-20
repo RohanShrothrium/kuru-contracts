@@ -14,7 +14,9 @@ interface IOrderBook {
         uint96 size;
         uint40 prev;
         uint40 next;
+        uint40 flippedId;
         uint32 price;
+        uint32 flippedPrice;
         bool isBuy;
     }
 
@@ -27,6 +29,8 @@ interface IOrderBook {
      * @param isBuy Boolean indicating if the order is a buy (true) or sell (false) order.
      */
     event OrderCreated(uint40 orderId, address owner, uint96 size, uint32 price, bool isBuy);
+
+    event FlipOrderCreated(uint40 orderId, uint40 flippedId, address owner, uint96 size, uint32 price, uint32 flippedPrice, bool isBuy);
 
     /**
      * @dev Emitted when one or more orders are completed or canceled.

@@ -53,7 +53,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
         );
         router = Router(payable(routerProxy));
-        
+
         trustedForwarder = address(0x123);
         marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
         uint96 SPREAD = 30;
@@ -92,6 +92,15 @@ contract OrderBookTest is Test, PropertiesAsserts {
         return (_newPrice, _newSize);
     }
 
+    function _adjustPriceAndSizeFlip(uint32 _price, uint32 _flipPrice, uint96 _size, bool isBuy) internal returns (uint32, uint32, uint96) {
+        uint32 _newPrice = uint32(clampBetween(_price, _tickSize, _maxPrice - 3 * _tickSize));
+        uint32 _newFlipPrice = uint32(clampBetween(_flipPrice, isBuy ? _newPrice + _tickSize : _tickSize, isBuy ? _maxPrice : _newPrice - _tickSize));
+        uint96 _newSize = uint96(clampBetween(_size, _minSize + 1, _maxSize - 1));
+        _newPrice = _newPrice - _newPrice % _tickSize;
+        _newFlipPrice = _newFlipPrice - _newFlipPrice % _tickSize;
+        return (_newPrice, _newFlipPrice, _newSize);
+    }
+
     function _amountPayableInQuote(uint32 _price, uint96 _size) internal returns (uint256) {
         return (((uint256(((_price * _size) / SIZE_PRECISION))) * 10 ** nativeDecimals)) / PRICE_PRECISION;
     }
@@ -123,6 +132,22 @@ contract OrderBookTest is Test, PropertiesAsserts {
         return _maker;
     }
 
+    function _addFlipBuyOrder(address _maker, uint32 _price, uint32 _flippedPrice, uint96 _size, uint32 extra)
+        internal
+        returns (address)
+    {
+        if (_maker == address(0)) {
+            _maker = genAddress();
+        }
+        uint256 _amount = ((uint256(mulDivUp(_price, _size) + extra)) * 10 ** nativeDecimals) / PRICE_PRECISION;
+        vm.deal(_maker, _amount);
+        vm.startPrank(_maker);
+        marginAccount.deposit{value: _amount}(_maker, address(usdc), _amount);
+        orderBook.addFlipBuyOrder(_price, _flippedPrice, _size);
+        vm.stopPrank();
+        return _maker;
+    }
+
     function _addSellOrder(address _maker, uint32 _price, uint96 _size, bool _postOnly) internal returns (address) {
         if (_maker == address(0)) {
             _maker = genAddress();
@@ -136,6 +161,108 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
 
         return _maker;
+    }
+
+    function _addFlipSellOrder(address _maker, uint32 _price, uint32 _flippedPrice, uint96 _size)
+        internal
+        returns (address)
+    {
+        if (_maker == address(0)) {
+            _maker = genAddress();
+        }
+        uint256 _amount = _size * 10 ** eth.decimals() / SIZE_PRECISION;
+        eth.mint(_maker, _amount);
+        vm.startPrank(_maker);
+        eth.approve(address(marginAccount), _amount);
+        marginAccount.deposit(_maker, address(eth), _amount);
+        orderBook.addFlipSellOrder(_price, _flippedPrice, _size);
+        vm.stopPrank();
+
+        return _maker;
+    }
+
+    function testNativeQuoteAddBuyFlipOrder(uint32 _price, uint32 _flippedPrice, uint96 _size) public {
+        vm.assume(_flippedPrice > _price && _price != 0 && _flippedPrice != 0);
+        vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
+        vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
+        _flippedPrice = uint32(bound(_flippedPrice, _price + _tickSize, _maxPrice));
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, true);
+        address _maker = _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
+        assertEq(orderBook.s_orderIdCounter(), 1);
+        (uint40 head, uint40 tail) = orderBook.s_buyPricePoints(_price);
+        assertEq(head, 1);
+        assertEq(tail, 1);
+    }
+
+    function testNativeQuoteAddBuyFlipOrderPartialFill(uint32 _price, uint32 _flippedPrice, uint96 _size) public {
+        vm.assume(_flippedPrice > _price && _price != 0 && _flippedPrice != 0);
+        vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
+        vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
+        _flippedPrice = uint32(bound(_flippedPrice, _price + _tickSize, _maxPrice));
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, true);
+        address _maker = _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
+        uint256 _sizeToSell = (_size / 2) * 10 ** eth.decimals() / SIZE_PRECISION; //half the size
+        address _taker = genAddress();
+        eth.mint(_taker, _sizeToSell);
+        vm.startPrank(_taker);
+        eth.approve(address(orderBook), _sizeToSell);
+        orderBook.placeAndExecuteMarketSell(_size / 2, 0, false, false);
+        vm.stopPrank();
+        (,,,, uint40 initFlippedId,, uint32 initFlippedPrice,) = orderBook.s_orders(1);
+        assertEq(initFlippedId, 2);
+        assertEq(initFlippedPrice, _flippedPrice);
+        (,,,, uint40 flippedFlippedId,, uint32 flippedFlippedPrice,) = orderBook.s_orders(2);
+        assertEq(flippedFlippedId, 1);
+        assertEq(flippedFlippedPrice, _price);
+    }
+
+    function testNativeQuoteAddBuyFlipOrderFullFill(uint32 _price, uint32 _flippedPrice, uint96 _size) public {
+        vm.assume(_flippedPrice > _price && _price != 0 && _flippedPrice != 0);
+        vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
+        vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
+        _flippedPrice = uint32(bound(_flippedPrice, _price + _tickSize, _maxPrice));
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, true);
+        address _maker = _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
+        uint256 _sizeToSell = (_size + 10 ** 6) * 10 ** eth.decimals() / SIZE_PRECISION; //half the size
+        address _taker = genAddress();
+        eth.mint(_taker, _sizeToSell);
+        vm.startPrank(_taker);
+        eth.approve(address(orderBook), _sizeToSell);
+        orderBook.placeAndExecuteMarketSell(_size + 10 ** 6, 0, false, false);
+        vm.stopPrank();
+        (,,,, uint40 initFlippedId,, uint32 initFlippedPrice,) = orderBook.s_orders(1);
+        assertEq(initFlippedId, 0);
+        assertEq(initFlippedPrice, _flippedPrice);
+        (,,,, uint40 flippedFlippedId,, uint32 flippedFlippedPrice,) = orderBook.s_orders(2);
+        assertEq(flippedFlippedId, 0);
+        assertEq(flippedFlippedPrice, _price);
+    }
+
+    function testNativeQuoteAddBuyFlipOrderFullFillAndPartialFill(uint32 _price, uint32 _flippedPrice, uint96 _size) public {
+        vm.assume(_flippedPrice > _price && _price != 0 && _flippedPrice != 0);
+        vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
+        vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
+        _flippedPrice = uint32(bound(_flippedPrice, _price + _tickSize, _maxPrice));
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, true);
+        testNativeQuoteAddBuyFlipOrderFullFill(_price, _flippedPrice, _size);
+        uint96 _sizeToBuy = _size / 2;
+        uint256 _quoteToBuy = ((_sizeToBuy * _flippedPrice) / SIZE_PRECISION) * 10 ** nativeDecimals / PRICE_PRECISION;
+        address _taker = genAddress();
+        vm.deal(_taker, _quoteToBuy);
+        vm.startPrank(_taker);
+        orderBook.placeAndExecuteMarketBuy{value: _quoteToBuy}(
+            uint96(_quoteToBuy * PRICE_PRECISION / 10 ** nativeDecimals), 0, false, false
+        );
+        vm.stopPrank();
+        (,,,, uint40 flippedId1,, uint32 flippedPrice1,) = orderBook.s_orders(1);
+        assertEq(flippedId1, 0);
+        assertEq(flippedPrice1, _flippedPrice);
+        (,,,, uint40 flippedId2,, uint32 flippedPrice2,) = orderBook.s_orders(2);
+        assertEq(flippedId2, 3);
+        assertEq(flippedPrice2, _price);
+        (,,,, uint40 flippedId3,, uint32 flippedPrice3,) = orderBook.s_orders(3);
+        assertEq(flippedId3, 2);
+        assertEq(flippedPrice3, _flippedPrice);
     }
 
     function testNativeQuoteAddBuyOrderNoPostOnly(uint32 _price, uint96 _size) public {
@@ -214,6 +341,93 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
+    function testNativeQuoteAddSellFlipOrder(uint32 _price, uint32 _flippedPrice, uint96 _size) public {
+        vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
+        vm.assume(_flippedPrice > _tickSize && _price > 2 * _tickSize);
+        vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
+        vm.assume(_size > _minSize && _size < _maxSize);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, false);
+        address _maker = _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
+        assertEq(orderBook.s_orderIdCounter(), 1);
+        (uint40 head, uint40 tail) = orderBook.s_sellPricePoints(_price);
+        assertEq(head, 1);
+        assertEq(tail, 1);
+    }
+
+    function testNativeQuoteAddSellFlipOrderPartialFill(uint32 _price, uint32 _flippedPrice, uint96 _size) public {
+        vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
+        vm.assume(_flippedPrice > _tickSize && _price > 2 * _tickSize);
+        vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
+        vm.assume(_size > _minSize && _size < _maxSize);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, false);
+        address _maker = _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
+        uint96 _sizeToBuy = _size / 2;
+        uint256 _quoteToBuy = ((_sizeToBuy * _price) / SIZE_PRECISION) * 10 ** nativeDecimals / PRICE_PRECISION;
+        address _taker = genAddress();
+        vm.deal(_taker, _quoteToBuy);
+        vm.startPrank(_taker);
+        orderBook.placeAndExecuteMarketBuy{value: _quoteToBuy}(
+            uint96(_quoteToBuy * PRICE_PRECISION / 10 ** nativeDecimals), 0, false, false
+        );
+        vm.stopPrank();
+        (,,,, uint40 flippedId1,, uint32 flippedPrice1,) = orderBook.s_orders(1);
+        assertEq(flippedId1, 2);
+        assertEq(flippedPrice1, _flippedPrice);
+        (,,,, uint40 flippedId2,, uint32 flippedPrice2,) = orderBook.s_orders(2);
+        assertEq(flippedId2, 1);
+        assertEq(flippedPrice2, _price);
+    }
+
+    function testNativeQuoteAddSellFlipOrderFullFill(uint32 _price, uint32 _flippedPrice, uint96 _size) public {
+        vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
+        vm.assume(_flippedPrice > _tickSize && _price > 2 * _tickSize);
+        vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
+        vm.assume(_size > _minSize && _size < _maxSize);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, false);
+        address _maker = _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
+        uint256 _sizeToBuy = _size + 10 ** 10;
+        uint256 _quoteToBuy =
+            (((_sizeToBuy + 10 ** 6) * _price) / SIZE_PRECISION) * 10 ** nativeDecimals / PRICE_PRECISION;
+        address _taker = genAddress();
+        vm.deal(_taker, _quoteToBuy);
+        vm.startPrank(_taker);
+        orderBook.placeAndExecuteMarketBuy{value: _quoteToBuy}(
+            uint96(_quoteToBuy * PRICE_PRECISION / 10 ** nativeDecimals), 0, false, false
+        );
+        vm.stopPrank();
+        (,,,, uint40 flippedId1,, uint32 flippedPrice1,) = orderBook.s_orders(1);
+        assertEq(flippedId1, 0);
+        assertEq(flippedPrice1, _flippedPrice);
+        (,,,, uint40 flippedId2,, uint32 flippedPrice2,) = orderBook.s_orders(2);
+        assertEq(flippedId2, 0);
+        assertEq(flippedPrice2, _price);
+    }
+
+    function testNativeQuoteAddSellFlipOrderFullFillAndPartialFill(uint32 _price, uint32 _flippedPrice, uint96 _size) public {
+        vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
+        vm.assume(_flippedPrice > _tickSize && _price > 2 * _tickSize);
+        vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
+        vm.assume(_size > _minSize && _size < _maxSize);
+        (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, false);
+        testNativeQuoteAddSellFlipOrderFullFill(_price, _flippedPrice, _size);
+        uint256 _sizeToSell = (_size / 2) * 10 ** eth.decimals() / SIZE_PRECISION;
+        address _taker = genAddress();
+        eth.mint(_taker, _sizeToSell);
+        vm.startPrank(_taker);
+        eth.approve(address(orderBook), _sizeToSell);
+        orderBook.placeAndExecuteMarketSell(_size / 2, 0, false, false);
+        vm.stopPrank();
+        (,,,, uint40 flippedId1,, uint32 flippedPrice1,) = orderBook.s_orders(1);
+        assertEq(flippedId1, 0);
+        assertEq(flippedPrice1, _flippedPrice);
+        (,,,, uint40 flippedId2,, uint32 flippedPrice2,) = orderBook.s_orders(2);
+        assertEq(flippedId2, 3);
+        assertEq(flippedPrice2, _price);
+        (,,,, uint40 flippedId3,, uint32 flippedPrice3,) = orderBook.s_orders(3);
+        assertEq(flippedId3, 2);
+        assertEq(flippedPrice3, _flippedPrice);
+    }
+
     function testNativeQuoteAddSellOrderNoPostOnly(uint32 _price, uint96 _size) public {
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
@@ -289,6 +503,173 @@ contract OrderBookTest is Test, PropertiesAsserts {
         assertEq(marginAccount.getBalance(_maker, address(usdc)), _usdc);
         assertEq(marginAccount.getBalance(_maker, address(eth)), _ethRebate);
         assertEq(marginAccount.getBalance(address(router), address(eth)), _ethProtocolFee);
+    }
+
+    function testCancelFlipOrderCase1(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _isBuy) public {
+        if (_isBuy) {
+            testNativeQuoteAddBuyFlipOrder(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](1);
+            _orders[0] = 1;
+            orderBook.batchCancelOrders(_orders);
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+        } else {
+            testNativeQuoteAddSellFlipOrder(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](1);
+            _orders[0] = 1;
+            orderBook.batchCancelOrders(_orders);
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+        }
+    }
+
+    function testCancelFlipOrderCase2(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _isBuy) public {
+        if (_isBuy) {
+            testNativeQuoteAddBuyFlipOrderPartialFill(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](1);
+            _orders[0] = 1;
+            orderBook.batchCancelOrders(_orders);
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 2;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            vm.stopPrank();
+        } else {
+            testNativeQuoteAddSellFlipOrderPartialFill(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](1);
+            _orders[0] = 1;
+            orderBook.batchCancelOrders(_orders);
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 2;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            vm.stopPrank();
+        }
+    }
+
+    function testCancelFlipOrderCase3(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _isBuy) public {
+        if (_isBuy) {
+            testNativeQuoteAddBuyFlipOrderFullFill(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](1);
+            _orders[0] = 1;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 2;
+            orderBook.batchCancelOrders(_orders);
+            vm.stopPrank();
+        } else {
+            testNativeQuoteAddSellFlipOrderFullFill(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](1);
+            _orders[0] = 1;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 2;
+            orderBook.batchCancelOrders(_orders);
+            vm.stopPrank();
+        }
+    }
+
+    function testCancelFlipOrderCase4(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _isBuy) public {
+        if (_isBuy) {
+            testNativeQuoteAddBuyFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](1);
+            _orders[0] = 1;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 2;
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 3;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            vm.stopPrank();
+        } else {
+            testNativeQuoteAddSellFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](1);
+            _orders[0] = 1;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 2;
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 3;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            vm.stopPrank();
+        }
+    }
+
+    function testCancelFlipOrderCase5(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _isBuy) public {
+        if (_isBuy) {
+            testNativeQuoteAddBuyFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](1);
+            _orders[0] = 1;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 3;
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 2;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            vm.stopPrank();
+        } else {
+            testNativeQuoteAddSellFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](1);
+            _orders[0] = 1;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 3;
+            orderBook.batchCancelOrders(_orders);
+            _orders[0] = 2;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+        }
+    }
+
+    function testCancelFlipOrderCase6(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _isBuy, bool _interChange)
+        public
+    {
+        if (_isBuy) {
+            testNativeQuoteAddBuyFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](2);
+            _orders[0] = _interChange ? 2 : 3;
+            _orders[1] = _interChange ? 3 : 2;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            vm.stopPrank();
+        } else {
+            testNativeQuoteAddSellFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
+            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            vm.startPrank(_maker);
+            uint40[] memory _orders = new uint40[](2);
+            _orders[0] = _interChange ? 2 : 3;
+            _orders[1] = _interChange ? 3 : 2;
+            vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
+            orderBook.batchCancelOrders(_orders);
+            vm.stopPrank();
+        }
     }
 
     function testNativeQuoteCancelBuyOrder(uint32 _price, uint96 _size) public {
