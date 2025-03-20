@@ -937,26 +937,38 @@ contract OrderBookTest is Test, PropertiesAsserts {
             vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
             vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
             testAddBuyFlipOrder(_price, _flippedPrice, _size);
-            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            (address _maker, uint96 _size,,,, uint32 _price,,) = orderBook.s_orders(1);
+            uint256 _makerMarginBefore = marginAccount.getBalance(_maker, address(usdc));
             vm.startPrank(_maker);
+            marginAccount.withdraw(_makerMarginBefore, address(usdc));
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             orderBook.batchCancelOrders(_orders);
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
             orderBook.batchCancelOrders(_orders);
+            uint256 _makerMarginAfter = marginAccount.getBalance(_maker, address(usdc));
+            uint256 _expectedMargin = (_price * _size / SIZE_PRECISION) * 10 ** usdc.decimals() / PRICE_PRECISION;
+            assertEq(_makerMarginAfter, _expectedMargin);
+            marginAccount.withdraw(_expectedMargin, address(usdc));
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
             vm.assume(_flippedPrice > _tickSize && _price > 2 * _tickSize);
             vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
             vm.assume(_size > _minSize && _size < _maxSize);
             testAddSellFlipOrder(_price, _flippedPrice, _size);
-            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            (address _maker, uint96 _size,,,, uint32 _price,,) = orderBook.s_orders(1);
+            uint256 _makerMarginBefore = marginAccount.getBalance(_maker, address(eth));
             vm.startPrank(_maker);
+            marginAccount.withdraw(_makerMarginBefore, address(eth));
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             orderBook.batchCancelOrders(_orders);
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
             orderBook.batchCancelOrders(_orders);
+            uint256 _makerMarginAfter = marginAccount.getBalance(_maker, address(eth));
+            uint256 _expectedMargin = _size * 10 ** eth.decimals() / SIZE_PRECISION;
+            assertEq(_makerMarginAfter, _expectedMargin);
+            marginAccount.withdraw(_expectedMargin, address(eth));
         }
     }
 

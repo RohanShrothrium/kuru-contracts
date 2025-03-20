@@ -201,6 +201,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             (, uint256 _bestAsk) = bestAsk();
             require((_price < _bestAsk) || (_bestAsk == 0), OrderBookErrors.PostOnlyError());
         }
+        _consumeFunds(quoteAsset, _calculateFundsConsumed(_price, _size) * 10 ** quoteAssetDecimals / pricePrecision, _msgSender());
 
         uint40 _orderId = s_orderIdCounter + 1;
         s_orderIdCounter = _orderId;
@@ -250,6 +251,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             require((_price > _bestBid) || (_bestBid == type(uint256).max), OrderBookErrors.PostOnlyError());
         }
 
+        _consumeFunds(baseAsset, _size * 10 ** baseAssetDecimals / sizePrecision, _msgSender());
         uint40 _orderId = s_orderIdCounter + 1;
         s_orderIdCounter = _orderId;
         uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId);
@@ -268,6 +270,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             require((_bidPrice < _bestAsk) || (_bestAsk == 0), OrderBookErrors.PostOnlyError());
             require((_askPrice > _bestBid) || (_bestBid == type(uint256).max), OrderBookErrors.PostOnlyError());
         }
+
+        _consumeFunds(quoteAsset, _calculateFundsConsumed(_bidPrice, _bidSize) * 10 ** quoteAssetDecimals / pricePrecision, _msgSender());
+        _consumeFunds(baseAsset, _askSize * 10 ** baseAssetDecimals / sizePrecision, _msgSender());
 
         uint40 _bidOrderId = s_orderIdCounter + 1;
         uint40 _askOrderId = _bidOrderId + 1;
