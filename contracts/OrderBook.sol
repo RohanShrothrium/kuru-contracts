@@ -191,7 +191,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
     }
 
-    function addFlipBuyOrder(uint32 _price, uint32 _flippedPrice, uint96 _size) public marketActive {
+    function addFlipBuyOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert) public marketActive {
         require(_price > 0 && _flippedPrice > 0, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price < _flippedPrice, OrderBookErrors.PriceError());
@@ -199,7 +199,13 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         {
             (, uint256 _bestAsk) = bestAsk();
-            require((_price < _bestAsk) || (_bestAsk == 0), OrderBookErrors.PostOnlyError());
+            if (_price > _bestAsk && _bestAsk != 0) {
+                if (_provisionOrRevert) {
+                    revert OrderBookErrors.PostOnlyError();
+                } else {
+                    return;
+                }
+            }
         }
         _consumeFunds(quoteAsset, _calculateFundsConsumed(_price, _size) * 10 ** quoteAssetDecimals / pricePrecision, _msgSender());
 
@@ -240,7 +246,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
     }
 
-    function addFlipSellOrder(uint32 _price, uint32 _flippedPrice, uint96 _size) public marketActive {
+    function addFlipSellOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert) public marketActive {
         require(_price > 0 && _flippedPrice > 0, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price > _flippedPrice, OrderBookErrors.PriceError());
@@ -248,7 +254,13 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         {
             (, uint256 _bestBid) = bestBid();
-            require((_price > _bestBid) || (_bestBid == type(uint256).max), OrderBookErrors.PostOnlyError());
+            if ((_price < _bestBid) && (_bestBid != type(uint256).max)) {
+                if (_provisionOrRevert) {
+                    revert OrderBookErrors.PostOnlyError();
+                } else {
+                    return;
+                }
+            }
         }
 
         _consumeFunds(baseAsset, _size * 10 ** baseAssetDecimals / sizePrecision, _msgSender());
@@ -453,6 +465,20 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         for (uint256 i = 0; i < bidPrices.length; i++) {
             addPairedLiquidity(bidPrices[i], askPrices[i], bidSizes[i], askSizes[i]);
         }
+    }
+
+    function batchProvisionLiquidity(uint32[] calldata prices, uint32[] calldata flipPrices, uint96[] calldata sizes, bool[] calldata isBuy, bool _provisionOrRevert) external marketActive {
+        require(prices.length == flipPrices.length);
+        require(sizes.length == isBuy.length);
+        require(prices.length == sizes.length);
+        for(uint256 i = 0; i < prices.length; i++) {
+            if (isBuy[i]) {
+                addFlipBuyOrder(prices[i], flipPrices[i], sizes[i], _provisionOrRevert);
+            } else {
+                addFlipSellOrder(prices[i], flipPrices[i], sizes[i], _provisionOrRevert);
+            }
+        }
+        emit LiquidityProvisioned(_msgSender());
     }
 
     /**
