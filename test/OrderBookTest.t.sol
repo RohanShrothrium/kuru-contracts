@@ -156,7 +156,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        orderBook.addFlipBuyOrder(_price, _flippedPrice, _size);
+        orderBook.addFlipBuyOrder(_price, _flippedPrice, _size, true);
         vm.stopPrank();
         return _maker;
     }
@@ -188,7 +188,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(eth), _amount);
-        orderBook.addFlipSellOrder(_price, _flippedPrice, _size);
+        orderBook.addFlipSellOrder(_price, _flippedPrice, _size, true);
         vm.stopPrank();
 
         return _maker;
@@ -1545,6 +1545,116 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_vaultMaker);
         vm.expectRevert(KuruAMMVaultErrors.NewSizeExceedsPartiallyFilledSize.selector);
         vault.withdraw(_shares, _vaultMaker, _vaultMaker);
+        vm.stopPrank();
+    }
+
+    function testV3PositionNormal() public {
+        uint256 points = 7;
+        uint96 size = 50 * SIZE_PRECISION;
+        uint32[] memory prices = new uint32[](points);
+        uint32[] memory flipPrices = new uint32[](points);
+        uint96[] memory sizes = new uint96[](points);
+        bool[] memory isBuy = new bool[](points);
+        uint256 baseAssetToDeposit;
+        uint256 quoteAssetToDeposit;
+        for(uint i = 0; i < points; i++) {
+            prices[i] = uint32((100 + i) * PRICE_PRECISION);
+            sizes[i] = size;
+            if(i < points / 2) {
+                isBuy[i] = true;
+                flipPrices[i] = uint32((100 + i + 1) * PRICE_PRECISION);
+                quoteAssetToDeposit += mulDivUp(prices[i], sizes[i]) * 10 ** usdc.decimals() / PRICE_PRECISION;
+            } else {
+                isBuy[i] = false;
+                flipPrices[i] = uint32((100 + i - 1) * PRICE_PRECISION);
+                baseAssetToDeposit += size * 10 ** eth.decimals() / SIZE_PRECISION;
+            }
+        }
+        address _maker = genAddress();
+        eth.mint(_maker, baseAssetToDeposit);
+        usdc.mint(_maker, quoteAssetToDeposit);
+        vm.startPrank(_maker);
+        eth.approve(address(marginAccount), baseAssetToDeposit);
+        usdc.approve(address(marginAccount), quoteAssetToDeposit);
+        marginAccount.deposit(_maker, address(eth), baseAssetToDeposit);
+        marginAccount.deposit(_maker, address(usdc), quoteAssetToDeposit);
+        orderBook.batchProvisionLiquidity(prices, flipPrices, sizes, isBuy, true);
+        vm.stopPrank();
+    }
+
+    function testV3PositionProvisionErrorCase1() public {
+        //matches against a normal sell order, must revert
+        uint32 price = 100 * PRICE_PRECISION;
+        uint96 size = 50 * SIZE_PRECISION;
+        address _maker = _addSellOrder(address(0), price, size, true);
+        uint256 points = 7;
+        uint32[] memory prices = new uint32[](points);
+        uint32[] memory flipPrices = new uint32[](points);
+        uint96[] memory sizes = new uint96[](points);
+        bool[] memory isBuy = new bool[](points);
+        uint256 baseAssetToDeposit;
+        uint256 quoteAssetToDeposit;
+        for(uint i = 0; i < points; i++) {
+            prices[i] = uint32((100 + i) * PRICE_PRECISION);
+            sizes[i] = size;
+            if(i < points / 2) {
+                isBuy[i] = true;
+                flipPrices[i] = uint32((100 + i + 1) * PRICE_PRECISION);
+                quoteAssetToDeposit += mulDivUp(prices[i], sizes[i]) * 10 ** usdc.decimals() / PRICE_PRECISION;
+            } else {
+                isBuy[i] = false;
+                flipPrices[i] = uint32((100 + i - 1) * PRICE_PRECISION);
+                baseAssetToDeposit += size * 10 ** eth.decimals() / SIZE_PRECISION;
+            }
+        }
+        address _maker2 = genAddress();
+        eth.mint(_maker2, baseAssetToDeposit);
+        usdc.mint(_maker2, quoteAssetToDeposit);
+        vm.startPrank(_maker2);
+        eth.approve(address(marginAccount), baseAssetToDeposit);
+        usdc.approve(address(marginAccount), quoteAssetToDeposit);
+        marginAccount.deposit(_maker2, address(eth), baseAssetToDeposit);
+        marginAccount.deposit(_maker2, address(usdc), quoteAssetToDeposit);
+        vm.expectRevert(OrderBookErrors.ProvisionError.selector);
+        orderBook.batchProvisionLiquidity(prices, flipPrices, sizes, isBuy, true);
+        vm.stopPrank();
+    }
+
+    function testV3PositionProvisionErrorCase2() public {
+        //matches against a normal buy order, must revert
+        uint256 points = 7;
+        uint32 price = uint32((100 + points) * PRICE_PRECISION);
+        uint96 size = 50 * SIZE_PRECISION;
+        address _maker = _addBuyOrder(address(0), price, size, 0, true);
+        uint32[] memory prices = new uint32[](points);
+        uint32[] memory flipPrices = new uint32[](points);
+        uint96[] memory sizes = new uint96[](points);
+        bool[] memory isBuy = new bool[](points);
+        uint256 baseAssetToDeposit;
+        uint256 quoteAssetToDeposit;
+        for(uint i = 0; i < points; i++) {
+            prices[i] = uint32((100 + i) * PRICE_PRECISION);
+            sizes[i] = size;
+            if(i < points / 2) {
+                isBuy[i] = true;
+                flipPrices[i] = uint32((100 + i + 1) * PRICE_PRECISION);
+                quoteAssetToDeposit += mulDivUp(prices[i], sizes[i]) * 10 ** usdc.decimals() / PRICE_PRECISION;
+            } else {
+                isBuy[i] = false;
+                flipPrices[i] = uint32((100 + i - 1) * PRICE_PRECISION);
+                baseAssetToDeposit += size * 10 ** eth.decimals() / SIZE_PRECISION;
+            }
+        }
+        address _maker2 = genAddress();
+        eth.mint(_maker2, baseAssetToDeposit);
+        usdc.mint(_maker2, quoteAssetToDeposit);
+        vm.startPrank(_maker2);
+        eth.approve(address(marginAccount), baseAssetToDeposit);
+        usdc.approve(address(marginAccount), quoteAssetToDeposit);
+        marginAccount.deposit(_maker2, address(eth), baseAssetToDeposit);
+        marginAccount.deposit(_maker2, address(usdc), quoteAssetToDeposit);
+        vm.expectRevert(OrderBookErrors.ProvisionError.selector);
+        orderBook.batchProvisionLiquidity(prices, flipPrices, sizes, isBuy, true);
         vm.stopPrank();
     }
 

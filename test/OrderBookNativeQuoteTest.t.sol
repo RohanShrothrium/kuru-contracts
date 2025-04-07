@@ -143,7 +143,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.deal(_maker, _amount);
         vm.startPrank(_maker);
         marginAccount.deposit{value: _amount}(_maker, address(usdc), _amount);
-        orderBook.addFlipBuyOrder(_price, _flippedPrice, _size);
+        orderBook.addFlipBuyOrder(_price, _flippedPrice, _size, true);
         vm.stopPrank();
         return _maker;
     }
@@ -175,7 +175,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(eth), _amount);
-        orderBook.addFlipSellOrder(_price, _flippedPrice, _size);
+        orderBook.addFlipSellOrder(_price, _flippedPrice, _size, true);
         vm.stopPrank();
 
         return _maker;

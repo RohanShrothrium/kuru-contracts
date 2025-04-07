@@ -199,9 +199,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         {
             (, uint256 _bestAsk) = bestAsk();
-            if (_price > _bestAsk && _bestAsk != 0) {
+            if ((uint256(_price) * 10 ** 18 / pricePrecision) >= _bestAsk && _bestAsk != 0) {
                 if (_provisionOrRevert) {
-                    revert OrderBookErrors.PostOnlyError();
+                    revert OrderBookErrors.ProvisionError();
                 } else {
                     return;
                 }
@@ -254,9 +254,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         {
             (, uint256 _bestBid) = bestBid();
-            if ((_price < _bestBid) && (_bestBid != type(uint256).max)) {
+            if ((uint256(_price) * 10 ** 18 / pricePrecision) <= _bestBid && _bestBid != type(uint256).max) {
                 if (_provisionOrRevert) {
-                    revert OrderBookErrors.PostOnlyError();
+                    revert OrderBookErrors.ProvisionError();
                 } else {
                     return;
                 }
@@ -279,8 +279,8 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         {
             (, uint256 _bestBid) = bestBid();
             (, uint256 _bestAsk) = bestAsk();
-            require((_bidPrice < _bestAsk) || (_bestAsk == 0), OrderBookErrors.PostOnlyError());
-            require((_askPrice > _bestBid) || (_bestBid == type(uint256).max), OrderBookErrors.PostOnlyError());
+            require(((uint256(_bidPrice) * 10 ** 18 / pricePrecision) <= _bestAsk) || (_bestAsk == 0), OrderBookErrors.ProvisionError());
+            require(((uint256(_askPrice) * 10 ** 18 / pricePrecision) >= _bestBid) || (_bestBid == type(uint256).max), OrderBookErrors.ProvisionError());
         }
 
         _consumeFunds(quoteAsset, _calculateFundsConsumed(_bidPrice, _bidSize) * 10 ** quoteAssetDecimals / pricePrecision, _msgSender());
