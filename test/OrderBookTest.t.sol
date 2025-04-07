@@ -97,9 +97,16 @@ contract OrderBookTest is Test, PropertiesAsserts {
         return (_newPrice, _newSize);
     }
 
-    function _adjustPriceAndSizeFlip(uint32 _price, uint32 _flipPrice, uint96 _size, bool isBuy) internal returns (uint32, uint32, uint96) {
+    function _adjustPriceAndSizeFlip(uint32 _price, uint32 _flipPrice, uint96 _size, bool isBuy)
+        internal
+        returns (uint32, uint32, uint96)
+    {
         uint32 _newPrice = uint32(clampBetween(_price, _tickSize, _maxPrice - 3 * _tickSize));
-        uint32 _newFlipPrice = uint32(clampBetween(_flipPrice, isBuy ? _newPrice + _tickSize : _tickSize, isBuy ? _maxPrice : _newPrice - _tickSize));
+        uint32 _newFlipPrice = uint32(
+            clampBetween(
+                _flipPrice, isBuy ? _newPrice + _tickSize : _tickSize, isBuy ? _maxPrice : _newPrice - _tickSize
+            )
+        );
         uint96 _newSize = uint96(clampBetween(_size, _minSize + 1, _maxSize - 1));
         _newPrice = _newPrice - _newPrice % _tickSize;
         _newFlipPrice = _newFlipPrice - _newFlipPrice % _tickSize;
@@ -156,7 +163,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         usdc.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(usdc), _amount);
-        orderBook.addFlipBuyOrder(_price, _flippedPrice, _size);
+        orderBook.addFlipBuyOrder(_price, _flippedPrice, _size, true);
         vm.stopPrank();
         return _maker;
     }
@@ -188,7 +195,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(marginAccount), _amount);
         marginAccount.deposit(_maker, address(eth), _amount);
-        orderBook.addFlipSellOrder(_price, _flippedPrice, _size);
+        orderBook.addFlipSellOrder(_price, _flippedPrice, _size, true);
         vm.stopPrank();
 
         return _maker;
@@ -943,9 +950,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
             marginAccount.withdraw(_makerMarginBefore, address(usdc));
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             uint256 _makerMarginAfter = marginAccount.getBalance(_maker, address(usdc));
             uint256 _expectedMargin = (_price * _size / SIZE_PRECISION) * 10 ** usdc.decimals() / PRICE_PRECISION;
             assertEq(_makerMarginAfter, _expectedMargin);
@@ -962,9 +969,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
             marginAccount.withdraw(_makerMarginBefore, address(eth));
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             uint256 _makerMarginAfter = marginAccount.getBalance(_maker, address(eth));
             uint256 _expectedMargin = _size * 10 ** eth.decimals() / SIZE_PRECISION;
             assertEq(_makerMarginAfter, _expectedMargin);
@@ -982,12 +989,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
@@ -999,12 +1006,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         }
     }
@@ -1020,9 +1027,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
@@ -1035,9 +1042,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         }
     }
@@ -1053,12 +1060,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 3;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
@@ -1071,12 +1078,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 3;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         }
     }
@@ -1092,12 +1099,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 3;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
@@ -1110,12 +1117,12 @@ contract OrderBookTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 3;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
         }
     }
 
@@ -1133,7 +1140,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             _orders[0] = _interChange ? 2 : 3;
             _orders[1] = _interChange ? 3 : 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
@@ -1147,7 +1154,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             _orders[0] = _interChange ? 2 : 3;
             _orders[1] = _interChange ? 3 : 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         }
     }
@@ -1545,6 +1552,116 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_vaultMaker);
         vm.expectRevert(KuruAMMVaultErrors.NewSizeExceedsPartiallyFilledSize.selector);
         vault.withdraw(_shares, _vaultMaker, _vaultMaker);
+        vm.stopPrank();
+    }
+
+    function testV3PositionNormal() public {
+        uint256 points = 7;
+        uint96 size = 50 * SIZE_PRECISION;
+        uint32[] memory prices = new uint32[](points);
+        uint32[] memory flipPrices = new uint32[](points);
+        uint96[] memory sizes = new uint96[](points);
+        bool[] memory isBuy = new bool[](points);
+        uint256 baseAssetToDeposit;
+        uint256 quoteAssetToDeposit;
+        for (uint256 i = 0; i < points; i++) {
+            prices[i] = uint32((100 + i) * PRICE_PRECISION);
+            sizes[i] = size;
+            if (i < points / 2) {
+                isBuy[i] = true;
+                flipPrices[i] = uint32((100 + i + 1) * PRICE_PRECISION);
+                quoteAssetToDeposit += mulDivUp(prices[i], sizes[i]) * 10 ** usdc.decimals() / PRICE_PRECISION;
+            } else {
+                isBuy[i] = false;
+                flipPrices[i] = uint32((100 + i - 1) * PRICE_PRECISION);
+                baseAssetToDeposit += size * 10 ** eth.decimals() / SIZE_PRECISION;
+            }
+        }
+        address _maker = genAddress();
+        eth.mint(_maker, baseAssetToDeposit);
+        usdc.mint(_maker, quoteAssetToDeposit);
+        vm.startPrank(_maker);
+        eth.approve(address(marginAccount), baseAssetToDeposit);
+        usdc.approve(address(marginAccount), quoteAssetToDeposit);
+        marginAccount.deposit(_maker, address(eth), baseAssetToDeposit);
+        marginAccount.deposit(_maker, address(usdc), quoteAssetToDeposit);
+        orderBook.batchProvisionLiquidity(prices, flipPrices, sizes, isBuy, true);
+        vm.stopPrank();
+    }
+
+    function testV3PositionProvisionErrorCase1() public {
+        //matches against a normal sell order, must revert
+        uint32 price = 100 * PRICE_PRECISION;
+        uint96 size = 50 * SIZE_PRECISION;
+        address _maker = _addSellOrder(address(0), price, size, true);
+        uint256 points = 7;
+        uint32[] memory prices = new uint32[](points);
+        uint32[] memory flipPrices = new uint32[](points);
+        uint96[] memory sizes = new uint96[](points);
+        bool[] memory isBuy = new bool[](points);
+        uint256 baseAssetToDeposit;
+        uint256 quoteAssetToDeposit;
+        for (uint256 i = 0; i < points; i++) {
+            prices[i] = uint32((100 + i) * PRICE_PRECISION);
+            sizes[i] = size;
+            if (i < points / 2) {
+                isBuy[i] = true;
+                flipPrices[i] = uint32((100 + i + 1) * PRICE_PRECISION);
+                quoteAssetToDeposit += mulDivUp(prices[i], sizes[i]) * 10 ** usdc.decimals() / PRICE_PRECISION;
+            } else {
+                isBuy[i] = false;
+                flipPrices[i] = uint32((100 + i - 1) * PRICE_PRECISION);
+                baseAssetToDeposit += size * 10 ** eth.decimals() / SIZE_PRECISION;
+            }
+        }
+        address _maker2 = genAddress();
+        eth.mint(_maker2, baseAssetToDeposit);
+        usdc.mint(_maker2, quoteAssetToDeposit);
+        vm.startPrank(_maker2);
+        eth.approve(address(marginAccount), baseAssetToDeposit);
+        usdc.approve(address(marginAccount), quoteAssetToDeposit);
+        marginAccount.deposit(_maker2, address(eth), baseAssetToDeposit);
+        marginAccount.deposit(_maker2, address(usdc), quoteAssetToDeposit);
+        vm.expectRevert(OrderBookErrors.ProvisionError.selector);
+        orderBook.batchProvisionLiquidity(prices, flipPrices, sizes, isBuy, true);
+        vm.stopPrank();
+    }
+
+    function testV3PositionProvisionErrorCase2() public {
+        //matches against a normal buy order, must revert
+        uint256 points = 7;
+        uint32 price = uint32((100 + points) * PRICE_PRECISION);
+        uint96 size = 50 * SIZE_PRECISION;
+        address _maker = _addBuyOrder(address(0), price, size, 0, true);
+        uint32[] memory prices = new uint32[](points);
+        uint32[] memory flipPrices = new uint32[](points);
+        uint96[] memory sizes = new uint96[](points);
+        bool[] memory isBuy = new bool[](points);
+        uint256 baseAssetToDeposit;
+        uint256 quoteAssetToDeposit;
+        for (uint256 i = 0; i < points; i++) {
+            prices[i] = uint32((100 + i) * PRICE_PRECISION);
+            sizes[i] = size;
+            if (i < points / 2) {
+                isBuy[i] = true;
+                flipPrices[i] = uint32((100 + i + 1) * PRICE_PRECISION);
+                quoteAssetToDeposit += mulDivUp(prices[i], sizes[i]) * 10 ** usdc.decimals() / PRICE_PRECISION;
+            } else {
+                isBuy[i] = false;
+                flipPrices[i] = uint32((100 + i - 1) * PRICE_PRECISION);
+                baseAssetToDeposit += size * 10 ** eth.decimals() / SIZE_PRECISION;
+            }
+        }
+        address _maker2 = genAddress();
+        eth.mint(_maker2, baseAssetToDeposit);
+        usdc.mint(_maker2, quoteAssetToDeposit);
+        vm.startPrank(_maker2);
+        eth.approve(address(marginAccount), baseAssetToDeposit);
+        usdc.approve(address(marginAccount), quoteAssetToDeposit);
+        marginAccount.deposit(_maker2, address(eth), baseAssetToDeposit);
+        marginAccount.deposit(_maker2, address(usdc), quoteAssetToDeposit);
+        vm.expectRevert(OrderBookErrors.ProvisionError.selector);
+        orderBook.batchProvisionLiquidity(prices, flipPrices, sizes, isBuy, true);
         vm.stopPrank();
     }
 
