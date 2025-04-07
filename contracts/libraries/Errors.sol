@@ -31,6 +31,10 @@ library OrderBookErrors {
      */
     error PostOnlyError();
     /**
+     * @dev Thrown when a flip order matches with a price
+     */
+    error ProvisionError();
+    /**
      * @dev Thrown when a non-owner tries to execute a privileged function, i.e, if non owner tries to pause/unpause a market or
      * if a user tries to cancel an order that they did not place
      */
