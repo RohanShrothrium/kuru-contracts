@@ -92,9 +92,16 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         return (_newPrice, _newSize);
     }
 
-    function _adjustPriceAndSizeFlip(uint32 _price, uint32 _flipPrice, uint96 _size, bool isBuy) internal returns (uint32, uint32, uint96) {
+    function _adjustPriceAndSizeFlip(uint32 _price, uint32 _flipPrice, uint96 _size, bool isBuy)
+        internal
+        returns (uint32, uint32, uint96)
+    {
         uint32 _newPrice = uint32(clampBetween(_price, _tickSize, _maxPrice - 3 * _tickSize));
-        uint32 _newFlipPrice = uint32(clampBetween(_flipPrice, isBuy ? _newPrice + _tickSize : _tickSize, isBuy ? _maxPrice : _newPrice - _tickSize));
+        uint32 _newFlipPrice = uint32(
+            clampBetween(
+                _flipPrice, isBuy ? _newPrice + _tickSize : _tickSize, isBuy ? _maxPrice : _newPrice - _tickSize
+            )
+        );
         uint96 _newSize = uint96(clampBetween(_size, _minSize + 1, _maxSize - 1));
         _newPrice = _newPrice - _newPrice % _tickSize;
         _newFlipPrice = _newFlipPrice - _newFlipPrice % _tickSize;
@@ -236,7 +243,9 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         assertEq(flippedFlippedPrice, _price);
     }
 
-    function testNativeBaseAddBuyFlipOrderFullFillAndPartialFill(uint32 _price, uint32 _flippedPrice, uint96 _size) public {
+    function testNativeBaseAddBuyFlipOrderFullFillAndPartialFill(uint32 _price, uint32 _flippedPrice, uint96 _size)
+        public
+    {
         vm.assume(_flippedPrice > _price && _price != 0 && _flippedPrice != 0);
         vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
@@ -407,7 +416,9 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         assertEq(flippedPrice2, _price);
     }
 
-    function testNativeBaseAddSellFlipOrderFullFillAndPartialFill(uint32 _price, uint32 _flippedPrice, uint96 _size) public {
+    function testNativeBaseAddSellFlipOrderFullFillAndPartialFill(uint32 _price, uint32 _flippedPrice, uint96 _size)
+        public
+    {
         vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
         vm.assume(_flippedPrice > _tickSize && _price > 2 * _tickSize);
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
@@ -780,9 +791,9 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
             vm.assume(_flippedPrice > _tickSize && _price > 2 * _tickSize);
@@ -793,9 +804,9 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
         }
     }
 
@@ -809,12 +820,12 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
@@ -826,12 +837,12 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         }
     }
@@ -847,9 +858,9 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
@@ -862,9 +873,9 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         }
     }
@@ -880,12 +891,12 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 3;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
@@ -898,12 +909,12 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 3;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         }
     }
@@ -919,12 +930,12 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 3;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
@@ -937,12 +948,12 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 3;
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             _orders[0] = 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
         }
     }
 
@@ -960,7 +971,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             _orders[0] = _interChange ? 2 : 3;
             _orders[1] = _interChange ? 3 : 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         } else {
             vm.assume(_flippedPrice < _price && _price != 0 && _flippedPrice != 0);
@@ -974,7 +985,7 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
             _orders[0] = _interChange ? 2 : 3;
             _orders[1] = _interChange ? 3 : 2;
             vm.expectRevert(OrderBookErrors.OrderAlreadyFilledOrCancelled.selector);
-            orderBook.batchCancelOrders(_orders);
+            orderBook.batchCancelFlipOrders(_orders);
             vm.stopPrank();
         }
     }

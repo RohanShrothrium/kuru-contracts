@@ -30,10 +30,47 @@ interface IOrderBook {
      */
     event OrderCreated(uint40 orderId, address owner, uint96 size, uint32 price, bool isBuy);
 
-    event FlipOrderCreated(uint40 orderId, uint40 flippedId, address owner, uint96 size, uint32 price, uint32 flippedPrice, bool isBuy);
+    /**
+     * @dev Emitted when a flip order is created
+     * @param orderId Unique identifier for the newly created order.
+     * @param flippedId Unique identifier for the flipped order.
+     * @param owner Address of the user who created the order.
+     * @param size Size of the order in the specified precision.
+     * @param price Price point of the order in the specified precision.
+     * @param flippedPrice Price point of the flipped order in the specified precision.
+     * @param isBuy Boolean indicating if the order is a buy (true) or sell (false) order.
+     */
+    event FlipOrderCreated(
+        uint40 orderId, uint40 flippedId, address owner, uint96 size, uint32 price, uint32 flippedPrice, bool isBuy
+    );
 
-    event LiquidityProvisioned(address provider);
+    /**
+     * @dev Emitted when a flip order is partially/completely filled and it results in a new order
+     * @param orderId Unique identifier for the newly created order.
+     * @param flippedId Unique identifier for the flipped order.
+     * @param owner Address of the user who created the order.
+     * @param size Size of the order in the specified precision.
+     * @param price Price point of the order in the specified precision.
+     * @param flippedPrice Price point of the flipped order in the specified precision.
+     * @param isBuy Boolean indicating if the order is a buy (true) or sell (false) order.
+     */
+    event FlippedOrderCreated(
+        uint40 orderId, uint40 flippedId, address owner, uint96 size, uint32 price, uint32 flippedPrice, bool isBuy
+    );
 
+    /**
+     * @dev Emitted when a flip order is updated
+     * @param orderId Unique identifier for the order.
+     * @param size Size of the order in the specified precision.
+     */
+    event FlipOrderUpdated(uint40 orderId, uint96 size);
+
+    /**
+     * @dev Emitted when one or more flip orders are canceled
+     * @param orderIds Array of order identifiers that were canceled.
+     * @param owner Address of the user who canceled the orders.
+     */
+    event FlipOrdersCanceled(uint40[] orderIds, address owner);
 
     /**
      * @dev Emitted when one or more orders are completed or canceled.

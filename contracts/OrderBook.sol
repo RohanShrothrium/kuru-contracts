@@ -191,7 +191,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
     }
 
-    function addFlipBuyOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert) public marketActive {
+    function addFlipBuyOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
+        public
+        marketActive
+    {
         require(_price > 0 && _flippedPrice > 0, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price < _flippedPrice, OrderBookErrors.PriceError());
@@ -207,7 +210,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                 }
             }
         }
-        _consumeFunds(quoteAsset, _calculateFundsConsumed(_price, _size) * 10 ** quoteAssetDecimals / pricePrecision, _msgSender());
+        _consumeFunds(
+            quoteAsset, _calculateFundsConsumed(_price, _size) * 10 ** quoteAssetDecimals / pricePrecision, _msgSender()
+        );
 
         uint40 _orderId = s_orderIdCounter + 1;
         s_orderIdCounter = _orderId;
@@ -246,7 +251,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
     }
 
-    function addFlipSellOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert) public marketActive {
+    function addFlipSellOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
+        public
+        marketActive
+    {
         require(_price > 0 && _flippedPrice > 0, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price > _flippedPrice, OrderBookErrors.PriceError());
@@ -270,7 +278,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         _addFlipOrder(_price, _flippedPrice, _size, _msgSender(), _orderId, OrderLinkedList.NULL, false, _prevOrderId);
     }
 
-    function addPairedLiquidity(uint32 _bidPrice, uint32 _askPrice, uint96 _bidSize, uint96 _askSize) public marketActive {
+    function addPairedLiquidity(uint32 _bidPrice, uint32 _askPrice, uint96 _bidSize, uint96 _askSize)
+        public
+        marketActive
+    {
         require(_bidPrice > 0 && _askPrice > 0, OrderBookErrors.PriceError());
         require(_bidPrice % tickSize == 0 && _askPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_bidPrice < _askPrice, OrderBookErrors.PriceError());
@@ -279,11 +290,21 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         {
             (, uint256 _bestBid) = bestBid();
             (, uint256 _bestAsk) = bestAsk();
-            require(((uint256(_bidPrice) * 10 ** 18 / pricePrecision) <= _bestAsk) || (_bestAsk == 0), OrderBookErrors.ProvisionError());
-            require(((uint256(_askPrice) * 10 ** 18 / pricePrecision) >= _bestBid) || (_bestBid == type(uint256).max), OrderBookErrors.ProvisionError());
+            require(
+                ((uint256(_bidPrice) * 10 ** 18 / pricePrecision) <= _bestAsk) || (_bestAsk == 0),
+                OrderBookErrors.ProvisionError()
+            );
+            require(
+                ((uint256(_askPrice) * 10 ** 18 / pricePrecision) >= _bestBid) || (_bestBid == type(uint256).max),
+                OrderBookErrors.ProvisionError()
+            );
         }
 
-        _consumeFunds(quoteAsset, _calculateFundsConsumed(_bidPrice, _bidSize) * 10 ** quoteAssetDecimals / pricePrecision, _msgSender());
+        _consumeFunds(
+            quoteAsset,
+            _calculateFundsConsumed(_bidPrice, _bidSize) * 10 ** quoteAssetDecimals / pricePrecision,
+            _msgSender()
+        );
         _consumeFunds(baseAsset, _askSize * 10 ** baseAssetDecimals / sizePrecision, _msgSender());
 
         uint40 _bidOrderId = s_orderIdCounter + 1;
@@ -301,13 +322,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @param _price Price of the order.
      * @param _size Size of the order.
      */
-    function _addOrder(
-        uint32 _price,
-        uint96 _size,
-        uint40 _orderId,
-        bool _isBuy,
-        uint40 _prevOrderId
-    ) internal {
+    function _addOrder(uint32 _price, uint96 _size, uint40 _orderId, bool _isBuy, uint40 _prevOrderId) internal {
         if (_isBuy) {
             TreeMath.add(s_buyTree, _price);
         } else {
@@ -340,6 +355,27 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         emit FlipOrderCreated(_orderId, _flippedId, _owner, _size, _price, _flippedPrice, _isBuy);
     }
 
+    function _addFlippedOrder(
+        uint32 _price,
+        uint32 _flippedPrice,
+        uint96 _size,
+        address _owner,
+        uint40 _orderId,
+        uint40 _flippedId,
+        bool _isBuy,
+        uint40 _prevOrderId
+    ) internal {
+        if (_isBuy) {
+            TreeMath.add(s_buyTree, _price);
+        } else {
+            TreeMath.add(s_sellTree, _price);
+        }
+        s_orders[_orderId] =
+            Order(_owner, _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, _flippedPrice, _isBuy);
+        s_orders[_prevOrderId].next = _orderId;
+        emit FlippedOrderCreated(_orderId, _flippedId, _owner, _size, _price, _flippedPrice, _isBuy);
+    }
+
     /**
      * @dev Consumes funds required to create a GTC order.
      * @param _consumableAsset Address of the asset that is being consumed by the market.
@@ -348,6 +384,14 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      */
     function _consumeFunds(address _consumableAsset, uint256 _amount, address _makerAddress) internal {
         marginAccount.debitUser(_makerAddress, _consumableAsset, _amount);
+    }
+
+    function batchCancelFlipOrders(uint40[] calldata _orderIds) external {
+        for (uint256 i = 0; i < _orderIds.length; i++) {
+            _cancelFlipOrder(_orderIds[i]);
+        }
+
+        emit FlipOrdersCanceled(_orderIds, _msgSender());
     }
 
     /**
@@ -362,6 +406,17 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         emit OrdersCanceled(_orderIds, _msgSender());
     }
 
+    function _cancelFlipOrder(uint40 _orderId) internal returns (bool) {
+        Order memory _order = s_orders[_orderId];
+        _checkIfCancelledOrFilled(_orderId, _order);
+        require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
+        require(_order.flippedPrice != 0, OrderBookErrors.WrongOrderTypeCancel());
+        if (_order.flippedId != OrderLinkedList.NULL) {
+            _executeCancel(_order.flippedId, s_orders[_order.flippedId]);
+        }
+        return _executeCancel(_orderId, _order);
+    }
+
     /**
      * @dev Internal helper function to cancel a single order.
      * @param _orderId ID of the order to cancel.
@@ -370,9 +425,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         Order memory _order = s_orders[_orderId];
         _checkIfCancelledOrFilled(_orderId, _order);
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
-        if (_order.flippedId != OrderLinkedList.NULL) {
-            _executeCancel(_order.flippedId, s_orders[_order.flippedId]);
-        }
+        require(_order.flippedPrice == 0, OrderBookErrors.WrongOrderTypeCancel());
         return _executeCancel(_orderId, _order);
     }
 
@@ -461,24 +514,31 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         uint96[] calldata bidSizes,
         uint96[] calldata askSizes
     ) external marketActive {
-        require(bidPrices.length == bidSizes.length && askPrices.length == askSizes.length, OrderBookErrors.LengthMismatch());
+        require(
+            bidPrices.length == bidSizes.length && askPrices.length == askSizes.length, OrderBookErrors.LengthMismatch()
+        );
         for (uint256 i = 0; i < bidPrices.length; i++) {
             addPairedLiquidity(bidPrices[i], askPrices[i], bidSizes[i], askSizes[i]);
         }
     }
 
-    function batchProvisionLiquidity(uint32[] calldata prices, uint32[] calldata flipPrices, uint96[] calldata sizes, bool[] calldata isBuy, bool _provisionOrRevert) external marketActive {
+    function batchProvisionLiquidity(
+        uint32[] calldata prices,
+        uint32[] calldata flipPrices,
+        uint96[] calldata sizes,
+        bool[] calldata isBuy,
+        bool _provisionOrRevert
+    ) external marketActive {
         require(prices.length == flipPrices.length);
         require(sizes.length == isBuy.length);
         require(prices.length == sizes.length);
-        for(uint256 i = 0; i < prices.length; i++) {
+        for (uint256 i = 0; i < prices.length; i++) {
             if (isBuy[i]) {
                 addFlipBuyOrder(prices[i], flipPrices[i], sizes[i], _provisionOrRevert);
             } else {
                 addFlipSellOrder(prices[i], flipPrices[i], sizes[i], _provisionOrRevert);
             }
         }
-        emit LiquidityProvisioned(_msgSender());
     }
 
     /**
@@ -522,7 +582,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
 
         // Emit an event for the canceled orders
-        if(orderIdsToCancel.length > 0) {
+        if (orderIdsToCancel.length > 0) {
             emit OrdersCanceled(orderIdsToCancel, _msgSender());
         }
     }
@@ -1001,16 +1061,14 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             uint40 _prevOrderId;
             if (!s_orders[_orderId].isBuy) {
                 _size = uint96(FixedPointMathLib.mulDiv(_size, _filledOrder.price, _filledOrder.flippedPrice));
-                _prevOrderId =
-                    OrderLinkedList.insertAtTail(s_buyPricePoints[_filledOrder.flippedPrice], _flipOrderId);
+                _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_filledOrder.flippedPrice], _flipOrderId);
             } else {
-                _prevOrderId =
-                    OrderLinkedList.insertAtTail(s_sellPricePoints[_filledOrder.flippedPrice], _flipOrderId);
+                _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_filledOrder.flippedPrice], _flipOrderId);
             }
-            if(!nullify) {
+            if (!nullify) {
                 s_orders[_orderId].flippedId = _flipOrderId;
             }
-            _addFlipOrder(
+            _addFlippedOrder(
                 _filledOrder.flippedPrice,
                 _filledOrder.price,
                 _size,
@@ -1024,9 +1082,12 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             //transfer size
             uint40 _flipOrderId = s_orders[_orderId].flippedId;
             if (!s_orders[_orderId].isBuy) {
-                _size = uint96(FixedPointMathLib.mulDiv(_size, s_orders[_orderId].price, s_orders[_orderId].flippedPrice));
+                _size =
+                    uint96(FixedPointMathLib.mulDiv(_size, s_orders[_orderId].price, s_orders[_orderId].flippedPrice));
             }
-            s_orders[_flipOrderId].size += _size;
+            uint96 _updatedSize = s_orders[_flipOrderId].size + _size;
+            s_orders[_flipOrderId].size = _updatedSize;
+            emit FlipOrderUpdated(_flipOrderId, _updatedSize);
             if (nullify) {
                 s_orders[_flipOrderId].flippedId = OrderLinkedList.NULL;
             }

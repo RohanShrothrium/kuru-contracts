@@ -40,6 +40,10 @@ library OrderBookErrors {
      */
     error OnlyOwnerAllowedError();
     /**
+     * @dev Thrown when wrong interface is called for a cancel
+     */
+    error WrongOrderTypeCancel();
+    /**
      * @dev Thrown when cancelOrder is called on an order which is already filled or cancelled
      */
     error OrderAlreadyFilledOrCancelled();
