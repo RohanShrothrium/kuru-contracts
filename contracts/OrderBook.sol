@@ -191,6 +191,13 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
     }
 
+    /**
+    * @dev Adds a flip buy order to the order book
+    * @param _price Price of the buy order.
+    * @param _flippedPrice Price of the sell order to which this order will flip on a fill
+    * @param _size Size of the buy order.
+    * @param _provisionOrRevert Whether to provision or revert the order.
+    */
     function addFlipBuyOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
         public
         marketActive
@@ -251,6 +258,13 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
     }
 
+    /**
+    * @dev Adds a flip sell order to the order book
+    * @param _price Price of the sell order.
+    * @param _flippedPrice Price of the buy order to which this order will flip on a fill
+    * @param _size Size of the sell order.
+    * @param _provisionOrRevert Whether to provision or revert the order.
+    */
     function addFlipSellOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
         public
         marketActive
