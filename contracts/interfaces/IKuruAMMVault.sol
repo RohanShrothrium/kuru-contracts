@@ -16,5 +16,7 @@ interface IKuruAMMVault {
         uint256 makerFeeBps;
     }
 
+    event KuruVaultDeposit(uint256 amount1, uint256 amount2, uint256 shares);
+
     function deposit(uint256 amount1, uint256 amount2, address receiver) external payable returns (uint256);
 }
