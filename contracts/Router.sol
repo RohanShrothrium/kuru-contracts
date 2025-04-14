@@ -218,6 +218,12 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         orderBookImplementation = newImplementation;
     }
 
+    function toggleMarket(address[] memory markets, bool state) external onlyOwner {
+        for (uint256 i = 0; i < markets.length; i++) {
+            IOrderBook(markets[i]).toggleMarkets(state);
+        }
+    }
+
     /**
      * @dev This function lets anyone batch upgrade orderbooks if a new implementation is available
      * @param proxies The proxies which are to be upgraded to the latest orderbook implementation

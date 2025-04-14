@@ -118,6 +118,8 @@ interface IOrderBook {
         address __trustedForwarder
     ) external;
 
+    function toggleMarkets(bool _state) external;
+
     function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) external;
 
     function addSellOrder(uint32 _price, uint96 size, bool _postOnly) external;
