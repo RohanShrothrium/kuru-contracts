@@ -32,9 +32,10 @@ library OrderLinkedList {
         return _pointTail;
     }
 
-    function deleteOrder(PricePoint storage point, uint40 prev, uint40 next) internal {
-        if (prev == NULL) point.head = next;
-        if (next == NULL) point.tail = prev;
+    function adjustForTail(PricePoint storage point, uint40 prev, uint40 next) internal {
+        if (next == NULL) {
+            point.tail = prev;
+        }
     }
 
     /**
