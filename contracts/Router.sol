@@ -46,7 +46,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint96 minSize,
         uint96 maxSize,
         uint256 takerFeeBps,
-        uint256 makerFeeBps
+        uint256 makerFeeBps,
+        uint96 kuruAmmSpread
     );
 
     constructor() {
@@ -168,7 +169,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            _kuruAmmSpread
         );
 
         return proxy;
@@ -216,6 +218,12 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     function upgradeImplementation(address newImplementation) external onlyOwner {
         require(newImplementation != orderBookImplementation);
         orderBookImplementation = newImplementation;
+    }
+
+    function toggleMarket(address[] memory markets, bool state) external onlyOwner {
+        for (uint256 i = 0; i < markets.length; i++) {
+            IOrderBook(markets[i]).toggleMarkets(state);
+        }
     }
 
     /**

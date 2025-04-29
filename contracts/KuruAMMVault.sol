@@ -150,7 +150,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         _updateMarketVaultOrderSize(amount1, amount2, _baseAmount, _currentAskPrice, true);
         _depositToMarginAccount(amount1, token1);
         _depositToMarginAccount(amount2, token2);
-        emit KuruVaultDeposit(amount1, amount2, _shares);
+        emit KuruVaultDeposit(amount1, amount2, _shares, receiver);
         return _shares;
     }
 
@@ -235,6 +235,8 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         _updateMarketVaultOrderSize(_normalizedRemoveAmount, amount2, _baseAmount, _currentAskPrice, false);
 
         _withdrawFromMarginAccount(amount1, amount2, receiver);
+
+        emit KuruVaultWithdraw(amount1, amount2, shares, owner);
 
         return (amount1, amount2);
     }
