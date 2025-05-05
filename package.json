@@ -8,7 +8,6 @@
     "@chainlink/contracts": "^0.6.1",
     "@graphprotocol/graph-ts": "^0.31.0",
     "@openzeppelin/contracts": "^4.9.6",
-    "@pythnetwork/pyth-sdk-solidity": "github:pyth-network/pyth-sdk-solidity",
     "forge-std": "^1.1.2",
     "openzeppelin-solidity": "^3.4.2",
     "solady": "^0.0.232"
