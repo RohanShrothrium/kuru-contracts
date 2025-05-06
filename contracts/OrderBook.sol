@@ -460,8 +460,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                     //If there are no more orders remaining in price point, we can remove the price point
                     TreeMath.remove(s_buyTree, _order.price);
                 }
+            } else {
+                OrderLinkedList.adjustForTail(s_buyPricePoints[_order.price], _order.prev, _order.next);
             }
-            OrderLinkedList.deleteOrder(s_buyPricePoints[_order.price], _order.prev, _order.next);
+
             marginAccount.creditUser(
                 _order.ownerAddress,
                 quoteAsset,
@@ -475,8 +477,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                     //If there are no more orders remaining in price point, we can remove the price point
                     TreeMath.remove(s_sellTree, _order.price);
                 }
+            } else {
+                OrderLinkedList.adjustForTail(s_sellPricePoints[_order.price], _order.prev, _order.next);
             }
-            OrderLinkedList.deleteOrder(s_sellPricePoints[_order.price], _order.prev, _order.next);
+            
             marginAccount.creditUser(
                 _order.ownerAddress, baseAsset, ((_order.size * 10 ** baseAssetDecimals) / sizePrecision), true
             );
