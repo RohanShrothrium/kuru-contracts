@@ -8,6 +8,7 @@ import {Router} from "../contracts/Router.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MintableERC20} from "./lib/MintableERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract OrderBookTest is Test {
     uint96 constant SIZE_PRECISION = 10 ** 10;
@@ -35,7 +36,9 @@ contract OrderBookTest is Test {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USD", "USDC");
 
-        marginAccount = new MarginAccount(address(this), address(this), address(0));
+        marginAccount = new MarginAccount();
+        marginAccount = MarginAccount(payable(address(new ERC1967Proxy(address(marginAccount), ""))));
+        marginAccount.initialize(address(this), address(this), address(0), address(0));
 
         eth.mint(user1, initEth);
         usdc.mint(user2, initUsdc);

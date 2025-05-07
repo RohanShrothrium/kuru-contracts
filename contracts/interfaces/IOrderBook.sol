@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 interface IOrderBook {
     enum OrderBookType {
@@ -122,9 +122,15 @@ interface IOrderBook {
 
     function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) external;
 
+    function addFlipBuyOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert) external;
+
     function addSellOrder(uint32 _price, uint96 size, bool _postOnly) external;
 
+    function addFlipSellOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert) external;
+
     function batchCancelOrders(uint40[] calldata _orderIds) external;
+
+    function batchCancelFlipOrders(uint40[] calldata _orderIds) external;
 
     function batchUpdate(
         uint32[] calldata buyPrices,

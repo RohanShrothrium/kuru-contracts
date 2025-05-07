@@ -54,7 +54,8 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         uint256 _makerFeeBps = 0;
         router = new Router();
         trustedForwarder = address(0x123);
-        marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
+        marginAccount = new MarginAccount();
+        marginAccount.initialize(address(this), address(router), address(router), trustedForwarder);
         implementation = new OrderBook();
         router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
         OrderBook.OrderBookType _type;

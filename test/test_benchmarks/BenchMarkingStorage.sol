@@ -44,11 +44,12 @@ contract BenchMarkTest is Test, Gas {
             abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
         );
         router = Router(payable(routerProxy));
+        marginAccount = new MarginAccount();
         trustedForwarder = address(0x123);
-        marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
+        marginAccount = MarginAccount(payable(address(new ERC1967Proxy(address(marginAccount), ""))));
+        marginAccount.initialize(address(this), address(router), address(router), trustedForwarder);
 
         OrderBook implementation = new OrderBook();
-        trustedForwarder = address(0x123);
         router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
         OrderBook.OrderBookType _type;
         address proxy = router.deployProxy(

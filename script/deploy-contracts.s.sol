@@ -49,8 +49,11 @@ contract Deployer is Script {
         allowedInterfaces[4] = MarginAccount.deposit.selector;
         allowedInterfaces[5] = MarginAccount.withdraw.selector;
         vm.broadcast(deployerAdmin);
-        KuruForwarder kuruForwarder = new KuruForwarder(allowedInterfaces);
-        console.log("KuruForwarder deployed to:", address(kuruForwarder));
+        KuruForwarder kuruForwarder = new KuruForwarder();
+        console.log("KuruForwarder Implementation deployed to:", address(kuruForwarder));
+        KuruForwarder kuruForwarderProxy = KuruForwarder((address(new ERC1967Proxy(address(kuruForwarder), ""))));
+        kuruForwarderProxy.initialize(deployerAdmin, allowedInterfaces);
+        console.log("KuruForwarder deployed to:", address(kuruForwarderProxy));
         vm.broadcast(deployerAdmin);
         Router routerImpl = new Router();
         console.log("Router implementation deployed to:", address(routerImpl));
@@ -60,7 +63,8 @@ contract Deployer is Script {
         Router router = Router(payable(address(proxy)));
 
         vm.broadcast(deployerAdmin);
-        MarginAccount marginAccount = new MarginAccount(address(router), deployerAdmin, address(kuruForwarder));
+        MarginAccount marginAccount = new MarginAccount();
+        marginAccount.initialize(deployerAdmin, address(router), address(router), address(kuruForwarder));
         console.log("MarginAccount deployed to:", address(marginAccount));
         vm.broadcast(deployerAdmin);
         OrderBook OBImpl = new OrderBook();
