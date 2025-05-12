@@ -37,7 +37,7 @@ contract MonadDeployer {
     IMarginAccount immutable marginAccount;
 
     //EVENTS
-    event PumpingTime(address indexed token, string tokenURI, address dev, uint256 supplyToDev, address market);
+    event PumpingTime(address indexed token, string tokenURI, address dev, uint256 supplyToDev, address market, bytes metadata);
     //ERRORS
 
     error InsufficientAssets(uint256 expected, uint256 received);
@@ -57,7 +57,7 @@ contract MonadDeployer {
         kuruCollectiveFee = _kuruCollectiveFee;
     }
 
-    function deployTokenAndMarket(TokenParams memory tokenParams, MarketParams memory marketParams)
+    function deployTokenAndMarket(TokenParams memory tokenParams, MarketParams memory marketParams, bytes calldata metadata)
         external
         payable
         returns (address market)
@@ -88,7 +88,7 @@ contract MonadDeployer {
         token.transfer(tokenParams.dev, tokenParams.initialSupply - _supplyToVault);
         marginAccount.deposit{value: kuruCollectiveFee}(kuruCollective, address(0), kuruCollectiveFee);
         emit PumpingTime(
-            address(token), tokenParams.tokenURI, tokenParams.dev, tokenParams.initialSupply - _supplyToVault, market
+            address(token), tokenParams.tokenURI, tokenParams.dev, tokenParams.initialSupply - _supplyToVault, market, metadata
         );
     }
 }
