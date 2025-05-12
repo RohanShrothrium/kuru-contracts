@@ -60,8 +60,13 @@ async function main() {
         MarginAccount.interface.getSighash('deposit'),
         MarginAccount.interface.getSighash('withdraw'),
     ];
-    const kuruForwarder = await KuruForwarder.deploy(allowedInterfaces);
-    await kuruForwarder.deployed();
+    const kuruForwarderImpl = await KuruForwarder.deploy();
+    await kuruForwarderImpl.deployed();
+    const kuruForwarderProxy = await Proxy.deploy(kuruForwarderImpl.address, "0x");
+    await kuruForwarderProxy.deployed();
+    const kuruForwarder = await hre.ethers.getContractAt("KuruForwarder", kuruForwarderProxy.address, deployer);
+    const initializeKuruForwarderTx = await kuruForwarder.initialize(userAddress, allowedInterfaces);
+    await initializeKuruForwarderTx.wait();
     console.log("KuruForwarder deployed to:", kuruForwarder.address);
 
     // deploy Router Contract
@@ -76,10 +81,14 @@ async function main() {
     console.log("Router deployed to:", routerAddress);
 
     // deploy Margin Account Contract
-    const marginAccount = await MarginAccount.deploy(routerAddress, userAddress, kuruForwarder.address);
-    await marginAccount.deployed();
-
-    const marginAccountAddress = marginAccount.address;
+    const marginAccountImpl = await MarginAccount.deploy();
+    await marginAccountImpl.deployed();
+    const marginAccountProxy = await Proxy.deploy(marginAccountImpl.address, "0x");
+    await marginAccountProxy.deployed();
+    const marginAccount = await hre.ethers.getContractAt("MarginAccount", marginAccountProxy.address, deployer);
+    const initializeMarginAccountTx = await marginAccount.initialize(userAddress, routerAddress, userAddress, kuruForwarder.address);
+    await initializeMarginAccountTx.wait();
+    const marginAccountAddress = marginAccountProxy.address;
     console.log("MarginAccountAddress deployed to:", marginAccountAddress);
 
     if(hre.ethers.BigNumber.from(wbtcAddress).gt(hre.ethers.BigNumber.from(usdcAddress))) {

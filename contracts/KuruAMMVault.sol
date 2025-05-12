@@ -148,8 +148,15 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         }
         require(_shares > 0, KuruAMMVaultErrors.InsufficientLiquidityMinted());
         _updateMarketVaultOrderSize(amount1, amount2, _baseAmount, _currentAskPrice, true);
-        _depositToMarginAccount(amount1, token1);
-        _depositToMarginAccount(amount2, token2);
+        address _token1 = token1;
+        address _token2 = token2;
+        _depositToMarginAccount(amount1, _token1);
+        _depositToMarginAccount(amount2, _token2);
+        uint256 _nativeRefund = _token1 == address(0) ? (msg.value - amount1) : (_token2 == address(0) ? (msg.value - amount2) : 0);
+        if(_nativeRefund > 0) {
+            (bool success,) = receiver.call{value: _nativeRefund}("");
+            require(success, KuruAMMVaultErrors.NativeAssetTransferFail());
+        }
         emit KuruVaultDeposit(amount1, amount2, _shares, receiver);
         return _shares;
     }
