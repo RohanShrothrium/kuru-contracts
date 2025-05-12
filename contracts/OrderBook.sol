@@ -108,7 +108,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         _initializeOwner(_owner);
 
         require(
-            _makerFeeBps <= 8000 * _takerFeeBps / BPS_MULTIPLIER && _takerFeeBps < BPS_MULTIPLIER,
+            _makerFeeBps <= _takerFeeBps && _takerFeeBps < BPS_MULTIPLIER,
             OrderBookErrors.MarketFeeError()
         );
         require(_kuruAmmSpread % 10 == 0 && _kuruAmmSpread > 0 && _kuruAmmSpread < 500, OrderBookErrors.InvalidSpread());
