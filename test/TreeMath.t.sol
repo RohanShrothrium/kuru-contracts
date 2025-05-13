@@ -34,7 +34,7 @@ contract TreeMathTest is Test {
         }
     }
 
-    function generateRandomNumbers(bytes32 seed) internal view returns (uint32[1000] memory) {
+    function generateRandomNumbers(bytes32 seed) internal pure returns (uint32[1000] memory) {
         uint32[1000] memory numbers;
         bytes32 currentSeed = seed;
         for (uint16 i = 0; i < 1000; i++) {

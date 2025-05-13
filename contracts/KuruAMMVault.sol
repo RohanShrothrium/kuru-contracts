@@ -152,8 +152,9 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         address _token2 = token2;
         _depositToMarginAccount(amount1, _token1);
         _depositToMarginAccount(amount2, _token2);
-        uint256 _nativeRefund = _token1 == address(0) ? (msg.value - amount1) : (_token2 == address(0) ? (msg.value - amount2) : 0);
-        if(_nativeRefund > 0) {
+        uint256 _nativeRefund =
+            _token1 == address(0) ? (msg.value - amount1) : (_token2 == address(0) ? (msg.value - amount2) : 0);
+        if (_nativeRefund > 0) {
             (bool success,) = receiver.call{value: _nativeRefund}("");
             require(success, KuruAMMVaultErrors.NativeAssetTransferFail());
         }
@@ -197,7 +198,15 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
             ) / (_postActionBaseAmount);
             _newBidPrice = FixedPointMathLib.mulDiv(_newAskPrice, 1000, 1000 + SPREAD_CONSTANT);
         }
-        (,, uint96 _partiallyFilledBidSize,, uint96 _partiallyFilledAskSize,,,) = market.getVaultParams();
+        (
+            ,
+            uint256 _vaultBestBid,
+            uint96 _partiallyFilledBidSize,
+            uint256 _vaultBestAsk,
+            uint96 _partiallyFilledAskSize,
+            uint96 _vaultBidSize,
+            uint96 _vaultAskSize,
+        ) = market.getVaultParams();
         uint96 _newAskSize = uint96(
             (SPREAD_CONSTANT * _postActionBaseAmount * _marketParams.sizePrecision)
                 / ((2000 + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
@@ -207,9 +216,53 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
                 / (2000 * 10 ** _marketParams.baseAssetDecimals)
         );
         if (_newAskSize <= _partiallyFilledAskSize || _newBidSize <= _partiallyFilledBidSize) {
-            revert KuruAMMVaultErrors.NewSizeExceedsPartiallyFilledSize();
+            int256 _quoteOwedToUser;
+            int256 _baseOwedToUser;
+            //process vault ask 
+            _quoteOwedToUser = (-1)
+                * int256(
+                    (
+                        FixedPointMathLib.mulDivUp(
+                            _vaultAskSize - _partiallyFilledAskSize, _vaultBestAsk, _marketParams.sizePrecision
+                        )
+                    ) * 10 ** _marketParams.quoteAssetDecimals / 10 ** 18
+                );
+            _baseOwedToUser = int256(
+                (_vaultAskSize - _partiallyFilledAskSize) * 10 ** _marketParams.baseAssetDecimals
+                    / _marketParams.sizePrecision
+            );
+            //process vault bid
+            _quoteOwedToUser += int256(
+                (
+                    FixedPointMathLib.mulDiv(
+                        _vaultBidSize - _partiallyFilledBidSize, _vaultBestBid, _marketParams.sizePrecision
+                    )
+                ) * 10 ** _marketParams.quoteAssetDecimals / 10 ** 18
+            );
+            _baseOwedToUser -= int256(
+                (_vaultBidSize - _partiallyFilledBidSize) * 10 ** _marketParams.baseAssetDecimals
+                    / _marketParams.sizePrecision
+            );
+            if (_baseOwedToUser > 0) {
+                amount1 += uint256(_baseOwedToUser);
+            } else {
+                if (amount1 < uint256((-1) * _baseOwedToUser)) {
+                    revert KuruAMMVaultErrors.NewSizeExceedsPartiallyFilledSize();
+                }
+                amount1 -= uint256((-1) * _baseOwedToUser);
+            }
+            if (_quoteOwedToUser > 0) {
+                amount2 += uint256(_quoteOwedToUser);
+            } else {
+                if (amount2 < uint256((-1) * _quoteOwedToUser)) {
+                    revert KuruAMMVaultErrors.NewSizeExceedsPartiallyFilledSize();
+                }
+                amount2 -= uint256((-1) * _quoteOwedToUser);
+            }
+            market.updateVaultOrdSz(_newAskSize, 0, _newBidSize, 0, _newAskPrice, _newBidPrice);
+            return;
         }
-        market.updateVaultOrdSz(_newAskSize, _newBidSize, _newAskPrice, _newBidPrice);
+        market.updateVaultOrdSz(_newAskSize, 1, _newBidSize, 1, _newAskPrice, _newBidPrice);
     }
 
     /**

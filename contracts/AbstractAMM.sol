@@ -251,12 +251,20 @@ abstract contract AbstractAMM is IOrderBook {
 
     function updateVaultOrdSz(
         uint96 _vaultAskOrderSize,
+        uint96 _vaultAskPartiallyFilledSize,
         uint96 _vaultBidOrderSize,
+        uint96 _vaultBidPartiallyFilledSize,
         uint256 _askPrice,
         uint256 _bidPrice
     ) external onlyVault {
         vaultBidOrderSize = _vaultBidOrderSize;
         vaultAskOrderSize = _vaultAskOrderSize;
+        if(_vaultAskPartiallyFilledSize == 0) {
+            askPartiallyFilledSize = 0;
+        } 
+        if(_vaultBidPartiallyFilledSize == 0) {
+            bidPartiallyFilledSize = 0;
+        }
         if (vaultBestAsk == type(uint256).max) {
             vaultBestAsk = _askPrice;
         }

@@ -157,7 +157,14 @@ interface IOrderBook {
 
     function bestBidAsk() external view returns (uint256, uint256);
 
-    function updateVaultOrdSz(uint96 _askSize, uint96 _bidSize, uint256 _askPrice, uint256 _bidPrice) external;
+    function updateVaultOrdSz(
+        uint96 _askSize,
+        uint96 _askSizePartiallyFilled,
+        uint96 _bidSize,
+        uint96 _bidSizePartiallyFilled,
+        uint256 _askPrice,
+        uint256 _bidPrice
+    ) external;
 
     function getMarketParams()
         external
