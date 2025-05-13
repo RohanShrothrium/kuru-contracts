@@ -259,10 +259,10 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
                 }
                 amount2 -= uint256((-1) * _quoteOwedToUser);
             }
-            market.updateVaultOrdSz(_newAskSize, 0, _newBidSize, 0, _newAskPrice, _newBidPrice);
-            return;
+            _partiallyFilledBidSize = 0;
+            _partiallyFilledAskSize = 0;
         }
-        market.updateVaultOrdSz(_newAskSize, 1, _newBidSize, 1, _newAskPrice, _newBidPrice);
+        market.updateVaultOrdSz(_newAskSize, _partiallyFilledAskSize, _newBidSize, _partiallyFilledBidSize, _newAskPrice, _newBidPrice);
     }
 
     /**
