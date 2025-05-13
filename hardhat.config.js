@@ -8,7 +8,7 @@ module.exports = {
       evmVersion: "shanghai",
       optimizer: {
         enabled: true,
-        runs: 100,
+        runs: 1000,
       },
       viaIR: true,
     },

@@ -45,7 +45,7 @@ contract MonadDeployerTest is Test {
         );
         MonadDeployer.MarketParams memory marketParams =
             MonadDeployer.MarketParams(100 * 10 ** 18, 10 ** 10, 10 ** 2, 10, 10 ** 2, 10 ** 10, 10, 5);
-        address market = monadDeployer.deployTokenAndMarket{value: 110 ether}(tokenParams, marketParams);
+        address market = monadDeployer.deployTokenAndMarket{value: 110 ether}(tokenParams, marketParams, bytes(""));
         emit MarketCreated(market);
     }
 
@@ -56,6 +56,6 @@ contract MonadDeployerTest is Test {
         MonadDeployer.MarketParams memory marketParams =
             MonadDeployer.MarketParams(100 * 10 ** 18, 10 ** 10, 10 ** 2, 10, 10 ** 2, 10 ** 10, 10, 5);
         vm.expectRevert();
-        monadDeployer.deployTokenAndMarket{value: 10 ether}(tokenParams, marketParams);
+        monadDeployer.deployTokenAndMarket{value: 10 ether}(tokenParams, marketParams, bytes(""));
     }
 }
