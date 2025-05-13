@@ -31,7 +31,9 @@ contract MonadDeployerTest is Test {
             abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(routerImplementation, bytes("")))
         );
         router = Router(payable(routerProxy));
-        marginAccount = new MarginAccount(address(router), address(router), address(0x123));
+        marginAccount = new MarginAccount();
+        marginAccount = MarginAccount(payable(address(new ERC1967Proxy(address(marginAccount), ""))));
+        marginAccount.initialize(address(this), address(router), address(router), address(0x123));
         monadDeployer =
             new MonadDeployer(IRouter(address(router)), address(marginAccount), address(0x123), 100, 10 * 10 ** 18);
         router.initialize(address(this), address(marginAccount), address(implementation), address(0x123));
@@ -43,7 +45,7 @@ contract MonadDeployerTest is Test {
         );
         MonadDeployer.MarketParams memory marketParams =
             MonadDeployer.MarketParams(100 * 10 ** 18, 10 ** 10, 10 ** 2, 10, 10 ** 2, 10 ** 10, 10, 5);
-        address market = monadDeployer.deployTokenAndMarket{value: 110 ether}(tokenParams, marketParams);
+        address market = monadDeployer.deployTokenAndMarket{value: 110 ether}(tokenParams, marketParams, bytes(""));
         emit MarketCreated(market);
     }
 
@@ -54,6 +56,6 @@ contract MonadDeployerTest is Test {
         MonadDeployer.MarketParams memory marketParams =
             MonadDeployer.MarketParams(100 * 10 ** 18, 10 ** 10, 10 ** 2, 10, 10 ** 2, 10 ** 10, 10, 5);
         vm.expectRevert();
-        monadDeployer.deployTokenAndMarket{value: 10 ether}(tokenParams, marketParams);
+        monadDeployer.deployTokenAndMarket{value: 10 ether}(tokenParams, marketParams, bytes(""));
     }
 }

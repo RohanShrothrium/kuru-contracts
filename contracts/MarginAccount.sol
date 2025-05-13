@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
+
+// ============ External Imports ============
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
+import {Ownable} from "solady/src/auth/Ownable.sol";
+import {Initializable} from "solady/src/utils/Initializable.sol";
+import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
 // ============ Internal Library Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
-import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {ERC2771Context} from "./libraries/ERC2771Context.sol";
 import {MarginAccountErrors} from "./libraries/Errors.sol";
 
 // ============ Internal Interface Imports ============
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
-contract MarginAccount is IMarginAccount, ERC2771Context {
+contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable, UUPSUpgradeable {
     using SafeTransferLib for address;
     // Mapping from user addresses to their NATIVE balance
 
@@ -20,7 +25,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context {
     // Mapping of hash of token pairs to their market contract addresses
     mapping(address => bool) public verifiedMarket;
 
-    address immutable routerContractAddress;
+    address routerContractAddress;
     address feeCollector;
     // Native token
     address private constant NATIVE = 0x0000000000000000000000000000000000000000;
@@ -28,10 +33,18 @@ contract MarginAccount is IMarginAccount, ERC2771Context {
     event Deposit(address owner, address token, uint256 amount);
     event Withdrawal(address owner, address token, uint256 amount);
 
-    constructor(address _router, address _feeCollector, address _trustedForwarder) {
-        routerContractAddress = _router;
-        feeCollector = _feeCollector;
-        trustedForwarder = _trustedForwarder;
+    constructor() {
+        _disableInitializers();
+    }
+
+    // ============ auth =================
+
+    function _guardInitializeOwner() internal pure override returns (bool guard) {
+        guard = true;
+    }
+
+    function _authorizeUpgrade(address) internal view override {
+        _checkOwner();
     }
 
     modifier onlyRouter() {
@@ -53,6 +66,20 @@ contract MarginAccount is IMarginAccount, ERC2771Context {
         }
     }
 
+    // ============ initializer =================
+
+    function initialize(address _owner, address _router, address _feeCollector, address _trustedForwarder)
+        public
+        initializer
+    {
+        _initializeOwner(_owner);
+        routerContractAddress = _router;
+        feeCollector = _feeCollector;
+        trustedForwarder = _trustedForwarder;
+    }
+
+    // ============ router functions=================
+
     /**
      * @dev This function allows the router to register an official verified market.
      * @param _marketAddress Address of the orderbook of the market.
@@ -61,36 +88,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context {
         verifiedMarket[_marketAddress] = true;
     }
 
-    /**
-     * @dev This function allows a user to claim all of their tokens from the margin account.
-     * @param _tokens Array of tokens to claim.
-     */
-    function batchClaimMaxTokens(address[] calldata _tokens) external {
-        uint256 _balance;
-        for (uint256 i = 0; i < _tokens.length; i++) {
-            _balance = balances[_accountKey(_msgSender(), _tokens[i])];
-            if (_balance > 0) {
-                balances[_accountKey(_msgSender(), _tokens[i])] = 0;
-                _tokens[i].safeTransfer(_msgSender(), _balance);
-            }
-        }
-    }
-
-    /**
-     * @dev This function allows a verified market to register fee collected
-     * @param _assetA Address of first asset
-     * @param _feeA Fee amount of _assetA to be credited
-     * @param _assetB Address of second asset
-     * @param _feeB Fee amount of _assetB to be credited
-     */
-    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external returns (bool) {
-        require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
-
-        balances[_accountKey(feeCollector, _assetA)] += _feeA;
-        balances[_accountKey(feeCollector, _assetB)] += _feeB;
-
-        return true;
-    }
+    // ============ market functions=================
 
     /**
      * @dev This function is only callable by a verified market. Verified markets consume user balances.
@@ -154,6 +152,39 @@ contract MarginAccount is IMarginAccount, ERC2771Context {
         }
 
         return true;
+    }
+
+    /**
+     * @dev This function allows a verified market to register fee collected
+     * @param _assetA Address of first asset
+     * @param _feeA Fee amount of _assetA to be credited
+     * @param _assetB Address of second asset
+     * @param _feeB Fee amount of _assetB to be credited
+     */
+    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external returns (bool) {
+        require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
+
+        balances[_accountKey(feeCollector, _assetA)] += _feeA;
+        balances[_accountKey(feeCollector, _assetB)] += _feeB;
+
+        return true;
+    }
+
+    // ============ user functions=================
+    
+    /**
+     * @dev This function allows a user to claim all of their tokens from the margin account.
+     * @param _tokens Array of tokens to claim.
+     */
+    function batchClaimMaxTokens(address[] calldata _tokens) external {
+        uint256 _balance;
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            _balance = balances[_accountKey(_msgSender(), _tokens[i])];
+            if (_balance > 0) {
+                balances[_accountKey(_msgSender(), _tokens[i])] = 0;
+                _tokens[i].safeTransfer(_msgSender(), _balance);
+            }
+        }
     }
 
     /**

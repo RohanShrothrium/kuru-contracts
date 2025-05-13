@@ -51,9 +51,9 @@ contract BenchMarkTest is Test, Gas {
         u2 = genAddress();
         u3 = genAddress();
         trustedForwarder = address(0x123);
-        marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
-        trustedForwarder = address(0x123);
-        marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
+        marginAccount = new MarginAccount();
+        marginAccount = MarginAccount(payable(address(new ERC1967Proxy(address(marginAccount), ""))));
+        marginAccount.initialize(address(this), address(router), address(router), trustedForwarder);
         uint96 SPREAD = 30;
         OrderBook implementation = new OrderBook();
         router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);

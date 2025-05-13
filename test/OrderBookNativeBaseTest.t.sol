@@ -55,7 +55,9 @@ contract OrderBookNativeBaseTest is Test, PropertiesAsserts {
         router = Router(payable(routerProxy));
 
         trustedForwarder = address(0x123);
-        marginAccount = new MarginAccount(address(router), address(router), trustedForwarder);
+        marginAccount = new MarginAccount();
+        marginAccount = MarginAccount(payable(address(new ERC1967Proxy(address(marginAccount), ""))));
+        marginAccount.initialize(address(this), address(router), address(router), trustedForwarder);
         router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
         uint96 SPREAD = 30;
 

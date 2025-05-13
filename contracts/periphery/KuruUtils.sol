@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import {IOrderBook} from "../interfaces/IOrderBook.sol";
 import {IReadERC20} from "../interfaces/IReadERC20.sol";

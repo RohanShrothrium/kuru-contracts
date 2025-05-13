@@ -2,7 +2,7 @@
 
 import {IOrderBook} from "./IOrderBook.sol";
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 interface IRouter {
     struct MarketParams {

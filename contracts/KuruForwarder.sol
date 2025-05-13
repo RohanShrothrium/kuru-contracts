@@ -2,12 +2,19 @@
 
 pragma solidity ^0.8.20;
 
+
+// ============ External Imports ============
 import {ECDSA} from "solady/src/utils/ECDSA.sol";
 import {EIP712} from "solady/src/utils/EIP712.sol";
+import {Initializable} from "solady/src/utils/Initializable.sol";
+import {Ownable} from "solady/src/auth/Ownable.sol";
+import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
+
+// ============ Internal Interface Imports ============
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
 import {KuruForwarderErrors} from "./libraries/Errors.sol";
 
-contract KuruForwarder is EIP712 {
+contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     using ECDSA for bytes32;
 
     error ExecutionFailed(bytes);
@@ -62,9 +69,25 @@ contract KuruForwarder is EIP712 {
 
     mapping(address => uint256) private _nonces;
 
-    constructor(bytes4[] memory allowedInterfaces) {
-        for (uint256 i = 0; i < allowedInterfaces.length; i++) {
-            allowedInterface[allowedInterfaces[i]] = true;
+    constructor() {
+        _disableInitializers();
+    }
+
+    // ============ auth =================
+    function _guardInitializeOwner() internal pure override returns (bool guard) {
+        guard = true;
+    }
+
+    function _authorizeUpgrade(address) internal view override {
+        _checkOwner();
+    }
+
+    // ============ initializer =================
+
+    function initialize(address _owner, bytes4[] memory _allowedInterfaces) public initializer {
+        _initializeOwner(_owner);
+        for (uint256 i = 0; i < _allowedInterfaces.length; i++) {
+            allowedInterface[_allowedInterfaces[i]] = true;
         }
     }
 
