@@ -197,6 +197,10 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
                 ) * vaultPricePrecision
             ) / (_postActionBaseAmount);
             _newBidPrice = FixedPointMathLib.mulDiv(_newAskPrice, 1000, 1000 + SPREAD_CONSTANT);
+            (uint256 _bestBid, uint256 _bestAsk) = market.bestBidAsk();
+            if(_bestBid > _newAskPrice || _bestAsk < _newBidPrice) {
+                revert KuruAMMVaultErrors.VaultInitializationPriceCrossesBook();
+            }
         }
         (
             ,
