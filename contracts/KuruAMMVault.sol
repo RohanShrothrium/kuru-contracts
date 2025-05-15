@@ -198,7 +198,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
             ) / (_postActionBaseAmount);
             _newBidPrice = FixedPointMathLib.mulDiv(_newAskPrice, 1000, 1000 + SPREAD_CONSTANT);
             (uint256 _bestBid, uint256 _bestAsk) = market.bestBidAsk();
-            if(_bestBid > _newAskPrice || _bestAsk < _newBidPrice) {
+            if((_bestBid > _newAskPrice && _bestBid != type(uint256).max) || (_bestAsk < _newBidPrice && _bestAsk != 0)) {
                 revert KuruAMMVaultErrors.VaultInitializationPriceCrossesBook();
             }
         }
@@ -222,29 +222,30 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         if (_newAskSize <= _partiallyFilledAskSize || _newBidSize <= _partiallyFilledBidSize) {
             int256 _quoteOwedToUser;
             int256 _baseOwedToUser;
-            //process vault ask 
-            _quoteOwedToUser = (-1)
-                * int256(
-                    (
-                        FixedPointMathLib.mulDivUp(
-                            _vaultAskSize - _partiallyFilledAskSize, _vaultBestAsk, _marketParams.sizePrecision
-                        )
-                    ) * 10 ** _marketParams.quoteAssetDecimals / 10 ** 18
-                );
-            _baseOwedToUser = int256(
-                (_vaultAskSize - _partiallyFilledAskSize) * 10 ** _marketParams.baseAssetDecimals
-                    / _marketParams.sizePrecision
-            );
-            //process vault bid
+            //process vault bid 
             _quoteOwedToUser += int256(
                 (
-                    FixedPointMathLib.mulDiv(
+                    FixedPointMathLib.mulDivUp(
                         _vaultBidSize - _partiallyFilledBidSize, _vaultBestBid, _marketParams.sizePrecision
                     )
                 ) * 10 ** _marketParams.quoteAssetDecimals / 10 ** 18
             );
-            _baseOwedToUser -= int256(
+            _baseOwedToUser = (-1) * int256(
                 (_vaultBidSize - _partiallyFilledBidSize) * 10 ** _marketParams.baseAssetDecimals
+                    / _marketParams.sizePrecision
+            );
+            //process vault ask
+            //price has moved down now, so we process the vault ask size at the old vault bid price
+            _quoteOwedToUser += (-1)
+                * int256(
+                    (
+                        FixedPointMathLib.mulDivUp(
+                            _vaultAskSize - _partiallyFilledAskSize, _vaultBestBid, _marketParams.sizePrecision
+                        )
+                    ) * 10 ** _marketParams.quoteAssetDecimals / 10 ** 18
+                );
+            _baseOwedToUser += int256(
+                (_vaultAskSize - _partiallyFilledAskSize) * 10 ** _marketParams.baseAssetDecimals
                     / _marketParams.sizePrecision
             );
             if (_baseOwedToUser > 0) {
