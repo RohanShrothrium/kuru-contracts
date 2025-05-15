@@ -225,7 +225,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
             //process vault bid 
             _quoteOwedToUser += int256(
                 (
-                    FixedPointMathLib.mulDivUp(
+                    FixedPointMathLib.mulDiv(
                         _vaultBidSize - _partiallyFilledBidSize, _vaultBestBid, _marketParams.sizePrecision
                     )
                 ) * 10 ** _marketParams.quoteAssetDecimals / 10 ** 18
