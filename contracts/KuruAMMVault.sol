@@ -234,18 +234,20 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
                 (_vaultBidSize - _partiallyFilledBidSize) * 10 ** _marketParams.baseAssetDecimals
                     / _marketParams.sizePrecision
             );
-            //process vault ask
-            //price has moved down now, so we process the vault ask size at the old vault bid price
+
+            // process vault ask
+            // price has moved down now, new vault ask parameters become old vault bid parameters
+            // only partially filled ask size remains same
             _quoteOwedToUser += (-1)
                 * int256(
                     (
                         FixedPointMathLib.mulDivUp(
-                            _vaultAskSize - _partiallyFilledAskSize, _vaultBestBid, _marketParams.sizePrecision
+                            _vaultBidSize - _partiallyFilledAskSize, _vaultBestBid, _marketParams.sizePrecision
                         )
                     ) * 10 ** _marketParams.quoteAssetDecimals / 10 ** 18
                 );
             _baseOwedToUser += int256(
-                (_vaultAskSize - _partiallyFilledAskSize) * 10 ** _marketParams.baseAssetDecimals
+                (_vaultBidSize - _partiallyFilledAskSize) * 10 ** _marketParams.baseAssetDecimals
                     / _marketParams.sizePrecision
             );
             if (_baseOwedToUser > 0) {
