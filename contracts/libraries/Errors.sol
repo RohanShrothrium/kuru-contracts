@@ -164,6 +164,10 @@ library KuruAMMVaultErrors {
      * @dev Thrown when new size exceeds partially filled size
      */
     error NewSizeExceedsPartiallyFilledSize();
+    /**
+    * @dev Thrown when vault initialization price crosses the book 
+     */
+    error VaultInitializationPriceCrossesBook();
 }
 
 library KuruForwarderErrors {

@@ -110,11 +110,11 @@ contract OrderBookTest is Test, PropertiesAsserts {
         return (_newPrice, _newFlipPrice, _newSize);
     }
 
-    function _amountPayableInQuote(uint32 _price, uint96 _size) internal returns (uint256) {
+    function _amountPayableInQuote(uint32 _price, uint96 _size) internal view returns (uint256) {
         return (((uint256(((_price * _size) / SIZE_PRECISION))) * 10 ** nativeDecimals)) / PRICE_PRECISION;
     }
 
-    function _calculateFeePortions(uint256 _amount) internal returns (uint256, uint256) {
+    function _calculateFeePortions(uint256 _amount) internal view returns (uint256, uint256) {
         if (_takerFeeBps > 0) {
             uint256 _totalFee = (FixedPointMathLib.mulDivUp(_amount, _takerFeeBps, 10 ** 4));
             uint256 _protocolFee = ((_totalFee * (_takerFeeBps - _makerFeeBps)) / _takerFeeBps);
@@ -196,7 +196,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         _flippedPrice = uint32(bound(_flippedPrice, _price + _tickSize, _maxPrice));
         (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, true);
-        address _maker = _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
+        _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
         assertEq(orderBook.s_orderIdCounter(), 1);
         (uint40 head, uint40 tail) = orderBook.s_buyPricePoints(_price);
         assertEq(head, 1);
@@ -209,7 +209,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         _flippedPrice = uint32(bound(_flippedPrice, _price + _tickSize, _maxPrice));
         (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, true);
-        address _maker = _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
+        _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
         uint256 _sizeToSell = (_size / 2) * 10 ** eth.decimals() / SIZE_PRECISION; //half the size
         address _taker = genAddress();
         eth.mint(_taker, _sizeToSell);
@@ -231,7 +231,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         _flippedPrice = uint32(bound(_flippedPrice, _price + _tickSize, _maxPrice));
         (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, true);
-        address _maker = _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
+        _addFlipBuyOrder(address(0), _price, _flippedPrice, _size, 0);
         uint256 _sizeToSell = (_size + 10 ** 6) * 10 ** eth.decimals() / SIZE_PRECISION; //half the size
         address _taker = genAddress();
         eth.mint(_taker, _sizeToSell);
@@ -325,7 +325,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         _price = _price - _price % _tickSize;
         _size = uint96(clampBetween(_size, _minSize + 2, _maxSize - 2));
 
-        address _makerSell = _addSellOrder(address(0), _price, _size - 1, false);
+        _addSellOrder(address(0), _price, _size - 1, false);
 
         uint96 _buySize = _size; //extra size of 1 than the sell order
         address _maker = genAddress();
@@ -358,7 +358,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         vm.assume(_size > _minSize && _size < _maxSize);
         (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, false);
-        address _maker = _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
+        _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
         assertEq(orderBook.s_orderIdCounter(), 1);
         (uint40 head, uint40 tail) = orderBook.s_sellPricePoints(_price);
         assertEq(head, 1);
@@ -371,7 +371,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         vm.assume(_size > _minSize && _size < _maxSize);
         (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, false);
-        address _maker = _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
+        _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
         uint96 _sizeToBuy = _size / 2;
         uint256 _quoteToBuy = ((_sizeToBuy * _price) / SIZE_PRECISION) * 10 ** nativeDecimals / PRICE_PRECISION;
         address _taker = genAddress();
@@ -395,7 +395,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
         vm.assume(_size > _minSize && _size < _maxSize);
         (_price, _flippedPrice, _size) = _adjustPriceAndSizeFlip(_price, _flippedPrice, _size, false);
-        address _maker = _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
+        _addFlipSellOrder(address(0), _price, _flippedPrice, _size);
         uint256 _sizeToBuy = _size + 10 ** 10;
         uint256 _quoteToBuy =
             (((_sizeToBuy + 10 ** 6) * _price) / SIZE_PRECISION) * 10 ** nativeDecimals / PRICE_PRECISION;
@@ -816,7 +816,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         uint256 _decimals = nativeDecimals; //caching to avoid startPrank glitch
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
-        address _maker = _addSellOrder(address(0), _price, _size, false);
+        _addSellOrder(address(0), _price, _size, false);
         uint96 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
         uint96 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
         uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
@@ -835,10 +835,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
         uint256 _decimals = nativeDecimals; //caching to avoid startPrank glitch
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
-        address _maker = _addSellOrder(address(0), _price, _size, false);
+        _addSellOrder(address(0), _price, _size, false);
         uint96 _quoteTokens = mulDivUp(_price, _size); //Quote tokens needed to fill
         uint96 _quoteExtra = _quoteTokens + 101; //Extra for partial fill
-        uint96 _toleranceInBase = SIZE_PRECISION / _price; //Size worth 1 price precision
 
         address _taker = genAddress();
         vm.deal(_taker, (_quoteExtra * 10 ** _decimals) / PRICE_PRECISION);
@@ -858,7 +857,6 @@ contract OrderBookTest is Test, PropertiesAsserts {
         uint256 _expectedRebateA = (_expectedQuoteA * _makerFeeBps) / 10 ** 4;
         address _makerB = _addBuyOrder(address(0), _priceB, _sizeB, 0, false);
         uint256 _expectedQuoteB = _amountPayableInQuote(_priceB, _sizeB);
-        uint256 _expectedRebateB = (_expectedQuoteB * _makerFeeBps) / 10 ** 4;
 
         uint256 _expectedQuote = _expectedQuoteA + _expectedQuoteB;
         (uint256 _protocolFee,) = _calculateFeePortions(_expectedQuote);
@@ -929,10 +927,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         uint256 _decimals = eth.decimals();
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
-        address _maker = _addBuyOrder(address(0), _price, _size, 0, false);
+        _addBuyOrder(address(0), _price, _size, 0, false);
 
-        uint256 _expectedQuote = _amountPayableInQuote(_price, _size);
-        uint256 _quoteTolerance = 10 ** nativeDecimals / PRICE_PRECISION;
         uint256 _sizeForSale = ((_size + 10 ** 6) * 10 ** _decimals) / SIZE_PRECISION; //extra 10**6 size for partial fill
 
         address _taker = genAddress();
@@ -948,10 +944,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         uint256 _decimals = eth.decimals();
         (_price, _size) = _adjustPriceAndSize(_price, _size);
 
-        address _maker = _addBuyOrder(address(0), _price, _size, 0, false);
+        _addBuyOrder(address(0), _price, _size, 0, false);
 
-        uint256 _expectedQuote = _amountPayableInQuote(_price, _size);
-        uint256 _quoteTolerance = 10 ** nativeDecimals / PRICE_PRECISION;
         uint256 _sizeForSale = ((_size + 10 ** 6) * 10 ** _decimals) / SIZE_PRECISION;
 
         address _taker = genAddress();
@@ -1106,7 +1100,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function mulDivUp(uint32 _price, uint96 _size) internal returns (uint96) {
+    function mulDivUp(uint32 _price, uint96 _size) internal pure returns (uint96) {
         uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, SIZE_PRECISION);
         if (_result >= type(uint96).max) {
             revert("OrderBook: Too much size being filled");

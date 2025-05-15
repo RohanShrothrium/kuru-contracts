@@ -37,7 +37,9 @@ contract MonadDeployer {
     IMarginAccount immutable marginAccount;
 
     //EVENTS
-    event PumpingTime(address indexed token, string tokenURI, address dev, uint256 supplyToDev, address market, bytes metadata);
+    event PumpingTime(
+        address indexed token, string tokenURI, address dev, uint256 supplyToDev, address market, bytes metadata
+    );
     //ERRORS
 
     error InsufficientAssets(uint256 expected, uint256 received);
@@ -57,11 +59,11 @@ contract MonadDeployer {
         kuruCollectiveFee = _kuruCollectiveFee;
     }
 
-    function deployTokenAndMarket(TokenParams memory tokenParams, MarketParams memory marketParams, bytes calldata metadata)
-        external
-        payable
-        returns (address market)
-    {
+    function deployTokenAndMarket(
+        TokenParams memory tokenParams,
+        MarketParams memory marketParams,
+        bytes calldata metadata
+    ) external payable returns (address market) {
         KuruERC20 token = new KuruERC20(tokenParams.name, tokenParams.symbol, tokenParams.initialSupply, address(this));
         market = router.deployProxy(
             IOrderBook.OrderBookType.NATIVE_IN_QUOTE,
@@ -88,7 +90,12 @@ contract MonadDeployer {
         token.transfer(tokenParams.dev, tokenParams.initialSupply - _supplyToVault);
         marginAccount.deposit{value: kuruCollectiveFee}(kuruCollective, address(0), kuruCollectiveFee);
         emit PumpingTime(
-            address(token), tokenParams.tokenURI, tokenParams.dev, tokenParams.initialSupply - _supplyToVault, market, metadata
+            address(token),
+            tokenParams.tokenURI,
+            tokenParams.dev,
+            tokenParams.initialSupply - _supplyToVault,
+            market,
+            metadata
         );
     }
 }

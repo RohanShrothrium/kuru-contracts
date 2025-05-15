@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 
 contract EncodingTest is Test {
-    function testEncodeDecode() public {
+    function testEncodeDecode() public view {
         bytes memory first = abi.encode(address(1), address(2), uint256(10), true);
         bytes memory second = abi.encode(address(3), address(4), uint256(20), false);
 

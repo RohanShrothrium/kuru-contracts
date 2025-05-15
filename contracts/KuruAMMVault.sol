@@ -148,8 +148,16 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         }
         require(_shares > 0, KuruAMMVaultErrors.InsufficientLiquidityMinted());
         _updateMarketVaultOrderSize(amount1, amount2, _baseAmount, _currentAskPrice, true);
-        _depositToMarginAccount(amount1, token1);
-        _depositToMarginAccount(amount2, token2);
+        address _token1 = token1;
+        address _token2 = token2;
+        _depositToMarginAccount(amount1, _token1);
+        _depositToMarginAccount(amount2, _token2);
+        uint256 _nativeRefund =
+            _token1 == address(0) ? (msg.value - amount1) : (_token2 == address(0) ? (msg.value - amount2) : 0);
+        if (_nativeRefund > 0) {
+            (bool success,) = receiver.call{value: _nativeRefund}("");
+            require(success, KuruAMMVaultErrors.NativeAssetTransferFail());
+        }
         emit KuruVaultDeposit(amount1, amount2, _shares, receiver);
         return _shares;
     }
@@ -189,8 +197,20 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
                 ) * vaultPricePrecision
             ) / (_postActionBaseAmount);
             _newBidPrice = FixedPointMathLib.mulDiv(_newAskPrice, 1000, 1000 + SPREAD_CONSTANT);
+            (uint256 _bestBid, uint256 _bestAsk) = market.bestBidAsk();
+            if((_bestBid > _newAskPrice && _bestBid != type(uint256).max) || (_bestAsk < _newBidPrice && _bestAsk != 0)) {
+                revert KuruAMMVaultErrors.VaultInitializationPriceCrossesBook();
+            }
         }
-        (,, uint96 _partiallyFilledBidSize,, uint96 _partiallyFilledAskSize,,,) = market.getVaultParams();
+        (
+            ,
+            uint256 _vaultBestBid,
+            uint96 _partiallyFilledBidSize,
+            uint256 _vaultBestAsk,
+            uint96 _partiallyFilledAskSize,
+            uint96 _vaultBidSize,
+            uint96 _vaultAskSize,
+        ) = market.getVaultParams();
         uint96 _newAskSize = uint96(
             (SPREAD_CONSTANT * _postActionBaseAmount * _marketParams.sizePrecision)
                 / ((2000 + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
@@ -200,9 +220,56 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
                 / (2000 * 10 ** _marketParams.baseAssetDecimals)
         );
         if (_newAskSize <= _partiallyFilledAskSize || _newBidSize <= _partiallyFilledBidSize) {
-            revert KuruAMMVaultErrors.NewSizeExceedsPartiallyFilledSize();
+            int256 _quoteOwedToUser;
+            int256 _baseOwedToUser;
+            //process vault bid 
+            _quoteOwedToUser += int256(
+                (
+                    FixedPointMathLib.mulDiv(
+                        _vaultBidSize - _partiallyFilledBidSize, _vaultBestBid, _marketParams.sizePrecision
+                    )
+                ) * 10 ** _marketParams.quoteAssetDecimals / 10 ** 18
+            );
+            _baseOwedToUser = (-1) * int256(
+                (_vaultBidSize - _partiallyFilledBidSize) * 10 ** _marketParams.baseAssetDecimals
+                    / _marketParams.sizePrecision
+            );
+
+            // process vault ask
+            // price has moved down now, new vault ask parameters become old vault bid parameters
+            // only partially filled ask size remains same
+            _quoteOwedToUser += (-1)
+                * int256(
+                    (
+                        FixedPointMathLib.mulDivUp(
+                            _vaultBidSize - _partiallyFilledAskSize, _vaultBestBid, _marketParams.sizePrecision
+                        )
+                    ) * 10 ** _marketParams.quoteAssetDecimals / 10 ** 18
+                );
+            _baseOwedToUser += int256(
+                (_vaultBidSize - _partiallyFilledAskSize) * 10 ** _marketParams.baseAssetDecimals
+                    / _marketParams.sizePrecision
+            );
+            if (_baseOwedToUser > 0) {
+                amount1 += uint256(_baseOwedToUser);
+            } else {
+                if (amount1 < uint256((-1) * _baseOwedToUser)) {
+                    revert KuruAMMVaultErrors.NewSizeExceedsPartiallyFilledSize();
+                }
+                amount1 -= uint256((-1) * _baseOwedToUser);
+            }
+            if (_quoteOwedToUser > 0) {
+                amount2 += uint256(_quoteOwedToUser);
+            } else {
+                if (amount2 < uint256((-1) * _quoteOwedToUser)) {
+                    revert KuruAMMVaultErrors.NewSizeExceedsPartiallyFilledSize();
+                }
+                amount2 -= uint256((-1) * _quoteOwedToUser);
+            }
+            _partiallyFilledBidSize = 0;
+            _partiallyFilledAskSize = 0;
         }
-        market.updateVaultOrdSz(_newAskSize, _newBidSize, _newAskPrice, _newBidPrice);
+        market.updateVaultOrdSz(_newAskSize, _partiallyFilledAskSize, _newBidSize, _partiallyFilledBidSize, _newAskPrice, _newBidPrice);
     }
 
     /**

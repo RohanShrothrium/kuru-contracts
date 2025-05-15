@@ -76,9 +76,8 @@ contract Deployer is Script {
         router.initialize(deployerAdmin, address(marginAccount), address(OBImpl), address(kuruForwarder));
         assert(router.owner() == deployerAdmin);
         vm.startBroadcast(deployerAdmin);
-        MonadDeployer monadDeployer = new MonadDeployer(
-            IRouter(address(proxy)), address(marginAccount), address(kuruForwarder), 100, 0
-        );
+        MonadDeployer monadDeployer =
+            new MonadDeployer(IRouter(address(proxy)), address(marginAccount), address(kuruForwarder), 100, 0);
         console.log("MonadDeployer deployed to:", address(monadDeployer));
         vm.stopBroadcast();
         vm.startBroadcast(deployerAdmin);

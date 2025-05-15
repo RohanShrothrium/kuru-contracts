@@ -171,7 +171,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
     }
 
     // ============ user functions=================
-    
+
     /**
      * @dev This function allows a user to claim all of their tokens from the margin account.
      * @param _tokens Array of tokens to claim.

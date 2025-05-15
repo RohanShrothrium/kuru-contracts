@@ -107,10 +107,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
     ) public initializer {
         _initializeOwner(_owner);
 
-        require(
-            _makerFeeBps <= _takerFeeBps && _takerFeeBps < BPS_MULTIPLIER,
-            OrderBookErrors.MarketFeeError()
-        );
+        require(_makerFeeBps <= _takerFeeBps && _takerFeeBps < BPS_MULTIPLIER, OrderBookErrors.MarketFeeError());
         require(_kuruAmmSpread % 10 == 0 && _kuruAmmSpread > 0 && _kuruAmmSpread < 500, OrderBookErrors.InvalidSpread());
 
         orderBookType = _type;
@@ -192,12 +189,12 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
     }
 
     /**
-    * @dev Adds a flip buy order to the order book
-    * @param _price Price of the buy order.
-    * @param _flippedPrice Price of the sell order to which this order will flip on a fill
-    * @param _size Size of the buy order.
-    * @param _provisionOrRevert Whether to provision or revert the order.
-    */
+     * @dev Adds a flip buy order to the order book
+     * @param _price Price of the buy order.
+     * @param _flippedPrice Price of the sell order to which this order will flip on a fill
+     * @param _size Size of the buy order.
+     * @param _provisionOrRevert Whether to provision or revert the order.
+     */
     function addFlipBuyOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
         public
         marketActive
@@ -259,12 +256,12 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
     }
 
     /**
-    * @dev Adds a flip sell order to the order book
-    * @param _price Price of the sell order.
-    * @param _flippedPrice Price of the buy order to which this order will flip on a fill
-    * @param _size Size of the sell order.
-    * @param _provisionOrRevert Whether to provision or revert the order.
-    */
+     * @dev Adds a flip sell order to the order book
+     * @param _price Price of the sell order.
+     * @param _flippedPrice Price of the buy order to which this order will flip on a fill
+     * @param _size Size of the sell order.
+     * @param _provisionOrRevert Whether to provision or revert the order.
+     */
     function addFlipSellOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
         public
         marketActive
@@ -480,7 +477,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             } else {
                 OrderLinkedList.adjustForTail(s_sellPricePoints[_order.price], _order.prev, _order.next);
             }
-            
+
             marginAccount.creditUser(
                 _order.ownerAddress, baseAsset, ((_order.size * 10 ** baseAssetDecimals) / sizePrecision), true
             );
