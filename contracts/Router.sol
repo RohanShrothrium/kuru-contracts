@@ -50,6 +50,14 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint96 kuruAmmSpread
     );
 
+    event KuruRouterSwap(
+        address msgSender,
+        address debitToken,
+        address creditToken, 
+        uint256 amountIn,
+        uint256 amountOut
+    );
+
     constructor() {
         _disableInitializers();
     }
@@ -270,6 +278,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         if (_nativeSend[0] == false) {
             _debitToken.safeTransferFrom(msg.sender, address(this), _amount);
         }
+        uint256 _cachedAmountIn = _amount;
         // @note: We don't validate msg.value cause we do it in the market contract and we assume no funds ever stay on the router.
 
         // @audit: Do we check if we debit token against token from first market params? Do we check if we credit token against token from last market params?
@@ -316,6 +325,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _amount = _amountOut;
         }
         require(_amountOut >= _minAmountOut, RouterErrors.SlippageExceeded());
+        emit KuruRouterSwap(msg.sender, _debitToken, _creditToken, _cachedAmountIn, _amountOut);
         if (_creditToken != address(0)) {
             _creditToken.safeTransfer(msg.sender, _amountOut);
         } else {
