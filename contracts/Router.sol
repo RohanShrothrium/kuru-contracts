@@ -237,13 +237,13 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @dev This function lets anyone batch upgrade orderbooks if a new implementation is available
      * @param proxies The proxies which are to be upgraded to the latest orderbook implementation
      */
-    function upgradeMultipleOrderBookProxies(address[] memory proxies) public {
+    function upgradeMultipleOrderBookProxies(address[] memory proxies) public onlyOwner {
         for (uint256 i = 0; i < proxies.length; i++) {
             UUPSUpgradeable(proxies[i]).upgradeToAndCall(orderBookImplementation, bytes(""));
         }
     }
 
-    function upgradeMultipleVaultProxies(address[] memory proxies) public {
+    function upgradeMultipleVaultProxies(address[] memory proxies) public onlyOwner {
         for (uint256 i = 0; i < proxies.length; i++) {
             UUPSUpgradeable(proxies[i]).upgradeToAndCall(kuruAmmVaultImplementation, bytes(""));
         }

@@ -28,10 +28,8 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
     IMarginAccount private marginAccount;
     IOrderBook private market;
     MarketParams private marketParams;
-    //TODO: Add minimum initial liquidity and burn it, analogous to Uniswap V2.
     uint256 constant vaultPricePrecision = 10 ** 18;
     uint256 constant MIN_LIQUIDITY = 10 ** 3;
-    //TODO: Add vault share precision
     uint96 SPREAD_CONSTANT;
 
     constructor() {
@@ -392,7 +390,9 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
      * @dev Returns normalized base asset amount without profits
      */
     function _returnNormalizedAmountAndPrice() internal view returns (uint256, uint256) {
-        uint96 _normalizedAskSize = (market.vaultAskOrderSize() * (2000 + SPREAD_CONSTANT)) / SPREAD_CONSTANT; //TODO: rounding
+        // @audit what is the right way to round this value?
+        // ideally, should be rounded up during deposits and rounded down during withdrawals
+        uint96 _normalizedAskSize = (market.vaultAskOrderSize() * (2000 + SPREAD_CONSTANT)) / SPREAD_CONSTANT; 
         uint256 _price = market.vaultBestAsk();
         return ((_normalizedAskSize * 10 ** marketParams.baseAssetDecimals) / marketParams.sizePrecision, _price);
     }
