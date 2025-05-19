@@ -165,7 +165,7 @@ library KuruAMMVaultErrors {
      */
     error NewSizeExceedsPartiallyFilledSize();
     /**
-    * @dev Thrown when vault initialization price crosses the book 
+     * @dev Thrown when vault initialization price crosses the book
      */
     error VaultInitializationPriceCrossesBook();
 }

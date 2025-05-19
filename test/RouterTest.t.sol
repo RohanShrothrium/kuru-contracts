@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import {RouterErrors} from "../contracts/libraries/Errors.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
+import {KuruAMMVault} from "../contracts/KuruAMMVault.sol";
 import {IOrderBook} from "../contracts/interfaces/IOrderBook.sol";
 import {Router} from "../contracts/Router.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
@@ -58,8 +59,9 @@ contract OrderBookTest is Test {
         marginAccount.initialize(address(this), address(router), address(router), trustedForwarder);
 
         OrderBook implementation = new OrderBook();
+        KuruAMMVault kuruAmmVaultImplementation = new KuruAMMVault();
         trustedForwarder = address(0x123);
-        router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
+        router.initialize(address(this), address(marginAccount), address(implementation), address(kuruAmmVaultImplementation), trustedForwarder);
         OrderBook.OrderBookType _type;
         eth_mon = _createOrderbook(_type, address(eth), address(mon), SIZE_PRECISION, PRICE_PRECISION);
         mon_usdc = _createOrderbook(_type, address(mon), address(usdc), SIZE_PRECISION, PRICE_PRECISION);

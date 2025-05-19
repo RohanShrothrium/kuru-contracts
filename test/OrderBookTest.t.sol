@@ -62,7 +62,8 @@ contract OrderBookTest is Test, PropertiesAsserts {
         marginAccount = MarginAccount(payable(address(new ERC1967Proxy(address(marginAccount), ""))));
         marginAccount.initialize(address(this), address(router), address(router), trustedForwarder);
         uint96 SPREAD = 100;
-        router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
+        KuruAMMVault kuruAmmVaultImplementation = new KuruAMMVault();
+        router.initialize(address(this), address(marginAccount), address(implementation), address(kuruAmmVaultImplementation), trustedForwarder);
 
         address proxy = router.deployProxy(
             _type,
@@ -1465,8 +1466,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_fullAskTaker);
         usdc.approve(address(orderBook), _quoteForFillingAsk);
         orderBook.placeAndExecuteMarketBuy(uint32((_quoteForFillingAsk * PRICE_PRECISION) / 10 ** 18), 0, false, true);
-        (,,, uint256 _vaultBestAskNew,,,,) =
-            orderBook.getVaultParams();
+        (,,, uint256 _vaultBestAskNew,,,,) = orderBook.getVaultParams();
         console.log(_vaultBestAskNew * 1000 / _vaultBestAsk);
     }
 
@@ -1543,7 +1543,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth.approve(address(orderBook), _bidTakerBaseAmount);
         orderBook.placeAndExecuteMarketSell(_vaultBidOrderSize / 2, 0, false, true);
         vm.stopPrank();
-        (,,uint96 _partiallyFilledBid,,uint96 _partiallyFilledAsk,,,) = orderBook.getVaultParams();
+        (,, uint96 _partiallyFilledBid,, uint96 _partiallyFilledAsk,,,) = orderBook.getVaultParams();
         assert(_partiallyFilledBid != 0);
         vm.startPrank(_vaultMaker);
         vault.withdraw(_shares, _vaultMaker, _vaultMaker);

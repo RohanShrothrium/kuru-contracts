@@ -7,6 +7,7 @@ import {Router} from "../contracts/Router.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
 import {KuruForwarder} from "../contracts/KuruForwarder.sol";
+import {KuruAMMVault} from "../contracts/KuruAMMVault.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {MonadDeployer} from "../contracts/periphery/MonadDeployer.sol";
 import {IRouter} from "../contracts/interfaces/IRouter.sol";
@@ -70,10 +71,12 @@ contract Deployer is Script {
         OrderBook OBImpl = new OrderBook();
         console.log("OrderBook implementation deployed to:", address(OBImpl));
         vm.startBroadcast(deployerAdmin);
-        router.initialize(deployerAdmin, address(marginAccount), address(OBImpl), address(kuruForwarder));
+        KuruAMMVault kuruAmmVaultImpl = new KuruAMMVault();
+        console.log("KuruAMMVault implementation deployed to:", address(kuruAmmVaultImpl));
+        router.initialize(deployerAdmin, address(marginAccount), address(OBImpl), address(kuruAmmVaultImpl), address(kuruForwarder));
         vm.stopBroadcast();
         vm.expectRevert(InvalidInitialization.selector);
-        router.initialize(deployerAdmin, address(marginAccount), address(OBImpl), address(kuruForwarder));
+        router.initialize(deployerAdmin, address(marginAccount), address(OBImpl), address(kuruAmmVaultImpl), address(kuruForwarder));
         assert(router.owner() == deployerAdmin);
         vm.startBroadcast(deployerAdmin);
         MonadDeployer monadDeployer =

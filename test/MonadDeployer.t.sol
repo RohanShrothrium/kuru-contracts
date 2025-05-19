@@ -19,12 +19,12 @@ contract MonadDeployerTest is Test {
     OrderBook implementation;
     Router router;
 
-
     event MarketCreated(address market);
 
     function setUp() public {
         implementation = new OrderBook();
         Router routerImplementation = new Router();
+        KuruAMMVault kuruAmmVaultImplementation = new KuruAMMVault();
         address routerProxy = Create2.deploy(
             0,
             bytes32(keccak256("")),
@@ -36,7 +36,7 @@ contract MonadDeployerTest is Test {
         marginAccount.initialize(address(this), address(router), address(router), address(0x123));
         monadDeployer =
             new MonadDeployer(IRouter(address(router)), address(marginAccount), address(0x123), 100, 10 * 10 ** 18);
-        router.initialize(address(this), address(marginAccount), address(implementation), address(0x123));
+        router.initialize(address(this), address(marginAccount), address(implementation), address(kuruAmmVaultImplementation), address(0x123));
     }
 
     function testDeployMarket() public {

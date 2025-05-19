@@ -1,36 +1,44 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+// ============ External Imports ============
+import {ERC20} from "solady/src/tokens/ERC20.sol";
+import {Ownable} from "solady/src/auth/Ownable.sol";
+import {Initializable} from "solady/src/utils/Initializable.sol";
+import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
-import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
+// ============ Internal Imports ============
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {KuruAMMVaultErrors} from "./libraries/Errors.sol";
-
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 import {IKuruAMMVault} from "./interfaces/IKuruAMMVault.sol";
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
-contract KuruAMMVault is ERC20, IKuruAMMVault {
-    using SafeTransferLib for ERC20;
+contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgradeable {
+    using SafeTransferLib for address;
     using FixedPointMathLib for uint256;
 
-    address private immutable token1;
-    uint256 private immutable token1Decimals;
+    address private token1;
+    uint256 private token1Decimals;
 
-    address private immutable token2;
-    uint256 private immutable token2Decimals;
+    address private token2;
+    uint256 private token2Decimals;
 
-    IMarginAccount private immutable marginAccount;
-    IOrderBook private immutable market;
-    uint256 vaultPricePrecision = 10 ** 18;
+    IMarginAccount private marginAccount;
+    IOrderBook private market;
     MarketParams private marketParams;
-    //TODO: Add minimum initial liquidity and burn it, analogous to Uniswap V2.
+    uint256 constant vaultPricePrecision = 10 ** 18;
     uint256 constant MIN_LIQUIDITY = 10 ** 3;
-    //TODO: Add vault share precision
-    uint96 immutable SPREAD_CONSTANT;
+    uint96 SPREAD_CONSTANT;
 
-    constructor(
+    constructor() {
+        _disableInitializers();
+    }
+
+    // ============ initializer =================
+    function initialize(
+        address _owner,
         address token1_,
         address token2_,
         address _marginAccount,
@@ -38,7 +46,8 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         uint96 _spreadConstant,
         string memory _name,
         string memory _symbol
-    ) ERC20(_name, _symbol) {
+    ) public initializer {
+        _initializeOwner(_owner);
         token1 = token1_;
         token1Decimals = token1_ != address(0) ? ERC20(token1_).decimals() : 18;
         token2 = token2_;
@@ -52,6 +61,23 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         if (token2_ != address(0)) {
             ERC20(token2_).approve(_marginAccount, type(uint256).max);
         }
+    }
+
+    // ============ auth =================
+    function _guardInitializeOwner() internal pure override returns (bool guard) {
+        guard = true;
+    }
+
+    function _authorizeUpgrade(address) internal view override {
+        _checkOwner();
+    }
+
+    function name() public view virtual override returns (string memory) {
+        return "KuruAMMVault";
+    }
+
+    function symbol() public view virtual override returns (string memory) {
+        return "KURU-AMM-VAULT";
     }
 
     /**
@@ -77,7 +103,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
      * @dev Previews the amount of shares to be minted for a given deposit of token1 and token2.
      */
     function previewDeposit(uint256 asset1, uint256 asset2) public view virtual returns (uint256) {
-        (, uint256 _price) = _returnNormalizedAmountAndPrice();
+        (, uint256 _price) = _returnNormalizedAmountAndPrice(true);
         return _convertToShares(asset1, asset2, _price, false);
     }
 
@@ -127,7 +153,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
      * @dev Internal function to handle the deposit logic and minting of shares.
      */
     function _depositAndMint(uint256 amount1, uint256 amount2, address receiver) internal returns (uint256) {
-        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice();
+        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(true);
         uint256 _shares;
         if (totalSupply() != 0) {
             uint256 _expectedQuoteAmount = (
@@ -169,7 +195,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         if (token == address(0)) {
             marginAccount.deposit{value: amount}(address(this), token, amount);
         } else {
-            ERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+            token.safeTransferFrom(msg.sender, address(this), amount);
             marginAccount.deposit(address(this), token, amount);
         }
     }
@@ -191,14 +217,14 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         if (_currentAskPrice == type(uint256).max) {
             uint256 _postActionQuoteAmount = amount2;
             _newAskPrice = (
-                (
-                    (_postActionQuoteAmount * 10 ** _marketParams.baseAssetDecimals)
-                        / 10 ** _marketParams.quoteAssetDecimals
-                ) * vaultPricePrecision
+                ((_postActionQuoteAmount * 10 ** _marketParams.baseAssetDecimals)) * vaultPricePrecision
+                    / 10 ** _marketParams.quoteAssetDecimals
             ) / (_postActionBaseAmount);
-            _newBidPrice = FixedPointMathLib.mulDiv(_newAskPrice, 1000, 1000 + SPREAD_CONSTANT);
+            _newBidPrice = FixedPointMathLib.mulDivRound(_newAskPrice, 1000, 1000 + SPREAD_CONSTANT);
             (uint256 _bestBid, uint256 _bestAsk) = market.bestBidAsk();
-            if((_bestBid > _newAskPrice && _bestBid != type(uint256).max) || (_bestAsk < _newBidPrice && _bestAsk != 0)) {
+            if (
+                (_bestBid > _newAskPrice && _bestBid != type(uint256).max) || (_bestAsk < _newBidPrice && _bestAsk != 0)
+            ) {
                 revert KuruAMMVaultErrors.VaultInitializationPriceCrossesBook();
             }
         }
@@ -222,7 +248,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
         if (_newAskSize <= _partiallyFilledAskSize || _newBidSize <= _partiallyFilledBidSize) {
             int256 _quoteOwedToUser;
             int256 _baseOwedToUser;
-            //process vault bid 
+            //process vault bid
             _quoteOwedToUser += int256(
                 (
                     FixedPointMathLib.mulDiv(
@@ -230,10 +256,11 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
                     )
                 ) * 10 ** _marketParams.quoteAssetDecimals / 10 ** 18
             );
-            _baseOwedToUser = (-1) * int256(
-                (_vaultBidSize - _partiallyFilledBidSize) * 10 ** _marketParams.baseAssetDecimals
-                    / _marketParams.sizePrecision
-            );
+            _baseOwedToUser = (-1)
+                * int256(
+                    (_vaultBidSize - _partiallyFilledBidSize) * 10 ** _marketParams.baseAssetDecimals
+                        / _marketParams.sizePrecision
+                );
 
             // process vault ask
             // price has moved down now, new vault ask parameters become old vault bid parameters
@@ -269,7 +296,9 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
             _partiallyFilledBidSize = 0;
             _partiallyFilledAskSize = 0;
         }
-        market.updateVaultOrdSz(_newAskSize, _partiallyFilledAskSize, _newBidSize, _partiallyFilledBidSize, _newAskPrice, _newBidPrice);
+        market.updateVaultOrdSz(
+            _newAskSize, _partiallyFilledAskSize, _newBidSize, _partiallyFilledBidSize, _newAskPrice, _newBidPrice
+        );
     }
 
     /**
@@ -291,7 +320,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     function _burnAndWithdraw(uint256 shares, address receiver, address owner) internal returns (uint256, uint256) {
         (uint256 amount1, uint256 amount2) = _convertToAssets(shares, false);
 
-        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice();
+        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(false);
         uint256 _normalizedRemoveAmount = amount1;
         if (totalSupply() != 0) {
             //@audit muldivdown or up?
@@ -327,7 +356,7 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
             (bool success,) = receiver.call{value: amount}("");
             require(success, KuruAMMVaultErrors.NativeAssetTransferFail());
         } else {
-            ERC20(token).safeTransfer(receiver, amount);
+            token.safeTransfer(receiver, amount);
         }
     }
 
@@ -358,8 +387,12 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
     /**
      * @dev Returns normalized base asset amount without profits
      */
-    function _returnNormalizedAmountAndPrice() internal view returns (uint256, uint256) {
-        uint96 _normalizedAskSize = (market.vaultAskOrderSize() * (2000 + SPREAD_CONSTANT)) / SPREAD_CONSTANT; //TODO: rounding
+    function _returnNormalizedAmountAndPrice(bool roundUp) internal view returns (uint256, uint256) {
+        // @audit what is the right way to round this value?
+        // ideally, should be rounded up during deposits and rounded down during withdrawals
+        uint96 _normalizedAskSize = roundUp
+            ? uint96(FixedPointMathLib.mulDivUp(market.vaultAskOrderSize(), 2000 + SPREAD_CONSTANT, SPREAD_CONSTANT))
+            : uint96(FixedPointMathLib.mulDiv(market.vaultAskOrderSize(), 2000 + SPREAD_CONSTANT, SPREAD_CONSTANT));
         uint256 _price = market.vaultBestAsk();
         return ((_normalizedAskSize * 10 ** marketParams.baseAssetDecimals) / marketParams.sizePrecision, _price);
     }

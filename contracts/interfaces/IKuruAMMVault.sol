@@ -20,5 +20,18 @@ interface IKuruAMMVault {
 
     event KuruVaultWithdraw(uint256 amount1, uint256 amount2, uint256 shares, address userAddress);
 
+    function initialize(
+        address _owner,
+        address token1_,
+        address token2_,
+        address _marginAccount,
+        address _market,
+        uint96 _spread,
+        string memory _name,
+        string memory _symbol
+    ) external;
+
+    function setMarketParams() external;
+
     function deposit(uint256 amount1, uint256 amount2, address receiver) external payable returns (uint256);
 }

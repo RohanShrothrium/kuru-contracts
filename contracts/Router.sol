@@ -10,9 +10,7 @@ import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 // ============ Internal Library Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
 import {RouterErrors} from "./libraries/Errors.sol";
-
-// ============ Internal Contract Imports ============
-import {KuruAMMVault} from "./KuruAMMVault.sol";
+import {IKuruAMMVault} from "./interfaces/IKuruAMMVault.sol";
 
 // ============ External Imports ============
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -33,6 +31,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     address private TRUSTED_FORWARDER;
     address orderBookImplementation;
     address marginAccountAddress;
+    address kuruAmmVaultImplementation;
 
     constructor() {
         _disableInitializers();
@@ -41,13 +40,14 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     /**
      * @param _owner The owner of the contract.
      */
-    function initialize(address _owner, address _marginAccount, address _implementation, address _trustedForwarder)
+    function initialize(address _owner, address _marginAccount, address _implementation, address _kuruAmmVaultImplementation, address _trustedForwarder)
         public
         initializer
     {
         _initializeOwner(_owner);
         marginAccountAddress = _marginAccount;
         orderBookImplementation = _implementation;
+        kuruAmmVaultImplementation = _kuruAmmVaultImplementation;
         TRUSTED_FORWARDER = _trustedForwarder;
     }
 
@@ -96,7 +96,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(orderBookImplementation, bytes("")))
             );
         }
-        KuruAMMVault _kuruAmmVault = _deployKuruAMMVault(_baseAssetAddress, _quoteAssetAddress, proxy, _kuruAmmSpread);
+        IKuruAMMVault _kuruAmmVault = _deployKuruAMMVault(_baseAssetAddress, _quoteAssetAddress, proxy, _kuruAmmSpread);
         uint256 _baseAssetDecimals =
             _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
         uint256 _quoteAssetDecimals =
@@ -138,7 +138,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _makerFeeBps
         );
 
-        KuruAMMVault(_kuruAmmVault).setMarketParams();
+        _kuruAmmVault.setMarketParams();
 
         _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
 
@@ -195,15 +195,38 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         );
     }
 
+    function computeVaultAddress(
+        address _marketAddress,
+        address oldImplementation,
+        bool old
+    ) public view returns (address) {
+        bytes32 _salt = keccak256(abi.encode(_marketAddress));
+        return Create2.computeAddress(_salt, keccak256(abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(old ? oldImplementation : kuruAmmVaultImplementation, bytes("")))));
+    }
+
     /**
      * @dev Function to upgrade the orderbook implementation. Can only be called by owner
      * @param newImplementation The new deployed orderbook implementation
      */
-    function upgradeImplementation(address newImplementation) external onlyOwner {
+    function upgradeOrderBookImplementation(address newImplementation) external onlyOwner {
         require(newImplementation != orderBookImplementation);
         orderBookImplementation = newImplementation;
     }
 
+    /**
+     * @dev Function to upgrade the kuru amm vault implementation. Can only be called by owner
+     * @param newImplementation The new deployed kuru amm vault implementation
+     */
+    function upgradeVaultImplementation(address newImplementation) external onlyOwner {
+        require(newImplementation != kuruAmmVaultImplementation);
+        kuruAmmVaultImplementation = newImplementation;
+    }
+
+    /**
+     * @dev Function to toggle the market state for pausing or resuming markets. Can only be called by owner
+     * @param markets The markets to toggle the state of
+     * @param state The state to set the market to
+     */
     function toggleMarket(address[] memory markets, bool state) external onlyOwner {
         for (uint256 i = 0; i < markets.length; i++) {
             IOrderBook(markets[i]).toggleMarkets(state);
@@ -214,9 +237,15 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @dev This function lets anyone batch upgrade orderbooks if a new implementation is available
      * @param proxies The proxies which are to be upgraded to the latest orderbook implementation
      */
-    function upgradeMultipleProxies(address[] memory proxies) public {
+    function upgradeMultipleOrderBookProxies(address[] memory proxies) public onlyOwner {
         for (uint256 i = 0; i < proxies.length; i++) {
             UUPSUpgradeable(proxies[i]).upgradeToAndCall(orderBookImplementation, bytes(""));
+        }
+    }
+
+    function upgradeMultipleVaultProxies(address[] memory proxies) public onlyOwner {
+        for (uint256 i = 0; i < proxies.length; i++) {
+            UUPSUpgradeable(proxies[i]).upgradeToAndCall(kuruAmmVaultImplementation, bytes(""));
         }
     }
 
@@ -376,12 +405,25 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
 
     function _deployKuruAMMVault(address _token1Address, address _token2Address, address _marketAddress, uint96 _spread)
         internal
-        returns (KuruAMMVault)
+        returns (IKuruAMMVault)
     {
-        KuruAMMVault _vault =
-            new KuruAMMVault(_token1Address, _token2Address, marginAccountAddress, _marketAddress, _spread / 10, "", "");
+        address _vault = Create2.deploy(
+            0,
+            keccak256(abi.encode(_marketAddress)),
+            abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(kuruAmmVaultImplementation, bytes("")))
+        );
+        IKuruAMMVault(_vault).initialize(
+            address(this),
+            _token1Address,
+            _token2Address,
+            marginAccountAddress,
+            _marketAddress,
+            _spread / 10,
+            "",
+            ""
+        );
 
-        return _vault;
+        return IKuruAMMVault(_vault);
     }
 
     receive() external payable {}
