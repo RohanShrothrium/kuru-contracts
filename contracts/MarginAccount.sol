@@ -30,9 +30,6 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
     // Native token
     address private constant NATIVE = 0x0000000000000000000000000000000000000000;
 
-    event Deposit(address owner, address token, uint256 amount);
-    event Withdrawal(address owner, address token, uint256 amount);
-
     constructor() {
         _disableInitializers();
     }

@@ -19,6 +19,30 @@ interface IRouter {
         uint256 makerFeeBps;
     }
 
+    // Event for market registration
+    event MarketRegistered(
+        address baseAsset,
+        address quoteAsset,
+        address market,
+        address vaultAddress,
+        uint32 pricePrecision,
+        uint96 sizePrecision,
+        uint32 tickSize,
+        uint96 minSize,
+        uint96 maxSize,
+        uint256 takerFeeBps,
+        uint256 makerFeeBps,
+        uint96 kuruAmmSpread
+    );
+
+    event KuruRouterSwap(
+        address msgSender,
+        address debitToken,
+        address creditToken, 
+        uint256 amountIn,
+        uint256 amountOut
+    );
+
     function deployProxy(
         IOrderBook.OrderBookType _type,
         address _baseAssetAddress,

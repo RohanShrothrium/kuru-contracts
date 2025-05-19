@@ -483,6 +483,8 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             );
         }
 
+        emit OrderCanceled(_orderId, _order.ownerAddress, _order.price, _order.size, _order.isBuy);
+
         return _order.isBuy;
     }
 
