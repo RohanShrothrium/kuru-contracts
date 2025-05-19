@@ -206,10 +206,10 @@ contract KuruAMMVault is ERC20, IKuruAMMVault {
             ,
             uint256 _vaultBestBid,
             uint96 _partiallyFilledBidSize,
-            uint256 _vaultBestAsk,
+            ,
             uint96 _partiallyFilledAskSize,
             uint96 _vaultBidSize,
-            uint96 _vaultAskSize,
+            ,
         ) = market.getVaultParams();
         uint96 _newAskSize = uint96(
             (SPREAD_CONSTANT * _postActionBaseAmount * _marketParams.sizePrecision)
