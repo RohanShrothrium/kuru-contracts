@@ -52,6 +52,7 @@ async function main() {
     const Proxy = await hre.ethers.getContractFactory("ERC1967Proxy");
     const Router = await hre.ethers.getContractFactory("Router");
     const CranklessOrderBook = await hre.ethers.getContractFactory("OrderBook");
+    const KuruAMMVault = await hre.ethers.getContractFactory("KuruAMMVault");
     const allowedInterfaces = [
         CranklessOrderBook.interface.getSighash('addBuyOrder'),
         CranklessOrderBook.interface.getSighash('addSellOrder'),
@@ -99,8 +100,10 @@ async function main() {
     // deploy CranklessOrderBook contract
     const implementation = await CranklessOrderBook.deploy();
     await implementation.deployed();
+    const kuruAmmVaultImpl = await KuruAMMVault.deploy();
+    await kuruAmmVaultImpl.deployed();
     // Initialize Router
-    const initializeRouterTx = await router.initialize(userAddress, marginAccountAddress, implementation.address, kuruForwarder.address);    
+    const initializeRouterTx = await router.initialize(userAddress, marginAccountAddress, implementation.address, kuruAmmVaultImpl.address, kuruForwarder.address);    
     await initializeRouterTx.wait();
     console.log("Router initialized with \n Admin :", userAddress, "\nMargin Account: ", marginAccountAddress, "\nImplementation:", implementation.address, "\nKuruForwarder:", kuruForwarder.address);
     
@@ -137,7 +140,7 @@ async function main() {
 	);
 
     // TODO: Uncomment if you want an AMM
-    // const vaultDepositTx = await kuruAmmVault.deposit(hre.ethers.utils.parseEther("206900"), hre.ethers.utils.parseEther("79"), userAddress);
+    // const vaultDepositTx = await kuruAmmVaultContract.deposit(hre.ethers.utils.parseEther("206900"), hre.ethers.utils.parseEther("79"), userAddress);
     // await vaultDepositTx.wait();
 
     const config = {
