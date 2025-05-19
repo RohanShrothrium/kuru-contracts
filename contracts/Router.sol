@@ -195,15 +195,38 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         );
     }
 
+    function computeVaultAddress(
+        address _marketAddress,
+        address oldImplementation,
+        bool old
+    ) public view returns (address) {
+        bytes32 _salt = keccak256(abi.encode(_marketAddress));
+        return Create2.computeAddress(_salt, keccak256(abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(old ? oldImplementation : kuruAmmVaultImplementation, bytes("")))));
+    }
+
     /**
      * @dev Function to upgrade the orderbook implementation. Can only be called by owner
      * @param newImplementation The new deployed orderbook implementation
      */
-    function upgradeImplementation(address newImplementation) external onlyOwner {
+    function upgradeOrderBookImplementation(address newImplementation) external onlyOwner {
         require(newImplementation != orderBookImplementation);
         orderBookImplementation = newImplementation;
     }
 
+    /**
+     * @dev Function to upgrade the kuru amm vault implementation. Can only be called by owner
+     * @param newImplementation The new deployed kuru amm vault implementation
+     */
+    function upgradeVaultImplementation(address newImplementation) external onlyOwner {
+        require(newImplementation != kuruAmmVaultImplementation);
+        kuruAmmVaultImplementation = newImplementation;
+    }
+
+    /**
+     * @dev Function to toggle the market state for pausing or resuming markets. Can only be called by owner
+     * @param markets The markets to toggle the state of
+     * @param state The state to set the market to
+     */
     function toggleMarket(address[] memory markets, bool state) external onlyOwner {
         for (uint256 i = 0; i < markets.length; i++) {
             IOrderBook(markets[i]).toggleMarkets(state);
@@ -214,9 +237,15 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @dev This function lets anyone batch upgrade orderbooks if a new implementation is available
      * @param proxies The proxies which are to be upgraded to the latest orderbook implementation
      */
-    function upgradeMultipleProxies(address[] memory proxies) public {
+    function upgradeMultipleOrderBookProxies(address[] memory proxies) public {
         for (uint256 i = 0; i < proxies.length; i++) {
             UUPSUpgradeable(proxies[i]).upgradeToAndCall(orderBookImplementation, bytes(""));
+        }
+    }
+
+    function upgradeMultipleVaultProxies(address[] memory proxies) public {
+        for (uint256 i = 0; i < proxies.length; i++) {
+            UUPSUpgradeable(proxies[i]).upgradeToAndCall(kuruAmmVaultImplementation, bytes(""));
         }
     }
 
