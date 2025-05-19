@@ -3,6 +3,11 @@
 pragma solidity ^0.8.20;
 
 interface IMarginAccount {
+
+    event Deposit(address owner, address token, uint256 amount);
+
+    event Withdrawal(address owner, address token, uint256 amount);
+
     function updateMarkets(address _marketAddress) external;
 
     function deposit(address _user, address _token, uint256 _amount) external payable;
