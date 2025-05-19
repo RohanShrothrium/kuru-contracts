@@ -221,10 +221,10 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
             _newAskPrice = (
                 (
                     (_postActionQuoteAmount * 10 ** _marketParams.baseAssetDecimals)
-                        / 10 ** _marketParams.quoteAssetDecimals
                 ) * vaultPricePrecision
+                        / 10 ** _marketParams.quoteAssetDecimals
             ) / (_postActionBaseAmount);
-            _newBidPrice = FixedPointMathLib.mulDiv(_newAskPrice, 1000, 1000 + SPREAD_CONSTANT);
+            _newBidPrice = FixedPointMathLib.mulDivRound(_newAskPrice, 1000, 1000 + SPREAD_CONSTANT);
             (uint256 _bestBid, uint256 _bestAsk) = market.bestBidAsk();
             if (
                 (_bestBid > _newAskPrice && _bestBid != type(uint256).max) || (_bestAsk < _newBidPrice && _bestAsk != 0)
