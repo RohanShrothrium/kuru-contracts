@@ -79,7 +79,7 @@ interface IOrderBook {
     event OrdersCanceled(uint40[] orderId, address owner);
 
     /**
-    * @dev Emitted for each cancel
+     * @dev Emitted for each cancel
      */
     event OrderCanceled(uint40 orderId, address owner, uint32 price, uint96 size, bool isBuy);
 

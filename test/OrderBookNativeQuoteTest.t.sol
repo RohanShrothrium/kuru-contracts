@@ -6,6 +6,7 @@ import {FixedPointMathLib} from "../contracts/libraries/FixedPointMathLib.sol";
 import {OrderBookErrors, MarginAccountErrors} from "../contracts/libraries/Errors.sol";
 import {IOrderBook} from "../contracts/interfaces/IOrderBook.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
+import {KuruAMMVault} from "../contracts/KuruAMMVault.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {Router} from "../contracts/Router.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -58,8 +59,9 @@ contract OrderBookTest is Test, PropertiesAsserts {
         marginAccount = new MarginAccount();
         marginAccount = MarginAccount(payable(address(new ERC1967Proxy(address(marginAccount), ""))));
         marginAccount.initialize(address(this), address(router), address(router), trustedForwarder);
+        KuruAMMVault kuruAmmVaultImplementation = new KuruAMMVault();
+        router.initialize(address(this), address(marginAccount), address(implementation), address(kuruAmmVaultImplementation), trustedForwarder);
         uint96 SPREAD = 30;
-        router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
 
         address proxy = router.deployProxy(
             _type,

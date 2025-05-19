@@ -10,9 +10,7 @@ import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 // ============ Internal Library Imports ============
 import {IERC20} from "./libraries/IERC20.sol";
 import {RouterErrors} from "./libraries/Errors.sol";
-
-// ============ Internal Contract Imports ============
-import {KuruAMMVault} from "./KuruAMMVault.sol";
+import {IKuruAMMVault} from "./interfaces/IKuruAMMVault.sol";
 
 // ============ External Imports ============
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -33,6 +31,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     address private TRUSTED_FORWARDER;
     address orderBookImplementation;
     address marginAccountAddress;
+    address kuruAmmVaultImplementation;
 
     constructor() {
         _disableInitializers();
@@ -41,13 +40,14 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     /**
      * @param _owner The owner of the contract.
      */
-    function initialize(address _owner, address _marginAccount, address _implementation, address _trustedForwarder)
+    function initialize(address _owner, address _marginAccount, address _implementation, address _kuruAmmVaultImplementation, address _trustedForwarder)
         public
         initializer
     {
         _initializeOwner(_owner);
         marginAccountAddress = _marginAccount;
         orderBookImplementation = _implementation;
+        kuruAmmVaultImplementation = _kuruAmmVaultImplementation;
         TRUSTED_FORWARDER = _trustedForwarder;
     }
 
@@ -96,7 +96,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(orderBookImplementation, bytes("")))
             );
         }
-        KuruAMMVault _kuruAmmVault = _deployKuruAMMVault(_baseAssetAddress, _quoteAssetAddress, proxy, _kuruAmmSpread);
+        IKuruAMMVault _kuruAmmVault = _deployKuruAMMVault(_baseAssetAddress, _quoteAssetAddress, proxy, _kuruAmmSpread);
         uint256 _baseAssetDecimals =
             _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
         uint256 _quoteAssetDecimals =
@@ -138,7 +138,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _makerFeeBps
         );
 
-        KuruAMMVault(_kuruAmmVault).setMarketParams();
+        _kuruAmmVault.setMarketParams();
 
         _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
 
@@ -376,12 +376,25 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
 
     function _deployKuruAMMVault(address _token1Address, address _token2Address, address _marketAddress, uint96 _spread)
         internal
-        returns (KuruAMMVault)
+        returns (IKuruAMMVault)
     {
-        KuruAMMVault _vault =
-            new KuruAMMVault(_token1Address, _token2Address, marginAccountAddress, _marketAddress, _spread / 10, "", "");
+        address _vault = Create2.deploy(
+            0,
+            keccak256(abi.encode(_marketAddress)),
+            abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(kuruAmmVaultImplementation, bytes("")))
+        );
+        IKuruAMMVault(_vault).initialize(
+            address(this),
+            _token1Address,
+            _token2Address,
+            marginAccountAddress,
+            _marketAddress,
+            _spread,
+            "",
+            ""
+        );
 
-        return _vault;
+        return IKuruAMMVault(_vault);
     }
 
     receive() external payable {}

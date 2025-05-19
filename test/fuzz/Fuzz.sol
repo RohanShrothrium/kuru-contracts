@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {FuzzBase} from "./FuzzBase.sol";
 import {MintableERC20} from "../lib/MintableERC20.sol";
 import {OrderBook} from "../../contracts/OrderBook.sol";
+import {KuruAMMVault} from "../../contracts/KuruAMMVault.sol";
 import {Router} from "../../contracts/Router.sol";
 import {MarginAccount} from "../../contracts/MarginAccount.sol";
 import {PropertiesAsserts} from "./PropertiesHelper.sol";
@@ -57,7 +58,8 @@ contract Fuzz_OrderBook is FuzzBase, PropertiesAsserts {
         marginAccount = new MarginAccount();
         marginAccount.initialize(address(this), address(router), address(router), trustedForwarder);
         implementation = new OrderBook();
-        router.initialize(address(this), address(marginAccount), address(implementation), trustedForwarder);
+        KuruAMMVault kuruAmmVaultImplementation = new KuruAMMVault();
+        router.initialize(address(this), address(marginAccount), address(implementation), address(kuruAmmVaultImplementation), trustedForwarder);
         OrderBook.OrderBookType _type;
         address proxy = router.deployProxy(
             _type,

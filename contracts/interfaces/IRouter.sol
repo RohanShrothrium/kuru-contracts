@@ -36,11 +36,7 @@ interface IRouter {
     );
 
     event KuruRouterSwap(
-        address msgSender,
-        address debitToken,
-        address creditToken, 
-        uint256 amountIn,
-        uint256 amountOut
+        address msgSender, address debitToken, address creditToken, uint256 amountIn, uint256 amountOut
     );
 
     function deployProxy(

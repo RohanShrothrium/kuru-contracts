@@ -259,10 +259,10 @@ abstract contract AbstractAMM is IOrderBook {
     ) external onlyVault {
         vaultBidOrderSize = _vaultBidOrderSize;
         vaultAskOrderSize = _vaultAskOrderSize;
-        if(_vaultAskPartiallyFilledSize == 0) {
+        if (_vaultAskPartiallyFilledSize == 0) {
             askPartiallyFilledSize = 0;
-        } 
-        if(_vaultBidPartiallyFilledSize == 0) {
+        }
+        if (_vaultBidPartiallyFilledSize == 0) {
             bidPartiallyFilledSize = 0;
         }
         if (vaultBestAsk == type(uint256).max) {
