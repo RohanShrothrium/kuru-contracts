@@ -103,7 +103,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
      * @dev Previews the amount of shares to be minted for a given deposit of token1 and token2.
      */
     function previewDeposit(uint256 asset1, uint256 asset2) public view virtual returns (uint256) {
-        (, uint256 _price) = _returnNormalizedAmountAndPrice();
+        (, uint256 _price) = _returnNormalizedAmountAndPrice(true);
         return _convertToShares(asset1, asset2, _price, false);
     }
 
@@ -153,7 +153,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
      * @dev Internal function to handle the deposit logic and minting of shares.
      */
     function _depositAndMint(uint256 amount1, uint256 amount2, address receiver) internal returns (uint256) {
-        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice();
+        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(true);
         uint256 _shares;
         if (totalSupply() != 0) {
             uint256 _expectedQuoteAmount = (
@@ -217,10 +217,8 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
         if (_currentAskPrice == type(uint256).max) {
             uint256 _postActionQuoteAmount = amount2;
             _newAskPrice = (
-                (
-                    (_postActionQuoteAmount * 10 ** _marketParams.baseAssetDecimals)
-                ) * vaultPricePrecision
-                        / 10 ** _marketParams.quoteAssetDecimals
+                ((_postActionQuoteAmount * 10 ** _marketParams.baseAssetDecimals)) * vaultPricePrecision
+                    / 10 ** _marketParams.quoteAssetDecimals
             ) / (_postActionBaseAmount);
             _newBidPrice = FixedPointMathLib.mulDivRound(_newAskPrice, 1000, 1000 + SPREAD_CONSTANT);
             (uint256 _bestBid, uint256 _bestAsk) = market.bestBidAsk();
@@ -322,7 +320,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
     function _burnAndWithdraw(uint256 shares, address receiver, address owner) internal returns (uint256, uint256) {
         (uint256 amount1, uint256 amount2) = _convertToAssets(shares, false);
 
-        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice();
+        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(false);
         uint256 _normalizedRemoveAmount = amount1;
         if (totalSupply() != 0) {
             //@audit muldivdown or up?
@@ -389,10 +387,12 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
     /**
      * @dev Returns normalized base asset amount without profits
      */
-    function _returnNormalizedAmountAndPrice() internal view returns (uint256, uint256) {
+    function _returnNormalizedAmountAndPrice(bool roundUp) internal view returns (uint256, uint256) {
         // @audit what is the right way to round this value?
         // ideally, should be rounded up during deposits and rounded down during withdrawals
-        uint96 _normalizedAskSize = (market.vaultAskOrderSize() * (2000 + SPREAD_CONSTANT)) / SPREAD_CONSTANT; 
+        uint96 _normalizedAskSize = roundUp
+            ? uint96(FixedPointMathLib.mulDivUp(market.vaultAskOrderSize(), 2000 + SPREAD_CONSTANT, SPREAD_CONSTANT))
+            : uint96(FixedPointMathLib.mulDiv(market.vaultAskOrderSize(), 2000 + SPREAD_CONSTANT, SPREAD_CONSTANT));
         uint256 _price = market.vaultBestAsk();
         return ((_normalizedAskSize * 10 ** marketParams.baseAssetDecimals) / marketParams.sizePrecision, _price);
     }
