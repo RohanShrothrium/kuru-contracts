@@ -389,7 +389,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _token2Address,
             marginAccountAddress,
             _marketAddress,
-            _spread,
+            _spread / 10,
             "",
             ""
         );
