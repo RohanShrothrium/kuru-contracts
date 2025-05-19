@@ -79,6 +79,11 @@ interface IOrderBook {
     event OrdersCanceled(uint40[] orderId, address owner);
 
     /**
+    * @dev Emitted for each cancel
+     */
+    event OrderCanceled(uint40 orderId, address owner, uint32 price, uint96 size, bool isBuy);
+
+    /**
      *
      * @dev Emitted when a trade goes through.
      * @param orderId Order Id of the order that was filled.
