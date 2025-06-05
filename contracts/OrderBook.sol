@@ -399,7 +399,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
     function batchCancelFlipOrders(uint40[] calldata _orderIds) external {
         for (uint256 i = 0; i < _orderIds.length; i++) {
-            _cancelFlipOrder(_orderIds[i], true);
+            _cancelFlipOrder(_orderIds[i]);
         }
 
         emit FlipOrdersCanceled(_orderIds, _msgSender());
@@ -417,17 +417,13 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         emit OrdersCanceled(_orderIds, _msgSender());
     }
 
-    function _cancelFlipOrder(uint40 _orderId, bool _revertIfInvalid) internal returns (bool) {
+    function _cancelFlipOrder(uint40 _orderId) internal returns (bool) {
         Order memory _order = s_orders[_orderId];
         bool _isFilledOrCanceled = _checkIfCancelledOrFilled(_orderId, _order);
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
         require(_order.flippedPrice != 0, OrderBookErrors.WrongOrderTypeCancel());
         if (_isFilledOrCanceled) {
-            if (_revertIfInvalid) {
-                revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
-            } else {
-                return false;
-            }
+            revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
         }
         if (_order.flippedId != OrderLinkedList.NULL) {
             _executeCancel(_order.flippedId, s_orders[_order.flippedId]);
