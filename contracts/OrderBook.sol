@@ -419,12 +419,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
     function _cancelFlipOrder(uint40 _orderId) internal returns (bool) {
         Order memory _order = s_orders[_orderId];
-        bool _isFilledOrCanceled = _checkIfCancelledOrFilled(_orderId, _order);
+        require(!_checkIfCancelledOrFilled(_orderId, _order), OrderBookErrors.OrderAlreadyFilledOrCancelled());
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
         require(_order.flippedPrice != 0, OrderBookErrors.WrongOrderTypeCancel());
-        if (_isFilledOrCanceled) {
-            revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
-        }
         if (_order.flippedId != OrderLinkedList.NULL) {
             _executeCancel(_order.flippedId, s_orders[_order.flippedId]);
         }
@@ -438,10 +435,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      */
     function _cancelOrder(uint40 _orderId, bool _revertIfInvalid) internal returns (bool) {
         Order memory _order = s_orders[_orderId];
-        bool _isFilledOrCancelled = _checkIfCancelledOrFilled(_orderId, _order);
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
         require(_order.flippedPrice == 0, OrderBookErrors.WrongOrderTypeCancel());
-        if (_isFilledOrCancelled) {
+        if (_checkIfCancelledOrFilled(_orderId, _order)) {
             if (_revertIfInvalid) {
                 revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
             } else {
@@ -452,7 +448,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         return true;
     }
 
-    function _executeCancel(uint40 _orderId, Order memory _order) internal returns (bool) {
+    function _executeCancel(uint40 _orderId, Order memory _order) internal {
         // update neighbouring orders
         if (_order.prev != OrderLinkedList.NULL) {
             s_orders[_order.prev].next = _order.next;
@@ -496,8 +492,6 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
 
         emit OrderCanceled(_orderId, _order.ownerAddress, _order.price, _order.size, _order.isBuy);
-
-        return _order.isBuy;
     }
 
     /**
