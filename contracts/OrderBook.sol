@@ -1326,7 +1326,6 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
 
         data = bytes.concat(data, abi.encode(0)); // Separator between buy and sell orders
-
         // Encode sell orders
         price = TreeMath.findFirstLeft(s_sellTree, 0);
         while (price != type(uint32).max && price != 0) {

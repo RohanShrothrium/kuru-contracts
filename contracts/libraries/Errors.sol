@@ -168,6 +168,10 @@ library KuruAMMVaultErrors {
      * @dev Thrown when vault initialization price crosses the book
      */
     error VaultInitializationPriceCrossesBook();
+    /**
+     * @dev Thrown when the amounts withdrawn are negative
+     */
+    error NegativeAmountWithdrawn();
 }
 
 library KuruForwarderErrors {

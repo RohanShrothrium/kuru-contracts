@@ -164,11 +164,10 @@ interface IOrderBook {
 
     function updateVaultOrdSz(
         uint96 _askSize,
-        uint96 _askSizePartiallyFilled,
         uint96 _bidSize,
-        uint96 _bidSizePartiallyFilled,
         uint256 _askPrice,
-        uint256 _bidPrice
+        uint256 _bidPrice,
+        bool _isDeposit
     ) external;
 
     function getMarketParams()
