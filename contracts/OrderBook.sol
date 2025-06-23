@@ -417,6 +417,20 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         emit OrdersCanceled(_orderIds, _msgSender());
     }
 
+    function batchCancelOrdersNoRevert(uint40[] calldata _orderIds) external {
+        uint40[] memory _orderIdsCanceled = new uint40[](_orderIds.length);
+        for (uint256 i = 0; i < _orderIds.length; i++) {
+            bool _isCanceled = _cancelOrder(_orderIds[i], false);
+            if (_isCanceled) {
+                _orderIdsCanceled[i] = _orderIds[i];
+            } else {
+                _orderIdsCanceled[i] = 0;
+            }
+        }
+
+        emit OrdersCanceled(_orderIdsCanceled, _msgSender());
+    }
+
     function _cancelFlipOrder(uint40 _orderId) internal returns (bool) {
         Order memory _order = s_orders[_orderId];
         require(!_checkIfCancelledOrFilled(_orderId, _order), OrderBookErrors.OrderAlreadyFilledOrCancelled());
