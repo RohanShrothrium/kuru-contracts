@@ -84,6 +84,24 @@ interface IOrderBook {
     event OrderCanceled(uint40 orderId, address owner, uint32 price, uint96 size, bool isBuy);
 
     /**
+     * @dev Emitted when the vault params are updated
+     * @param _vaultAskOrderSize Size of the vault ask order
+     * @param _vaultAskPartiallyFilledSize Size of the vault ask partially filled order
+     * @param _vaultBidOrderSize Size of the vault bid order
+     * @param _vaultBidPartiallyFilledSize Size of the vault bid partially filled order
+     * @param _askPrice The vault best ask price
+     * @param _bidPrice The vault best bid price
+     */
+    event VaultParamsUpdated(
+        uint96 _vaultAskOrderSize,
+        uint96 _vaultAskPartiallyFilledSize,
+        uint96 _vaultBidOrderSize,
+        uint96 _vaultBidPartiallyFilledSize,
+        uint256 _askPrice,
+        uint256 _bidPrice
+    );
+
+    /**
      *
      * @dev Emitted when a trade goes through.
      * @param orderId Order Id of the order that was filled.
