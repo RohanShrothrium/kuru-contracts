@@ -115,13 +115,6 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
     }
 
     /**
-     * @dev Previews the amount of shares to be burned for a given withdrawal of token1 and token2.
-     */
-    function previewWithdraw(uint256 asset1, uint256 asset2) public view virtual returns (uint256) {
-        return _convertToShares(asset1, asset2, 0, true);
-    }
-
-    /**
      * @dev Previews the amount of token1 and token2 to be received for a given amount of shares to be burned.
      */
     function previewRedeem(uint256 shares) public view virtual returns (uint256, uint256) {
@@ -138,53 +131,64 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
     /**
      * @dev Deposits token1 and token2 into the vault and mints shares to the receiver.
      */
-    function deposit(uint256 amount1, uint256 amount2, address receiver) public payable returns (uint256) {
+    function deposit(uint256 baseDeposit, uint256 quoteDeposit, address receiver) public payable returns (uint256) {
         require(
             (token1 == address(0) || token2 == address(0))
-                ? msg.value >= (token1 == address(0) ? amount1 : amount2)
+                ? msg.value >= (token1 == address(0) ? baseDeposit : quoteDeposit)
                 : msg.value == 0,
             KuruAMMVaultErrors.NativeAssetMismatch()
         );
 
-        return _depositAndMint(amount1, amount2, receiver);
+        return _depositAndMint(baseDeposit, quoteDeposit, receiver);
     }
 
     /**
      * @dev Internal function to handle the deposit logic and minting of shares.
      */
-    function _depositAndMint(uint256 amount1, uint256 amount2, address receiver) internal returns (uint256) {
+    function _depositAndMint(uint256 baseDeposit, uint256 quoteDeposit, address receiver) internal returns (uint256) {
         (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(true);
         uint256 _shares;
         if (totalSupply() != 0) {
             uint256 _expectedQuoteAmount = (
                 (
-                    FixedPointMathLib.mulDivUp(amount1, _currentAskPrice, vaultPricePrecision)
+                    FixedPointMathLib.mulDivUp(baseDeposit, _currentAskPrice, vaultPricePrecision)
                         * 10 ** marketParams.quoteAssetDecimals
                 )
             ) / 10 ** marketParams.baseAssetDecimals;
-            require(_expectedQuoteAmount <= amount2, KuruAMMVaultErrors.InsufficientQuoteToken());
-            _shares = _convertToShares(amount1, _expectedQuoteAmount, _currentAskPrice, false);
-            amount2 = _expectedQuoteAmount;
+            require(_expectedQuoteAmount <= quoteDeposit, KuruAMMVaultErrors.InsufficientQuoteToken());
+            _shares = _convertToShares(baseDeposit, _expectedQuoteAmount, _currentAskPrice, false);
+            quoteDeposit = _expectedQuoteAmount;
             _mint(receiver, _shares);
         } else {
-            _shares = FixedPointMathLib.sqrt(amount1 * amount2);
+            _shares = FixedPointMathLib.sqrt(baseDeposit * quoteDeposit);
             _mint(address(marginAccount), MIN_LIQUIDITY);
             _shares -= MIN_LIQUIDITY;
             _mint(receiver, _shares);
+            _currentAskPrice = (
+                ((quoteDeposit * 10 ** marketParams.baseAssetDecimals)) * vaultPricePrecision
+                    / 10 ** marketParams.quoteAssetDecimals
+            ) / (baseDeposit);
         }
         require(_shares > 0, KuruAMMVaultErrors.InsufficientLiquidityMinted());
-        _updateMarketVaultOrderSize(amount1, amount2, _baseAmount, _currentAskPrice, true);
+        (uint96 _newAskSize, uint96 _newBidSize) = _getVaultSizesForBaseAmount(_baseAmount + baseDeposit);
+        market.updateVaultOrdSz(
+            _newAskSize,
+            _newBidSize,
+            _currentAskPrice,
+            FixedPointMathLib.mulDivRound(_currentAskPrice, 1000, 1000 + SPREAD_CONSTANT),
+            false
+        );
         address _token1 = token1;
         address _token2 = token2;
-        _depositToMarginAccount(amount1, _token1);
-        _depositToMarginAccount(amount2, _token2);
+        _depositToMarginAccount(baseDeposit, _token1);
+        _depositToMarginAccount(quoteDeposit, _token2);
         uint256 _nativeRefund =
-            _token1 == address(0) ? (msg.value - amount1) : (_token2 == address(0) ? (msg.value - amount2) : 0);
+            _token1 == address(0) ? (msg.value - baseDeposit) : (_token2 == address(0) ? (msg.value - quoteDeposit) : 0);
         if (_nativeRefund > 0) {
             (bool success,) = receiver.call{value: _nativeRefund}("");
             require(success, KuruAMMVaultErrors.NativeAssetTransferFail());
         }
-        emit KuruVaultDeposit(amount1, amount2, _shares, receiver);
+        emit KuruVaultDeposit(baseDeposit, quoteDeposit, _shares, receiver);
         return _shares;
     }
 
@@ -198,48 +202,6 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
             token.safeTransferFrom(msg.sender, address(this), amount);
             marginAccount.deposit(address(this), token, amount);
         }
-    }
-
-    /**
-     * @dev Updates the vault order size in the market.
-     */
-    function _updateMarketVaultOrderSize(
-        uint256 amount1,
-        uint256 amount2,
-        uint256 _baseAmount,
-        uint256 _currentAskPrice,
-        bool isDeposit
-    ) internal {
-        MarketParams memory _marketParams = marketParams;
-        uint256 _postActionBaseAmount = isDeposit ? _baseAmount + amount1 : _baseAmount - amount1;
-        uint256 _newAskPrice;
-        uint256 _newBidPrice;
-        // only enters this if block is isDeposit is true
-        if (_currentAskPrice == type(uint256).max) {
-            uint256 _postActionQuoteAmount = amount2;
-            _newAskPrice = (
-                ((_postActionQuoteAmount * 10 ** _marketParams.baseAssetDecimals)) * vaultPricePrecision
-                    / 10 ** _marketParams.quoteAssetDecimals
-            ) / (_postActionBaseAmount);
-            _newBidPrice = FixedPointMathLib.mulDivRound(_newAskPrice, 1000, 1000 + SPREAD_CONSTANT);
-            (uint256 _bestBid, uint256 _bestAsk) = market.bestBidAsk();
-            if (
-                (_bestBid > _newAskPrice && _bestBid != type(uint256).max) || (_bestAsk < _newBidPrice && _bestAsk != 0)
-            ) {
-                revert KuruAMMVaultErrors.VaultInitializationPriceCrossesBook();
-            }
-        }
-        uint96 _newAskSize = uint96(
-            (SPREAD_CONSTANT * _postActionBaseAmount * _marketParams.sizePrecision)
-                / ((2000 + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
-        );
-        uint96 _newBidSize = uint96(
-            (SPREAD_CONSTANT * _postActionBaseAmount * _marketParams.sizePrecision)
-                / (2000 * 10 ** _marketParams.baseAssetDecimals)
-        );
-        market.updateVaultOrdSz(
-            _newAskSize, _newBidSize, _newAskPrice, _newBidPrice, isDeposit
-        );
     }
 
     /**
@@ -259,34 +221,36 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
      * @dev Internal function to handle the burning of shares and withdrawal logic.
      */
     function _burnAndWithdraw(uint256 shares, address receiver, address owner) internal returns (uint256, uint256) {
-        (uint256 amount1, uint256 amount2) = _convertToAssets(shares, false);
+        (
+            uint256 _baseOwedToUser,
+            uint256 _quoteOwedToUser,
+            uint96 _newAskSize,
+            uint96 _newBidSize,
+            bool _nullifyPartialFills
+        ) = _convertToAssetsWithNewSize(shares);
 
-        (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(false);
-        uint256 _normalizedRemoveAmount = amount1;
-        if (totalSupply() != 0) {
-            //@audit muldivdown or up?
-            _normalizedRemoveAmount = FixedPointMathLib.mulDiv(shares, _baseAmount, totalSupply());
-        }
         _burn(owner, shares);
 
-        _updateMarketVaultOrderSize(_normalizedRemoveAmount, amount2, _baseAmount, _currentAskPrice, false);
+        // we pass 0,0 as the prices because prices are only set on the first deposit
+        // since we burn 10 ** 3 shares, supply of total shares never goes to 0
+        market.updateVaultOrdSz(_newAskSize, _newBidSize, 0, 0, _nullifyPartialFills);
 
-        _withdrawFromMarginAccount(amount1, amount2, receiver);
+        _withdrawFromMarginAccount(_baseOwedToUser, _quoteOwedToUser, receiver);
 
-        emit KuruVaultWithdraw(amount1, amount2, shares, owner);
+        emit KuruVaultWithdraw(_baseOwedToUser, _quoteOwedToUser, shares, owner);
 
-        return (amount1, amount2);
+        return (_baseOwedToUser, _quoteOwedToUser);
     }
 
     /**
      * @dev Internal function to handle withdrawals from the margin account.
      */
-    function _withdrawFromMarginAccount(uint256 amount1, uint256 amount2, address receiver) internal {
-        marginAccount.withdraw(amount1, token1);
-        marginAccount.withdraw(amount2, token2);
+    function _withdrawFromMarginAccount(uint256 baseWithdraw, uint256 quoteWithdraw, address receiver) internal {
+        marginAccount.withdraw(baseWithdraw, token1);
+        marginAccount.withdraw(quoteWithdraw, token2);
 
-        _transferTokensToUser(amount1, token1, receiver);
-        _transferTokensToUser(amount2, token2, receiver);
+        _transferTokensToUser(baseWithdraw, token1, receiver);
+        _transferTokensToUser(quoteWithdraw, token2, receiver);
     }
 
     /**
@@ -305,11 +269,11 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
      * @dev Mints shares to the receiver in exchange for depositing token1 and token2.
      */
     function mint(uint256 shares, address receiver) public payable returns (uint256, uint256) {
-        (uint256 amount1, uint256 amount2) = previewMint(shares);
+        (uint256 baseDeposit, uint256 quoteDeposit) = previewMint(shares);
 
-        deposit(amount1, amount2, receiver);
+        deposit(baseDeposit, quoteDeposit, receiver);
 
-        return (amount1, amount2);
+        return (baseDeposit, quoteDeposit);
     }
 
     /**
@@ -341,7 +305,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
     /**
      * @dev Internal function to convert asset amounts to shares.
      */
-    function _convertToShares(uint256 amount1, uint256 amount2, uint256 _currentAskPrice, bool roundUp)
+    function _convertToShares(uint256 baseAmount, uint256 quoteAmount, uint256 _currentAskPrice, bool roundUp)
         internal
         view
         returns (uint256)
@@ -352,60 +316,100 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
         }
         return FixedPointMathLib.min(
             roundUp
-                ? FixedPointMathLib.mulDivUp(amount1, totalSupply(), _reserve1)
-                : FixedPointMathLib.mulDiv(amount1, totalSupply(), _reserve1),
+                ? FixedPointMathLib.mulDivUp(baseAmount, totalSupply(), _reserve1)
+                : FixedPointMathLib.mulDiv(baseAmount, totalSupply(), _reserve1),
             roundUp
-                ? FixedPointMathLib.mulDivUp(amount2, totalSupply(), _reserve2)
-                : FixedPointMathLib.mulDiv(amount2, totalSupply(), _reserve2)
+                ? FixedPointMathLib.mulDivUp(quoteAmount, totalSupply(), _reserve2)
+                : FixedPointMathLib.mulDiv(quoteAmount, totalSupply(), _reserve2)
         );
     }
 
-    /**
-     * @dev Internal function to convert shares to asset amounts.
-     */
-    function _convertToAssets(uint256 shares, bool deposit) internal view returns (uint256, uint256) {
-        (uint256 _reserve1, uint256 _reserve2) = totalAssets();
-        if (deposit) {
-            return (
-                FixedPointMathLib.mulDivUp(shares, _reserve1, totalSupply()),
-                FixedPointMathLib.mulDivUp(shares, _reserve2, totalSupply())
-            );
+    function _convertToAssets(uint256 shares, bool isDeposit) internal view returns (uint256, uint256) {
+        if (isDeposit) {
+            if (totalSupply() == 0) {
+                return (0, 0);
+            }
+            (uint256 _reserve1, ) = totalAssets();
+            uint256 _baseAmount = FixedPointMathLib.mulDiv(shares, _reserve1, totalSupply());
+            uint256 _bestAsk = market.vaultBestAsk();
+            uint256 _expectedQuoteAmount = (
+                (
+                    FixedPointMathLib.mulDivUp(_baseAmount, _bestAsk, vaultPricePrecision)
+                        * 10 ** marketParams.quoteAssetDecimals
+                )
+            ) / 10 ** marketParams.baseAssetDecimals;
+            return (_baseAmount, _expectedQuoteAmount);
         } else {
-            MarketParams memory _marketParams = marketParams;
-            (
-                ,
-                uint256 _vaultBestBid,
-                uint96 _partiallyFilledBidSize,
-                uint256 _vaultBestAsk,
-                uint96 _partiallyFilledAskSize,
-                ,
-                ,
-            ) = market.getVaultParams();
-            int256 _baseOwedToVault = (int256(uint256(_partiallyFilledAskSize)) - int256(uint256(_partiallyFilledBidSize)))
-                * int256(10 ** _marketParams.baseAssetDecimals) / int256(uint256(_marketParams.sizePrecision));
+            (uint256 _baseAmount, uint256 _quoteAmount,,,) = _convertToAssetsWithNewSize(shares);
+            return (_baseAmount, _quoteAmount);
+        }
+    }
+
+    function _convertToAssetsWithNewSize(uint256 shares)
+        internal
+        view
+        returns (uint256, uint256, uint96, uint96, bool)
+    {
+        (uint256 _baseAmount,) = _returnNormalizedAmountAndPrice(false);
+        uint256 _baseAmountAfterRemoval = _baseAmount - FixedPointMathLib.mulDiv(shares, _baseAmount, totalSupply());
+        (uint96 _newAskSize, uint96 _newBidSize) = _getVaultSizesForBaseAmount(_baseAmountAfterRemoval);
+        (
+            ,
+            uint256 _vaultBestBid,
+            uint96 _partiallyFilledBidSize,
+            uint256 _vaultBestAsk,
+            uint96 _partiallyFilledAskSize,
+            ,
+            ,
+        ) = market.getVaultParams();
+        MarketParams memory _marketParams = marketParams;
+        (uint256 _reserveBase, uint256 _reserveQuote) = totalAssets();
+        if (_partiallyFilledAskSize > _newAskSize || _partiallyFilledBidSize > _newBidSize) {
+            int256 _baseOwedToVault = (
+                int256(uint256(_partiallyFilledAskSize)) - int256(uint256(_partiallyFilledBidSize))
+            ) * int256(10 ** _marketParams.baseAssetDecimals) / int256(uint256(_marketParams.sizePrecision));
             int256 _quoteOwedToVault = (
-                int256(
-                        FixedPointMathLib.mulDivUp(_partiallyFilledBidSize, _vaultBestBid, _marketParams.sizePrecision)
-                    ) - int256(FixedPointMathLib.mulDiv(_partiallyFilledAskSize, _vaultBestAsk, _marketParams.sizePrecision))
+                int256(FixedPointMathLib.mulDivUp(_partiallyFilledBidSize, _vaultBestBid, _marketParams.sizePrecision))
+                    - int256(FixedPointMathLib.mulDiv(_partiallyFilledAskSize, _vaultBestAsk, _marketParams.sizePrecision))
             ) * int256(10 ** _marketParams.quoteAssetDecimals) / int256(vaultPricePrecision);
             uint256 _baseOwedToUser;
             uint256 _quoteOwedToUser;
             if (_baseOwedToVault < 0) {
-                _reserve1 = _reserve1 - (uint256(-1 * _baseOwedToVault));
-                _baseOwedToUser = FixedPointMathLib.mulDiv(shares, _reserve1, totalSupply()) + uint256(-1 * _baseOwedToVault); 
+                _reserveBase = _reserveBase - (uint256(-1 * _baseOwedToVault));
+                _baseOwedToUser =
+                    FixedPointMathLib.mulDiv(shares, _reserveBase, totalSupply()) + uint256(-1 * _baseOwedToVault);
             } else {
-                _reserve1 = _reserve1 + (uint256(_baseOwedToVault));
-                _baseOwedToUser = FixedPointMathLib.mulDiv(shares, _reserve1, totalSupply()) - uint256(_baseOwedToVault);
+                _reserveBase = _reserveBase + (uint256(_baseOwedToVault));
+                _baseOwedToUser = FixedPointMathLib.mulDiv(shares, _reserveBase, totalSupply()) - uint256(_baseOwedToVault);
             }
             if (_quoteOwedToVault < 0) {
-                _reserve2 = _reserve2 - (uint256(-1 * _quoteOwedToVault));
-                _quoteOwedToUser = FixedPointMathLib.mulDiv(shares, _reserve2, totalSupply()) + uint256(-1 * _quoteOwedToVault);
+                _reserveQuote = _reserveQuote - (uint256(-1 * _quoteOwedToVault));
+                _quoteOwedToUser =
+                    FixedPointMathLib.mulDiv(shares, _reserveQuote, totalSupply()) + uint256(-1 * _quoteOwedToVault);
             } else {
-                _reserve2 = _reserve2 + (uint256(_quoteOwedToVault));
-                _quoteOwedToUser = FixedPointMathLib.mulDiv(shares, _reserve2, totalSupply()) - uint256(_quoteOwedToVault);
+                _reserveQuote = _reserveQuote + (uint256(_quoteOwedToVault));
+                _quoteOwedToUser =
+                    FixedPointMathLib.mulDiv(shares, _reserveQuote, totalSupply()) - uint256(_quoteOwedToVault);
             }
-            return (_baseOwedToUser, _quoteOwedToUser);
+            return (_baseOwedToUser, _quoteOwedToUser, _newAskSize, _newBidSize, true);
+        } else {
+            uint256 _baseOwedToUser = FixedPointMathLib.mulDiv(shares, _reserveBase, totalSupply());
+            uint256 _quoteOwedToUser = FixedPointMathLib.mulDiv(shares, _reserveQuote, totalSupply());
+            return (_baseOwedToUser, _quoteOwedToUser, _newAskSize, _newBidSize, false);
         }
+    }
+
+    function _getVaultSizesForBaseAmount(uint256 _baseAmount) internal view returns (uint96, uint96) {
+        MarketParams memory _marketParams = marketParams;
+        uint96 _newAskSize = uint96(
+            (SPREAD_CONSTANT * _baseAmount * _marketParams.sizePrecision)
+                / ((2000 + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
+        );
+        uint96 _newBidSize = uint96(
+            (SPREAD_CONSTANT * _baseAmount * _marketParams.sizePrecision)
+                / (2000 * 10 ** _marketParams.baseAssetDecimals)
+        );
+        return (_newAskSize, _newBidSize);
     }
 
     function _returnVirtuallyRebalancedTotalAssets(uint256 _reserve1, uint256 _reserve2, uint256 _vaultPrice)
