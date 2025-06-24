@@ -270,7 +270,14 @@ abstract contract AbstractAMM is IOrderBook {
         if (vaultBestBid == 0) {
             vaultBestBid = _bidPrice;
         }
-        emit VaultParamsUpdated(_vaultAskOrderSize, askPartiallyFilledSize, _vaultBidOrderSize, bidPartiallyFilledSize, vaultBestAsk, vaultBestBid);
+        emit VaultParamsUpdated(
+            _vaultAskOrderSize,
+            askPartiallyFilledSize,
+            _vaultBidOrderSize,
+            bidPartiallyFilledSize,
+            vaultBestAsk,
+            vaultBestBid
+        );
     }
 
     function _getPricePrecision() internal view virtual returns (uint32);

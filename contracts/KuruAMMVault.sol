@@ -329,7 +329,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
             if (totalSupply() == 0) {
                 return (0, 0);
             }
-            (uint256 _reserve1, ) = totalAssets();
+            (uint256 _reserve1,) = totalAssets();
             uint256 _baseAmount = FixedPointMathLib.mulDiv(shares, _reserve1, totalSupply());
             uint256 _bestAsk = market.vaultBestAsk();
             uint256 _expectedQuoteAmount = (
@@ -380,7 +380,8 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
                     FixedPointMathLib.mulDiv(shares, _reserveBase, totalSupply()) + uint256(-1 * _baseOwedToVault);
             } else {
                 _reserveBase = _reserveBase + (uint256(_baseOwedToVault));
-                _baseOwedToUser = FixedPointMathLib.mulDiv(shares, _reserveBase, totalSupply()) - uint256(_baseOwedToVault);
+                _baseOwedToUser =
+                    FixedPointMathLib.mulDiv(shares, _reserveBase, totalSupply()) - uint256(_baseOwedToVault);
             }
             if (_quoteOwedToVault < 0) {
                 _reserveQuote = _reserveQuote - (uint256(-1 * _quoteOwedToVault));
