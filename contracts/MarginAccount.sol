@@ -113,11 +113,11 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         if (_useMargin) {
             balances[_accountKey(_user, _token)] += _amount;
         } else {
-            if (_token == NATIVE) {
+            if (_token != NATIVE) {
+                _token.safeTransfer(_user, _amount);
+            } else {
                 (bool success,) = _user.call{value: _amount}("");
                 require(success, MarginAccountErrors.NativeAssetTransferFail());
-            } else {
-                _token.safeTransfer(_user, _amount);
             }
         }
 
