@@ -81,11 +81,25 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint256 _makerFeeBps,
         uint96 _kuruAmmSpread
     ) public returns (address proxy) {
-        require(_baseAssetAddress != _quoteAssetAddress, RouterErrors.BaseAndQuoteAssetSame());
+        if (_type == IOrderBook.OrderBookType.NATIVE_IN_BASE) {
+            require(_baseAssetAddress == address(0), RouterErrors.MarketTypeMismatch());
+            require(_quoteAssetAddress != address(0), RouterErrors.MarketTypeMismatch());
+        } else if (_type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE) {
+            require(_baseAssetAddress != address(0), RouterErrors.MarketTypeMismatch());
+            require(_quoteAssetAddress == address(0), RouterErrors.MarketTypeMismatch());
+        } else {
+            require(_baseAssetAddress != address(0), RouterErrors.MarketTypeMismatch());
+            require(_quoteAssetAddress != address(0), RouterErrors.MarketTypeMismatch());
+            require(_baseAssetAddress != _quoteAssetAddress, RouterErrors.BaseAndQuoteAssetSame());
+        }
+        uint256 _baseAssetDecimals =
+            _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
+        uint256 _quoteAssetDecimals =
+            _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20(_quoteAssetAddress).decimals();
         {
             bytes32 _salt = _getSalt(
-                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? NATIVE : _baseAssetAddress,
-                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? NATIVE : _quoteAssetAddress,
+                _baseAssetAddress,
+                _quoteAssetAddress,
                 _sizePrecision,
                 _pricePrecision,
                 _tickSize,
@@ -107,18 +121,14 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(kuruAmmVaultImplementation, bytes("")))
             )
         );
-        uint256 _baseAssetDecimals =
-            _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
-        uint256 _quoteAssetDecimals =
-            _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20(_quoteAssetAddress).decimals();
         // @note native decimals hardcoded to 18
         {
             IOrderBook(proxy).initialize(
                 address(this),
                 _type,
-                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? NATIVE : _baseAssetAddress,
+                _baseAssetAddress,
                 _baseAssetDecimals,
-                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? NATIVE : _quoteAssetAddress,
+                _quoteAssetAddress,
                 _quoteAssetDecimals,
                 marginAccountAddress,
                 _sizePrecision,
