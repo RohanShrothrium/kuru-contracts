@@ -15,6 +15,7 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 abstract contract AbstractAMM is IOrderBook {
     uint256 constant vaultPricePrecision = 10 ** 18;
+    uint256 constant DOUBLE_BPS_MULTIPLIER = 20000;
     address kuruAmmVault;
     uint256 vaultBestBid;
     uint96 bidPartiallyFilledSize;
@@ -75,20 +76,30 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeFilled += _availableSize;
                 _quoteInput -= _quoteNeededForFill;
-                _cachedLastVaultSize =
-                    uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
+                _cachedLastVaultSize = uint96(
+                    FixedPointMathLib.mulDiv(
+                        _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
+                    )
+                );
                 _emitTrade(0, kuruAmmVault, true, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
-                _price = FixedPointMathLib.mulDivRound(_price, 1000 + SPREAD_CONSTANT, 1000);
-                _cachedPartiallyFilledBid =
-                    uint96(FixedPointMathLib.mulDiv(_cachedPartiallyFilledBid, 1000, 1000 + SPREAD_CONSTANT));
+                _price = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER + SPREAD_CONSTANT, BPS_MULTIPLIER);
+                _cachedPartiallyFilledBid = uint96(
+                    FixedPointMathLib.mulDiv(
+                        _cachedPartiallyFilledBid, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT
+                    )
+                );
             }
         }
         vaultBestAsk = _price;
-        vaultBestBid = FixedPointMathLib.mulDivRound(_price, 1000, 1000 + SPREAD_CONSTANT);
+        vaultBestBid = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
         vaultAskOrderSize = _cachedLastVaultSize;
-        vaultBidOrderSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
+        vaultBidOrderSize = uint96(
+            FixedPointMathLib.mulDiv(
+                _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
+            )
+        );
         quoteLeft = uint96(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
         makerCredits =
             _creditVaultOnMarketBuy(sizeFilled, (_quoteSize * vaultPricePrecision / _getPricePrecision() - _quoteInput));
@@ -127,20 +138,30 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeLeft -= _availableSize;
                 _consumedQuote += FixedPointMathLib.mulDivUp(_availableSize, _price, _getSizePrecision());
-                _cachedLastVaultSize =
-                    uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
+                _cachedLastVaultSize = uint96(
+                    FixedPointMathLib.mulDiv(
+                        _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
+                    )
+                );
                 _emitTrade(0, kuruAmmVault, true, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
-                _price = FixedPointMathLib.mulDivRound(_price, 1000 + SPREAD_CONSTANT, 1000);
-                _cachedPartiallyFilledBid =
-                    uint96(FixedPointMathLib.mulDiv(_cachedPartiallyFilledBid, 1000, 1000 + SPREAD_CONSTANT));
+                _price = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER + SPREAD_CONSTANT, BPS_MULTIPLIER);
+                _cachedPartiallyFilledBid = uint96(
+                    FixedPointMathLib.mulDiv(
+                        _cachedPartiallyFilledBid, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT
+                    )
+                );
             }
         }
         vaultBestAsk = _price;
-        vaultBestBid = FixedPointMathLib.mulDivRound(_price, 1000, 1000 + SPREAD_CONSTANT);
+        vaultBestBid = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
         vaultAskOrderSize = _cachedLastVaultSize;
-        vaultBidOrderSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
+        vaultBidOrderSize = uint96(
+            FixedPointMathLib.mulDiv(
+                _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
+            )
+        );
         fundsConsumed = uint96(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
         makerCredits = _creditVaultOnMarketBuy(_size - sizeLeft, _consumedQuote);
     }
@@ -175,17 +196,24 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeLeft -= _availableSize;
                 quoteOwedToUser += FixedPointMathLib.mulDiv(_price, _availableSize, _getSizePrecision());
-                _cachedLastVaultSize =
-                    uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
+                _cachedLastVaultSize = uint96(
+                    FixedPointMathLib.mulDiv(
+                        _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
+                    )
+                );
                 _emitTrade(0, kuruAmmVault, false, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
-                _price = FixedPointMathLib.mulDivRound(_price, 1000, 1000 + SPREAD_CONSTANT);
+                _price = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
             }
         }
         vaultBestBid = _price;
-        vaultBestAsk = FixedPointMathLib.mulDivRound(_price, 1000 + SPREAD_CONSTANT, 1000);
+        vaultBestAsk = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER + SPREAD_CONSTANT, BPS_MULTIPLIER);
         vaultBidOrderSize = _cachedLastVaultSize;
-        vaultAskOrderSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
+        vaultAskOrderSize = uint96(
+            FixedPointMathLib.mulDiv(
+                _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
+            )
+        );
         makerCredits = _creditVaultOnMarketSell(_size - sizeLeft, quoteOwedToUser);
     }
 

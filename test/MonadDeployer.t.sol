@@ -36,15 +36,29 @@ contract MonadDeployerTest is Test {
         marginAccount.initialize(address(this), address(router), address(router), address(0x123));
         monadDeployer =
             new MonadDeployer(IRouter(address(router)), address(marginAccount), address(0x123), 100, 10 * 10 ** 18);
-        router.initialize(address(this), address(marginAccount), address(implementation), address(kuruAmmVaultImplementation), address(0x123));
+        router.initialize(
+            address(this),
+            address(marginAccount),
+            address(implementation),
+            address(kuruAmmVaultImplementation),
+            address(0x123)
+        );
     }
 
     function testDeployMarket() public {
         MonadDeployer.TokenParams memory tokenParams = MonadDeployer.TokenParams(
             "CHOG", "CHOG", "https://chog.com/chog.json", 1000000 * 10 ** 18, address(this), 100
         );
-        MonadDeployer.MarketParams memory marketParams =
-            MonadDeployer.MarketParams(100 * 10 ** 18, 10 ** 10, 10 ** 2, 10, 10 ** 2, 10 ** 10, 10, 5);
+        MonadDeployer.MarketParams memory marketParams = MonadDeployer.MarketParams({
+            nativeTokenAmount: 100 * 10 ** 18, // 100 native tokens
+            sizePrecision: 10 ** 10, // 10^10 for size precision
+            pricePrecision: 10 ** 2, // 10^2 for price precision
+            tickSize: 10, // 10 tick size
+            minSize: 10 ** 2, // 10^2 minimum size
+            maxSize: 10 ** 10, // 10^10 maximum size
+            takerFeeBps: 10, // 10 basis points taker fee
+            makerFeeBps: 5 // 5 basis points maker fee
+        });
         address market = monadDeployer.deployTokenAndMarket{value: 110 ether}(tokenParams, marketParams, bytes(""));
         emit MarketCreated(market);
     }

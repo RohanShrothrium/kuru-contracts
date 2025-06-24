@@ -43,13 +43,13 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     function initialize(
         address _owner,
         address _marginAccount,
-        address _implementation,
+        address _orderbookImplementation,
         address _kuruAmmVaultImplementation,
         address _trustedForwarder
     ) public initializer {
         _initializeOwner(_owner);
         marginAccountAddress = _marginAccount;
-        orderBookImplementation = _implementation;
+        orderBookImplementation = _orderbookImplementation;
         kuruAmmVaultImplementation = _kuruAmmVaultImplementation;
         TRUSTED_FORWARDER = _trustedForwarder;
     }
@@ -66,6 +66,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param _maxSize The maximum size an order can have to be placed
      * @param _takerFeeBps The taker fee in bips per second.
      * @param _makerFeeBps The maker fee in bips per second. The maker fee must be lower than the taker fee.
+     * @param _kuruAmmSpread The spread in bps for the kuru amm vault
      */
     function deployProxy(
         IOrderBook.OrderBookType _type,
@@ -133,14 +134,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             );
         }
         _kuruAmmVault.initialize(
-            address(this),
-            _baseAssetAddress,
-            _quoteAssetAddress,
-            marginAccountAddress,
-            proxy,
-            _kuruAmmSpread / 10,
-            "",
-            ""
+            address(this), _baseAssetAddress, _quoteAssetAddress, marginAccountAddress, proxy, _kuruAmmSpread, "", ""
         );
         verifiedMarket[proxy] = MarketParams(
             _pricePrecision,
@@ -253,9 +247,9 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param markets The markets to toggle the state of
      * @param state The state to set the market to
      */
-    function toggleMarket(address[] memory markets, bool state) external onlyOwner {
+    function toggleMarkets(address[] memory markets, bool state) external onlyOwner {
         for (uint256 i = 0; i < markets.length; i++) {
-            IOrderBook(markets[i]).toggleMarkets(state);
+            IOrderBook(markets[i]).toggleMarket(state);
         }
     }
 

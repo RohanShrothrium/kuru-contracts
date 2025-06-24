@@ -127,7 +127,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         takerFeeBps = _takerFeeBps;
         makerFeeBps = _makerFeeBps;
         kuruAmmVault = _kuruAmmVault;
-        SPREAD_CONSTANT = _kuruAmmSpread / 10;
+        SPREAD_CONSTANT = _kuruAmmSpread;
         vaultBestAsk = type(uint256).max;
         _trustedForwarder = __trustedForwarder;
     }
@@ -149,7 +149,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
     /**
      * @dev Allows admin to pause the market.
      */
-    function toggleMarkets(bool _state) external {
+    function toggleMarket(bool _state) external {
         _checkOwner();
         require(_state != marketPaused, OrderBookErrors.MarketStateError());
         marketPaused = _state;
@@ -169,7 +169,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         //The buy order is filled aggressively and the leftover size is added as a limit buy order
         (uint96 _remainingSize, uint96 _consumedFunds) = _matchAggressiveBuyWithCap(uint256(_price), size);
 
-        _consumedFunds += _calculateFundsConsumed(_price, _remainingSize);
+        _consumedFunds += _quoteAmountRoundedUp(_price, _remainingSize);
 
         _consumeFunds(quoteAsset, (((_consumedFunds) * 10 ** quoteAssetDecimals) / pricePrecision), _msgSender());
         if (_postOnly) {
@@ -206,7 +206,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         {
             (, uint256 _bestAsk) = bestAsk();
-            if ((uint256(_price) * 10 ** 18 / pricePrecision) >= _bestAsk && _bestAsk != 0) {
+            if ((uint256(_price) * vaultPricePrecision / pricePrecision) >= _bestAsk && _bestAsk != 0) {
                 if (_provisionOrRevert) {
                     revert OrderBookErrors.ProvisionError();
                 } else {
@@ -215,7 +215,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             }
         }
         _consumeFunds(
-            quoteAsset, _calculateFundsConsumed(_price, _size) * 10 ** quoteAssetDecimals / pricePrecision, _msgSender()
+            quoteAsset, _quoteAmountRoundedUp(_price, _size) * 10 ** quoteAssetDecimals / pricePrecision, _msgSender()
         );
 
         uint40 _orderId = s_orderIdCounter + 1;
@@ -273,7 +273,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         {
             (, uint256 _bestBid) = bestBid();
-            if ((uint256(_price) * 10 ** 18 / pricePrecision) <= _bestBid && _bestBid != type(uint256).max) {
+            if ((uint256(_price) * vaultPricePrecision / pricePrecision) <= _bestBid && _bestBid != type(uint256).max) {
                 if (_provisionOrRevert) {
                     revert OrderBookErrors.ProvisionError();
                 } else {
@@ -301,18 +301,19 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             (, uint256 _bestBid) = bestBid();
             (, uint256 _bestAsk) = bestAsk();
             require(
-                ((uint256(_bidPrice) * 10 ** 18 / pricePrecision) < _bestAsk) || (_bestAsk == 0),
+                ((uint256(_bidPrice) * vaultPricePrecision / pricePrecision) < _bestAsk) || (_bestAsk == 0),
                 OrderBookErrors.ProvisionError()
             );
             require(
-                ((uint256(_askPrice) * 10 ** 18 / pricePrecision) > _bestBid) || (_bestBid == type(uint256).max),
+                ((uint256(_askPrice) * vaultPricePrecision / pricePrecision) > _bestBid)
+                    || (_bestBid == type(uint256).max),
                 OrderBookErrors.ProvisionError()
             );
         }
 
         _consumeFunds(
             quoteAsset,
-            _calculateFundsConsumed(_bidPrice, _bidSize) * 10 ** quoteAssetDecimals / pricePrecision,
+            _quoteAmountRoundedUp(_bidPrice, _bidSize) * 10 ** quoteAssetDecimals / pricePrecision,
             _msgSender()
         );
         _consumeFunds(baseAsset, _askSize * 10 ** baseAssetDecimals / sizePrecision, _msgSender());
@@ -392,10 +393,10 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @dev Consumes funds required to create a GTC order.
      * @param _consumableAsset Address of the asset that is being consumed by the market.
      * @param _amount Amount of _consumableAssets that should be consumed by the market.
-     * @param _makerAddress Address of the the user creating the order.
+     * @param _userAddress Address of the the user creating the order.
      */
-    function _consumeFunds(address _consumableAsset, uint256 _amount, address _makerAddress) internal {
-        marginAccount.debitUser(_makerAddress, _consumableAsset, _amount);
+    function _consumeFunds(address _consumableAsset, uint256 _amount, address _userAddress) internal {
+        marginAccount.debitUser(_userAddress, _consumableAsset, _amount);
     }
 
     function batchCancelFlipOrders(uint40[] calldata _orderIds) external {
@@ -828,7 +829,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             if (_isVaultFill) {
                 sizeToCreditViaVault += sizeFilled;
             } else {
-                fundsConsumed += _calculateFundsConsumed(
+                fundsConsumed += _quoteAmountRoundedUp(
                     uint32(FixedPointMathLib.mulDivUp(_bestAsk, pricePrecision, vaultPricePrecision)), sizeFilled
                 );
             }
@@ -1041,41 +1042,47 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @notice Fills an order and credits the maker, possibly removing the order if fully filled.
      * @dev Attempts to fill order `_orderId` with size `_size`. Credits maker and removes order if fully filled.
      * @param _orderId The ID of the order to fill.
-     * @param _sizeToBeFilled The size to fill.
-     * @return remainingSize The remaining size after attempting to fill this order.
+     * @param _incomingSizeToBeFilled The size to fill.
+     * @return incomingOrderRemainingSize The remaining size after attempting to fill this order.
      * @return _nextHead next head of the price point.
+     * @return _orderUpdate bytes encoded data for crediting the maker of the order
      */
-    function _fillOrder(uint40 _orderId, uint96 _sizeToBeFilled)
+    function _fillOrder(uint40 _orderId, uint96 _incomingSizeToBeFilled)
         internal
-        returns (uint96 remainingSize, uint40 _nextHead, bytes memory _orderUpdate)
+        returns (uint96 incomingOrderRemainingSize, uint40 _nextHead, bytes memory _orderUpdate)
     {
         _nextHead = s_orders[_orderId].next;
-        uint96 _orderSize = s_orders[_orderId].size;
+        uint96 _preExistingOrderSize = s_orders[_orderId].size;
         //remaining size is 0 if current order can fully fill required size
-        remainingSize = (_sizeToBeFilled > _orderSize) ? (_sizeToBeFilled - _orderSize) : 0;
-        uint96 _updatedSize;
-        if (remainingSize == 0) {
+        incomingOrderRemainingSize =
+            (_incomingSizeToBeFilled > _preExistingOrderSize) ? (_incomingSizeToBeFilled - _preExistingOrderSize) : 0;
+        uint96 _preExistingOrderUpdatedSize;
+        if (incomingOrderRemainingSize == 0) {
             //if order is partially filled, update its size
-            _updatedSize = _orderSize - _sizeToBeFilled;
+            _preExistingOrderUpdatedSize = _preExistingOrderSize - _incomingSizeToBeFilled;
         }
         if (s_orders[_orderId].flippedPrice == 0) {
             _orderUpdate = _creditMaker(
                 !s_orders[_orderId].isBuy,
                 s_orders[_orderId].ownerAddress,
-                (remainingSize == 0) ? _sizeToBeFilled : s_orders[_orderId].size,
+                (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : s_orders[_orderId].size,
                 s_orders[_orderId].price
             );
         }
 
-        if (remainingSize == 0) {
-            if (_updatedSize != 0) {
+        if (incomingOrderRemainingSize == 0) {
+            if (_preExistingOrderUpdatedSize != 0) {
                 _nextHead = _orderId;
             }
-            s_orders[_orderId].size = _updatedSize;
+            s_orders[_orderId].size = _preExistingOrderUpdatedSize;
         }
 
         if (s_orders[_orderId].flippedPrice != 0) {
-            _handleFlipOrderUpdate(_orderId, _sizeToBeFilled - remainingSize, _updatedSize == 0 ? true : false);
+            _handleFlipOrderUpdate(
+                _orderId,
+                _incomingSizeToBeFilled - incomingOrderRemainingSize,
+                _preExistingOrderUpdatedSize == 0 ? true : false
+            );
         }
         // What if the whole book gets filled or the whole price point gets filled up?
         _emitTrade(
@@ -1083,8 +1090,8 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             s_orders[_orderId].ownerAddress,
             !s_orders[_orderId].isBuy,
             (s_orders[_orderId].price * vaultPricePrecision) / pricePrecision,
-            _updatedSize,
-            _sizeToBeFilled - remainingSize
+            _preExistingOrderUpdatedSize,
+            _incomingSizeToBeFilled - incomingOrderRemainingSize
         );
     }
 
@@ -1147,7 +1154,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @param _price The price of the order.
      * @param _size The size of the order
      */
-    function _calculateFundsConsumed(uint32 _price, uint96 _size) internal view returns (uint96) {
+    function _quoteAmountRoundedUp(uint32 _price, uint96 _size) internal view returns (uint96) {
         uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, sizePrecision);
         require(_result < type(uint96).max, OrderBookErrors.TooMuchSizeFilled());
         return uint96(_result);
@@ -1168,7 +1175,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
     {
         address creditAsset = _isMarketBuy ? quoteAsset : baseAsset;
         uint256 amount =
-            _isMarketBuy ? _amountPayable(_size, _price) : ((_size * 10 ** baseAssetDecimals) / sizePrecision);
+            _isMarketBuy ? _quoteAmountRoundedDown(_size, _price) : ((_size * 10 ** baseAssetDecimals) / sizePrecision);
         uint256 feeRebate;
         address feeAsset;
         bytes memory returnData;
@@ -1177,7 +1184,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             feeRebate = (((_size * 10 ** baseAssetDecimals) / sizePrecision) * makerFeeBps) / BPS_MULTIPLIER;
         } else {
             feeAsset = quoteAsset;
-            feeRebate = (_amountPayable(_size, _price) * makerFeeBps) / BPS_MULTIPLIER;
+            feeRebate = (_quoteAmountRoundedDown(_size, _price) * makerFeeBps) / BPS_MULTIPLIER;
         }
         //feeRebate only exists if makerFeeBps > 0
         if (feeRebate > 0) {
@@ -1192,7 +1199,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @param _size size of token
      * @param _price conversion price from A to B
      */
-    function _amountPayable(uint96 _size, uint32 _price) internal view returns (uint256) {
+    function _quoteAmountRoundedDown(uint96 _size, uint32 _price) internal view returns (uint256) {
         return (uint256(((_price * _size) / sizePrecision)) * 10 ** quoteAssetDecimals) / pricePrecision;
     }
 

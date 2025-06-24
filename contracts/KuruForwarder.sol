@@ -53,7 +53,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         bytes data;
     }
 
-    bytes32 private constant _TYPEHASH =
+    bytes32 private constant _FORWARD_TYPEHASH =
         keccak256("ForwardRequest(address from,address market,uint256 value,uint256 nonce,bytes data)");
 
     bytes32 private constant _PRICE_DEPENDENT_TYPEHASH = keccak256(
@@ -101,7 +101,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
 
     function verify(ForwardRequest calldata req, bytes calldata signature) public view returns (bool) {
         address signer = _hashTypedData(
-            keccak256(abi.encode(_TYPEHASH, req.from, req.market, req.value, req.nonce, keccak256(req.data)))
+            keccak256(abi.encode(_FORWARD_TYPEHASH, req.from, req.market, req.value, req.nonce, keccak256(req.data)))
         ).recover(signature);
         return req.nonce >= _nonces[req.from] && signer == req.from;
     }

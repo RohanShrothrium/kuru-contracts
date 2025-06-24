@@ -89,7 +89,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
 
     /**
      * @dev This function is only callable by a verified market. Verified markets consume user balances.
-     * @param _user Address of the user whose account should be debited.
+     * @param _user address of the user whose account should be debited.
      * @param _token address of token to be debited.
      * @param _amount amount to debit.
      */
@@ -102,9 +102,10 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
 
     /**
      * @dev This function is only callable by a verified market. Verified markets credit user balances.
-     * @param _user Address of the user whose account should be credited.
+     * @param _user address of the user whose account should be credited.
      * @param _token address of token to be credit.
      * @param _amount amount to credit.
+     * @param _useMargin whether to use margin or not - if not, user will receive token through an erc20 transfer
      */
     function creditUser(address _user, address _token, uint256 _amount, bool _useMargin) external returns (bool) {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
@@ -173,7 +174,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @dev This function allows a user to claim all of their tokens from the margin account.
      * @param _tokens Array of tokens to claim.
      */
-    function batchClaimMaxTokens(address[] calldata _tokens) external {
+    function batchWithdrawMaxTokens(address[] calldata _tokens) external {
         uint256 _balance;
         for (uint256 i = 0; i < _tokens.length; i++) {
             _balance = balances[_accountKey(_msgSender(), _tokens[i])];

@@ -139,13 +139,13 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
             KuruAMMVaultErrors.NativeAssetMismatch()
         );
 
-        return _depositAndMint(baseDeposit, quoteDeposit, receiver);
+        return _mintAndDeposit(baseDeposit, quoteDeposit, receiver);
     }
 
     /**
      * @dev Internal function to handle the deposit logic and minting of shares.
      */
-    function _depositAndMint(uint256 baseDeposit, uint256 quoteDeposit, address receiver) internal returns (uint256) {
+    function _mintAndDeposit(uint256 baseDeposit, uint256 quoteDeposit, address receiver) internal returns (uint256) {
         (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(true);
         uint256 _shares;
         if (totalSupply() != 0) {
@@ -296,8 +296,8 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
         // @audit what is the right way to round this value?
         // ideally, should be rounded up during deposits and rounded down during withdrawals
         uint96 _normalizedAskSize = roundUp
-            ? uint96(FixedPointMathLib.mulDivUp(market.vaultAskOrderSize(), 2000 + SPREAD_CONSTANT, SPREAD_CONSTANT))
-            : uint96(FixedPointMathLib.mulDiv(market.vaultAskOrderSize(), 2000 + SPREAD_CONSTANT, SPREAD_CONSTANT));
+            ? uint96(FixedPointMathLib.mulDivUp(market.vaultAskOrderSize(), 20000 + SPREAD_CONSTANT, SPREAD_CONSTANT))
+            : uint96(FixedPointMathLib.mulDiv(market.vaultAskOrderSize(), 20000 + SPREAD_CONSTANT, SPREAD_CONSTANT));
         uint256 _price = market.vaultBestAsk();
         return ((_normalizedAskSize * 10 ** marketParams.baseAssetDecimals) / marketParams.sizePrecision, _price);
     }
@@ -404,11 +404,11 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
         MarketParams memory _marketParams = marketParams;
         uint96 _newAskSize = uint96(
             (SPREAD_CONSTANT * _baseAmount * _marketParams.sizePrecision)
-                / ((2000 + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
+                / ((20000 + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
         );
         uint96 _newBidSize = uint96(
             (SPREAD_CONSTANT * _baseAmount * _marketParams.sizePrecision)
-                / (2000 * 10 ** _marketParams.baseAssetDecimals)
+                / (20000 * 10 ** _marketParams.baseAssetDecimals)
         );
         return (_newAskSize, _newBidSize);
     }
