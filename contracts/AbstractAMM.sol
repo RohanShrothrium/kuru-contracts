@@ -276,7 +276,14 @@ abstract contract AbstractAMM is IOrderBook {
             SPREAD_CONSTANT * 10
         );
     }
-
+    /**
+     * @notice Updates the vault order sizes and prices when a user deposits or withdraws
+     * @param _vaultAskOrderSize The new ask order size
+     * @param _vaultBidOrderSize The new bid order size
+     * @param _askPrice The new ask price. Note: Only updated on the first deposit
+     * @param _bidPrice The new bid price. Note: Only updated on the first deposit
+     * @param _nullifyPartialFills Whether to nullify partial fills. Only done during specific withdrawals
+     */
     function updateVaultOrdSz(
         uint96 _vaultAskOrderSize,
         uint96 _vaultBidOrderSize,
