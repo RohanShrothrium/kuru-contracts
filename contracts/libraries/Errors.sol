@@ -11,8 +11,8 @@ library OrderBookErrors {
      */
     error MarketFeeError();
     /**
-    * @dev Thrown when minSize = 0 or maxSize < minSize
-    */
+     * @dev Thrown when minSize = 0 or maxSize < minSize
+     */
     error MarketSizeError();
     /**
      * @dev Thrown when Kuru AMM Vault spread passed to initializer is too high or too low or is not a multiple of 10

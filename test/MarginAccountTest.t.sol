@@ -88,7 +88,7 @@ contract OrderBookTest is Test {
             vm.stopPrank();
         }
         vm.prank(derived);
-        marginAccount.batchClaimMaxTokens(_tokens);
+        marginAccount.batchWithdrawMaxTokens(_tokens);
         for (uint256 i = 0; i < _amounts.length; i++) {
             assert(ERC20(_tokens[i]).balanceOf(derived) == _amounts[i]);
             assert(marginAccount.getBalance(derived, _tokens[i]) == 0);
