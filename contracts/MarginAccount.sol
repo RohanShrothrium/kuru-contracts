@@ -178,9 +178,14 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         uint256 _balance;
         for (uint256 i = 0; i < _tokens.length; i++) {
             _balance = balances[_accountKey(_msgSender(), _tokens[i])];
+            balances[_accountKey(_msgSender(), _tokens[i])] = 0;
             if (_balance > 0) {
-                balances[_accountKey(_msgSender(), _tokens[i])] = 0;
-                _tokens[i].safeTransfer(_msgSender(), _balance);
+                if (_tokens[i] == NATIVE) {
+                    (bool success,) = _msgSender().call{value: _balance}("");
+                    require(success, MarginAccountErrors.NativeAssetTransferFail());
+                } else {
+                    _tokens[i].safeTransfer(_msgSender(), _balance);
+                }
             }
         }
     }
