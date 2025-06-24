@@ -45,15 +45,15 @@ contract KuruUtils {
     function getTokensInfo(address[] memory tokens, address holder) public view returns (TokenInfo[] memory) {
         TokenInfo[] memory info = new TokenInfo[](tokens.length);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i; i < tokens.length; i++) {
             IReadERC20 token = IReadERC20(tokens[i]);
 
             // Default empty values
             string memory name = "";
             string memory symbol = "";
-            uint256 balance = 0;
-            uint8 decimals = 0;
-            uint256 totalSupply = 0;
+            uint256 balance;
+            uint8 decimals;
+            uint256 totalSupply;
 
             // Try to get name
             try token.name() returns (string memory _name) {

@@ -293,9 +293,8 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         public
         marketActive
     {
-        require(_bidPrice > 0 && _askPrice > 0, OrderBookErrors.PriceError());
+        require(_bidPrice > 0 && _askPrice > _bidPrice, OrderBookErrors.PriceError());
         require(_bidPrice % tickSize == 0 && _askPrice % tickSize == 0, OrderBookErrors.TickSizeError());
-        require(_bidPrice < _askPrice, OrderBookErrors.PriceError());
         require(_bidSize > minSize && _bidSize < maxSize, OrderBookErrors.SizeError());
         require(_askSize > minSize && _askSize < maxSize, OrderBookErrors.SizeError());
         {
@@ -341,7 +340,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         }
         s_orders[_orderId] =
             Order(_msgSender(), _size, _prevOrderId, OrderLinkedList.NULL, OrderLinkedList.NULL, _price, 0, _isBuy);
-        s_orders[_prevOrderId].next = _orderId;
+        if (_prevOrderId != OrderLinkedList.NULL) {
+            s_orders[_prevOrderId].next = _orderId;
+        }
         emit OrderCreated(_orderId, _msgSender(), _size, _price, _isBuy);
     }
 
@@ -556,7 +557,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         uint32[] calldata askPrices,
         uint96[] calldata bidSizes,
         uint96[] calldata askSizes
-    ) external marketActive {
+    ) external {
         require(
             bidPrices.length == bidSizes.length && askPrices.length == askSizes.length, OrderBookErrors.LengthMismatch()
         );
@@ -571,7 +572,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         uint96[] calldata sizes,
         bool[] calldata isBuy,
         bool _provisionOrRevert
-    ) external marketActive {
+    ) external {
         require(prices.length == flipPrices.length);
         require(sizes.length == isBuy.length);
         require(prices.length == sizes.length);
@@ -620,13 +621,11 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         // Place multiple buy orders
         for (uint256 i = 0; i < buyPrices.length; i++) {
-            if (buyPrices[i] == 0) break;
             addBuyOrder(buyPrices[i], buySizes[i], postOnly);
         }
 
         // Place multiple sell orders
         for (uint256 i = 0; i < sellPrices.length; i++) {
-            if (sellPrices[i] == 0) break;
             addSellOrder(sellPrices[i], sellSizes[i], postOnly);
         }
 
@@ -641,10 +640,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @param _prices Array of prices for the buy orders.
      * @param _sizes Array of sizes for the buy orders.
      */
-    function placeMultipleBuyOrders(uint32[] calldata _prices, uint96[] calldata _sizes, bool _postOnly)
-        external
-        marketActive
-    {
+    function placeMultipleBuyOrders(uint32[] calldata _prices, uint96[] calldata _sizes, bool _postOnly) external {
         require(_prices.length == _sizes.length, OrderBookErrors.LengthMismatch());
 
         for (uint256 i = 0; i < _prices.length; i++) {
@@ -657,10 +653,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
      * @param _prices Array of prices for the sell orders.
      * @param _sizes Array of sizes for the sell orders.
      */
-    function placeMultipleSellOrders(uint32[] calldata _prices, uint96[] calldata _sizes, bool _postOnly)
-        external
-        marketActive
-    {
+    function placeMultipleSellOrders(uint32[] calldata _prices, uint96[] calldata _sizes, bool _postOnly) external {
         require(_prices.length == _sizes.length, OrderBookErrors.LengthMismatch());
 
         for (uint256 i = 0; i < _prices.length; i++) {
@@ -695,7 +688,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                 : quoteAsset.safeTransferFrom(
                     _msgSender(), address(marginAccount), _pricePrecisionToQuoteAssetPrecision(_quoteSize)
                 );
-        } else {}
+        }
 
         uint256 _baseTokensCredited;
         (_quoteSize, _baseTokensCredited) = _marketBuyMatch(_quoteSize, _isMargin);
@@ -717,9 +710,8 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             (bool _success,) = address(marginAccount).call{value: msg.value}("");
             require(_success, OrderBookErrors.NativeAssetTransferFail());
         }
-        unchecked {
-            require(_baseTokensCredited >= _minAmountOut, OrderBookErrors.SlippageExceeded());
-        }
+        require(_baseTokensCredited >= _minAmountOut, OrderBookErrors.SlippageExceeded());
+
         return _baseTokensCredited;
     }
 
@@ -748,7 +740,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
                 : baseAsset.safeTransferFrom(
                     _msgSender(), address(marginAccount), _sizePrecisionToBaseAssetPrecision(_size)
                 );
-        } else {}
+        }
 
         uint256 _quoteCredited;
         (_size, _quoteCredited) = _matchAggressiveSell(0, _size, _isMargin);
@@ -767,9 +759,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             (bool _success,) = address(marginAccount).call{value: msg.value}("");
             require(_success, OrderBookErrors.NativeAssetTransferFail());
         }
-        unchecked {
-            require(_quoteCredited >= _minAmountOut, OrderBookErrors.SlippageExceeded());
-        }
+        require(_quoteCredited >= _minAmountOut, OrderBookErrors.SlippageExceeded());
         return _quoteCredited;
     }
 
@@ -1077,9 +1067,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             );
         }
 
-        if (
-            remainingSize == 0 || (_nextHead == OrderLinkedList.NULL && s_orders[_orderId].prev == OrderLinkedList.NULL)
-        ) {
+        if (remainingSize == 0) {
             if (_updatedSize != 0) {
                 _nextHead = _orderId;
             }

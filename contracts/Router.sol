@@ -129,7 +129,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 _makerFeeBps,
                 address(_kuruAmmVault),
                 _kuruAmmSpread,
-                address(TRUSTED_FORWARDER)
+                TRUSTED_FORWARDER
             );
         }
         _kuruAmmVault.initialize(
@@ -324,7 +324,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _amountOut = _isBuy[i]
                 ? (
                     market.placeAndExecuteMarketBuy{value: _value}(
-                        uint96(
+                        (
                             _amountToSize(
                                 _amount,
                                 true,

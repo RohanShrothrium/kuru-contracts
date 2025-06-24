@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.20;
 
-
 // ============ External Imports ============
 import {ECDSA} from "solady/src/utils/ECDSA.sol";
 import {EIP712} from "solady/src/utils/EIP712.sol";
@@ -182,7 +181,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         _nonces[req.from] = req.nonce + 1;
 
         (bool success, bytes memory returndata) =
-            req.marginAccount.call{gas: 63 * gasleft() / 64, value: req.value}(abi.encodePacked(req.data, req.from));
+            req.marginAccount.call{value: req.value}(abi.encodePacked(req.data, req.from));
 
         if (!success) {
             revert ExecutionFailed(returndata);
@@ -204,7 +203,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         _nonces[req.from] = req.nonce + 1;
 
         (bool success, bytes memory returndata) =
-            req.market.call{gas: 63 * gasleft() / 64, value: req.value}(abi.encodePacked(req.data, req.from));
+            req.market.call{value: req.value}(abi.encodePacked(req.data, req.from));
 
         if (!success) {
             revert ExecutionFailed(returndata);
@@ -230,7 +229,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
             Price(_currentBidPrice, req.price)
         );
         (bool success, bytes memory returndata) =
-            req.market.call{gas: 63 * gasleft() / 64, value: req.value}(abi.encodePacked(req.data, req.from));
+            req.market.call{value: req.value}(abi.encodePacked(req.data, req.from));
 
         if (!success) {
             revert ExecutionFailed(returndata);
