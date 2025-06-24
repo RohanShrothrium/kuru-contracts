@@ -109,7 +109,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
 
         require(_makerFeeBps <= _takerFeeBps && _takerFeeBps < BPS_MULTIPLIER, OrderBookErrors.MarketFeeError());
         require(_kuruAmmSpread % 10 == 0 && _kuruAmmSpread > 0 && _kuruAmmSpread < 500, OrderBookErrors.InvalidSpread());
-
+        require(_minSize > 0 && _maxSize > _minSize, OrderBookErrors.MarketSizeError());
         orderBookType = _type;
         baseAsset = _baseAssetAddress;
         quoteAsset = _quoteAssetAddress;
