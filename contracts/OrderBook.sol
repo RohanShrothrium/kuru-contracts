@@ -181,7 +181,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             uint40 _orderId = s_orderIdCounter + 1;
             s_orderIdCounter = _orderId;
 
-            // Add price to the tree and update DLL of price poit.
+            // Add price to the tree and update DLL of price point.
             uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_price], _orderId);
 
             _addOrder(_price, _remainingSize, _orderId, true, _prevOrderId);
@@ -249,7 +249,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         } else {
             uint40 _orderId = s_orderIdCounter + 1;
             s_orderIdCounter = _orderId;
-            // Add price to the tree and update DLL of price poit.
+            // Add price to the tree and update DLL of price point.
             uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId);
             _addOrder(_price, _remainingSize, _orderId, false, _prevOrderId);
         }
@@ -665,7 +665,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
     /**
      * @dev Places and executes a market buy order.
      * @param _quoteSize amount of quote asset user is ready to pay.
-     * @param _isFillOrKill bool representing if function should revert if full qty is not recieved.
+     * @param _isFillOrKill bool representing if function should revert if full qty is not received.
      */
     function placeAndExecuteMarketBuy(uint96 _quoteSize, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         public
@@ -719,7 +719,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
     /**
      * @dev Places and executes a market sell order.
      * @param _size Size of the market sell order.
-     * @param _isFillOrKill bool representing if function should revert if full qty is not recieved.
+     * @param _isFillOrKill bool representing if function should revert if full qty is not received.
      */
     function placeAndExecuteMarketSell(uint96 _size, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         public
