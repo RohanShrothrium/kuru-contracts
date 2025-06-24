@@ -301,11 +301,11 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
             (, uint256 _bestBid) = bestBid();
             (, uint256 _bestAsk) = bestAsk();
             require(
-                ((uint256(_bidPrice) * 10 ** 18 / pricePrecision) <= _bestAsk) || (_bestAsk == 0),
+                ((uint256(_bidPrice) * 10 ** 18 / pricePrecision) < _bestAsk) || (_bestAsk == 0),
                 OrderBookErrors.ProvisionError()
             );
             require(
-                ((uint256(_askPrice) * 10 ** 18 / pricePrecision) >= _bestBid) || (_bestBid == type(uint256).max),
+                ((uint256(_askPrice) * 10 ** 18 / pricePrecision) > _bestBid) || (_bestBid == type(uint256).max),
                 OrderBookErrors.ProvisionError()
             );
         }
