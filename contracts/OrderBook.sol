@@ -578,9 +578,9 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         bool[] calldata isBuy,
         bool _provisionOrRevert
     ) external {
-        require(prices.length == flipPrices.length);
-        require(sizes.length == isBuy.length);
-        require(prices.length == sizes.length);
+        require(prices.length == flipPrices.length, OrderBookErrors.LengthMismatch());
+        require(sizes.length == isBuy.length, OrderBookErrors.LengthMismatch());
+        require(prices.length == sizes.length, OrderBookErrors.LengthMismatch());
         for (uint256 i = 0; i < prices.length; i++) {
             if (isBuy[i]) {
                 addFlipBuyOrder(prices[i], flipPrices[i], sizes[i], _provisionOrRevert);
@@ -880,7 +880,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         bytes memory makerCredits;
         uint32 _pricePrecision = pricePrecision;
         uint96 _sizePrecision = sizePrecision;
-    
+
         (bool _isVaultFill, uint256 _bestAsk) = bestAsk();
 
         while (_quoteSize > 0 && _bestAsk != 0) {
