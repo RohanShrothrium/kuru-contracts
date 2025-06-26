@@ -8,7 +8,6 @@ import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
 // ============ Internal Library Imports ============
-import {IERC20} from "./libraries/IERC20.sol";
 import {ERC2771Context} from "./libraries/ERC2771Context.sol";
 import {MarginAccountErrors} from "./libraries/Errors.sol";
 

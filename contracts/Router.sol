@@ -8,7 +8,7 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 
 // ============ Internal Library Imports ============
-import {IERC20} from "./libraries/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {RouterErrors} from "./libraries/Errors.sol";
 import {IKuruAMMVault} from "./interfaces/IKuruAMMVault.sol";
 
@@ -93,9 +93,9 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             require(_baseAssetAddress != _quoteAssetAddress, RouterErrors.BaseAndQuoteAssetSame());
         }
         uint256 _baseAssetDecimals =
-            _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
+            _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20Metadata(_baseAssetAddress).decimals();
         uint256 _quoteAssetDecimals =
-            _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20(_quoteAssetAddress).decimals();
+            _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20Metadata(_quoteAssetAddress).decimals();
         {
             bytes32 _salt = _getSalt(
                 _baseAssetAddress,
