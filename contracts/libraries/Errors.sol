@@ -3,6 +3,10 @@ pragma solidity ^0.8.20;
 
 library OrderBookErrors {
     /**
+     * @dev Thrown when a user is not the owner and tries to execute a privileged function
+     */
+    error Unauthorized();
+    /**
      * @dev Thrown when a market is paused and a user tries to execute an action or if the owner passes an already existing market state for toggling
      */
     error MarketStateError();
@@ -148,6 +152,10 @@ library RouterErrors {
 }
 
 library KuruAMMVaultErrors {
+    /**
+     * @dev Thrown when a user is not the owner and tries to execute a privileged function
+     */
+    error Unauthorized();
     /**
      * @dev Thrown when native token passed as argument and msg.value does not match
      */

@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 // ============ External Imports ============
 import {ERC20} from "solady/src/tokens/ERC20.sol";
-import {Ownable} from "solady/src/auth/Ownable.sol";
 import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
@@ -15,10 +14,10 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 import {IKuruAMMVault} from "./interfaces/IKuruAMMVault.sol";
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
-contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgradeable {
+contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
     using SafeTransferLib for address;
     using FixedPointMathLib for uint256;
-
+    address public owner;
     address private token1;
     uint256 private token1Decimals;
 
@@ -47,7 +46,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
         string memory _name,
         string memory _symbol
     ) public initializer {
-        _initializeOwner(_owner);
+        owner = _owner;
         token1 = token1_;
         token1Decimals = token1_ != address(0) ? ERC20(token1_).decimals() : 18;
         token2 = token2_;
@@ -64,8 +63,13 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
     }
 
     // ============ auth =================
-    function _guardInitializeOwner() internal pure override returns (bool guard) {
-        guard = true;
+    function transferOwnership(address _newOwner) external {
+        _checkOwner();
+        owner = _newOwner;
+    }
+
+    function _checkOwner() internal view {
+        require(msg.sender == owner, KuruAMMVaultErrors.Unauthorized());
     }
 
     function _authorizeUpgrade(address) internal view override {

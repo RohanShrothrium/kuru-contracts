@@ -14,13 +14,12 @@ import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 // ============ External Imports ============
-import {Ownable} from "solady/src/auth/Ownable.sol";
 import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
-contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, AbstractAMM {
+contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAMM {
     OrderBookType orderBookType;
-
+    address owner;
     address _trustedForwarder;
 
     using SafeTransferLib for address;
@@ -107,7 +106,7 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         uint96 _kuruAmmSpread,
         address __trustedForwarder
     ) public initializer {
-        _initializeOwner(_owner);
+        owner = _owner;
 
         require(_makerFeeBps <= _takerFeeBps && _takerFeeBps < BPS_MULTIPLIER, OrderBookErrors.MarketFeeError());
         require(_kuruAmmSpread % 10 == 0 && _kuruAmmSpread > 0 && _kuruAmmSpread < 500, OrderBookErrors.InvalidSpread());
@@ -136,11 +135,8 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         _trustedForwarder = __trustedForwarder;
     }
 
-    /**
-     * @dev Overrides the function in Ownable so that owner is initialized only once
-     */
-    function _guardInitializeOwner() internal pure override returns (bool guard) {
-        guard = true;
+    function _checkOwner() internal view {
+        require(msg.sender == owner, OrderBookErrors.Unauthorized());
     }
 
     /**
@@ -157,6 +153,15 @@ contract OrderBook is Ownable, Initializable, UUPSUpgradeable, ERC2771Context, A
         _checkOwner();
         require(_state != marketPaused, OrderBookErrors.MarketStateError());
         marketPaused = _state;
+    }
+
+    /**
+     * @dev Allows admin to transfer ownership of the contract.
+     * @param _newOwner The new owner of the contract.
+     */
+    function transferOwnership(address _newOwner) external {
+        _checkOwner();
+        owner = _newOwner;
     }
 
     /**
