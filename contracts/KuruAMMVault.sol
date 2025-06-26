@@ -56,10 +56,10 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Ownable, Initializable, UUPSUpgra
         market = IOrderBook(_market);
         SPREAD_CONSTANT = _spreadConstant;
         if (token1_ != address(0)) {
-            ERC20(token1_).approve(_marginAccount, type(uint256).max);
+            token1_.safeApprove(_marginAccount, type(uint256).max);
         }
         if (token2_ != address(0)) {
-            ERC20(token2_).approve(_marginAccount, type(uint256).max);
+            token2_.safeApprove(_marginAccount, type(uint256).max);
         }
     }
 

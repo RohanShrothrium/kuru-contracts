@@ -286,12 +286,14 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         address _marketAddress,
         IOrderBook.OrderBookType _type
     ) internal {
-        _type == IOrderBook.OrderBookType.NATIVE_IN_BASE
-            ? true
-            : IERC20(_baseAsset).approve(_marketAddress, type(uint256).max);
-        _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE
-            ? true
-            : IERC20(_quoteAsset).approve(_marketAddress, type(uint256).max);
+        if (_type == IOrderBook.OrderBookType.NATIVE_IN_BASE) {
+            _quoteAsset.safeApprove(_marketAddress, type(uint256).max);
+        } else if (_type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE) {
+            _baseAsset.safeApprove(_marketAddress, type(uint256).max);
+        } else {
+            _baseAsset.safeApprove(_marketAddress, type(uint256).max);
+            _quoteAsset.safeApprove(_marketAddress, type(uint256).max);
+        }
 
         IMarginAccount(marginAccountAddress).updateMarkets(_marketAddress);
     }

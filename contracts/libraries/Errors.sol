@@ -122,6 +122,10 @@ library RouterErrors {
      */
     error BaseAndQuoteAssetSame();
     /**
+     * @dev Thrown when market type given and token addresses are not compatible
+     */
+    error MarketTypeMismatch();
+    /**
      * @dev Thrown when no markets are passed as input
      */
     error NoMarketsPassed();
