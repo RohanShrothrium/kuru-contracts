@@ -234,7 +234,7 @@ abstract contract AbstractAMM is IOrderBook {
         uint256 feeRebate =
             ((_sizeFilled * 10 ** _getBaseAssetDecimals() / _getSizePrecision()) * _getMakerFeeBps()) / BPS_MULTIPLIER;
         if (feeRebate > 0) {
-            bytes.concat(returnData, abi.encode(kuruAmmVault, _getBaseAsset(), feeRebate, true));
+            returnData = bytes.concat(returnData, abi.encode(kuruAmmVault, _getBaseAsset(), feeRebate, true));
         }
     }
 
@@ -256,7 +256,7 @@ abstract contract AbstractAMM is IOrderBook {
             (_fundsOwedToUser * 10 ** _getQuoteAssetDecimals() / vaultPricePrecision) * _getMakerFeeBps()
         ) / BPS_MULTIPLIER;
         if (feeRebate > 0) {
-            bytes.concat(returnData, abi.encode(kuruAmmVault, _getQuoteAsset(), feeRebate, true));
+            returnData = bytes.concat(returnData, abi.encode(kuruAmmVault, _getQuoteAsset(), feeRebate, true));
         }
     }
 
@@ -284,6 +284,7 @@ abstract contract AbstractAMM is IOrderBook {
      * @param _bidPrice The new bid price. Note: Only updated on the first deposit
      * @param _nullifyPartialFills Whether to nullify partial fills. Only done during specific withdrawals
      */
+
     function updateVaultOrdSz(
         uint96 _vaultAskOrderSize,
         uint96 _vaultBidOrderSize,
