@@ -394,8 +394,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint256 quoteAssetDecimals
     ) internal pure returns (uint96) {
         return _isBuy
-            ? uint96((_amount * pricePrecision) / 10 ** quoteAssetDecimals)
-            : uint96((_amount * sizePrecision) / 10 ** baseAssetDecimals);
+            ? toU96((_amount * pricePrecision) / 10 ** quoteAssetDecimals)
+            : toU96((_amount * sizePrecision) / 10 ** baseAssetDecimals);
     }
 
     function _getSalt(
@@ -433,6 +433,10 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         returns (address _baseAsset, address _quoteAsset)
     {
         (_baseAsset, _quoteAsset) = (_tokenA > _tokenB) ? (_tokenB, _tokenA) : (_tokenA, _tokenB);
+    }
+
+    function toU96(uint256 _from) internal pure returns (uint96 _to) {
+        require((_to = uint96(_from)) == _from, RouterErrors.Uint96Overflow());
     }
 
     receive() external payable {}

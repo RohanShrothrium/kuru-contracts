@@ -497,7 +497,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             marginAccount.creditUser(
                 _order.ownerAddress,
                 quoteAsset,
-                (((uint96((_order.size * _order.price) / sizePrecision) * quoteDecimalMultiplier) / pricePrecision)),
+                (((toU96((_order.size * _order.price) / sizePrecision) * quoteDecimalMultiplier) / pricePrecision)),
                 true
             );
         } else {
@@ -828,7 +828,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             } else {
                 (_sizeToBeFilled, priceUpdate) = _fillSizeForPrice(
                     s_sellTree,
-                    uint32(_bestAsk * _pricePrecision / vaultPricePrecision),
+                    toU32(_bestAsk * _pricePrecision / vaultPricePrecision),
                     s_sellPricePoints[_bestAsk * _pricePrecision / vaultPricePrecision],
                     _sizeToBeFilled
                 );
@@ -840,7 +840,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 sizeToCreditViaVault += sizeFilled;
             } else {
                 fundsConsumed += _quoteAmountRoundedUp(
-                    uint32(FixedPointMathLib.mulDivUp(_bestAsk, _pricePrecision, vaultPricePrecision)), sizeFilled
+                    toU32(FixedPointMathLib.mulDivUp(_bestAsk, _pricePrecision, vaultPricePrecision)), sizeFilled
                 );
             }
             makerCredits = bytes.concat(makerCredits, priceUpdate);
@@ -898,16 +898,16 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             } else {
                 // Calculate base size fillable by current unconsumed quote size for a particular price
                 uint96 _sizeFillableAtPriceLeft =
-                    uint96(_quoteSize * sizePrecision * vaultPricePrecision / (_bestAsk * _pricePrecision));
+                    toU96(_quoteSize * sizePrecision * vaultPricePrecision / (_bestAsk * _pricePrecision));
                 uint96 _sizeFillableAtPriceBefore = _sizeFillableAtPriceLeft; // Save old size to be filled
                 (_sizeFillableAtPriceLeft, priceUpdate) = _fillSizeForPrice(
                     s_sellTree,
-                    uint32(_bestAsk * _pricePrecision / vaultPricePrecision),
-                    s_sellPricePoints[uint32(_bestAsk * _pricePrecision / vaultPricePrecision)],
+                    toU32(_bestAsk * _pricePrecision / vaultPricePrecision),
+                    s_sellPricePoints[(_bestAsk * _pricePrecision / vaultPricePrecision)],
                     _sizeFillableAtPriceLeft
                 );
                 sizeToCreditTaker += (_sizeFillableAtPriceBefore - _sizeFillableAtPriceLeft);
-                _quoteSize = uint96(
+                _quoteSize = toU96(
                     FixedPointMathLib.mulDiv(
                         _bestAsk * _pricePrecision, _sizeFillableAtPriceLeft, sizePrecision * vaultPricePrecision
                     )
@@ -976,14 +976,14 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             } else {
                 (_sizeToBeFilledLeft, priceUpdate) = _fillSizeForPrice(
                     s_buyTree,
-                    uint32(_bestBid * _pricePrecision / vaultPricePrecision),
+                    toU32(_bestBid * _pricePrecision / vaultPricePrecision),
                     s_buyPricePoints[_bestBid * _pricePrecision / vaultPricePrecision],
                     _sizeToBeFilledLeft
                 );
-                quoteCreditTaker += uint96(
+                quoteCreditTaker += toU96(
                     FixedPointMathLib.mulDiv(
                         _sizeToBeFilledBefore - _sizeToBeFilledLeft,
-                        uint32(_bestBid * _pricePrecision / vaultPricePrecision),
+                        toU32(_bestBid * _pricePrecision / vaultPricePrecision),
                         sizePrecision
                     )
                 );
@@ -1124,7 +1124,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             s_orderIdCounter = _flipOrderId;
             uint40 _prevOrderId;
             if (!s_orders[_orderId].isBuy) {
-                _size = uint96(FixedPointMathLib.mulDiv(_size, _filledOrder.price, _filledOrder.flippedPrice));
+                _size = toU96(FixedPointMathLib.mulDiv(_size, _filledOrder.price, _filledOrder.flippedPrice));
                 _prevOrderId = OrderLinkedList.insertAtTail(s_buyPricePoints[_filledOrder.flippedPrice], _flipOrderId);
             } else {
                 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_filledOrder.flippedPrice], _flipOrderId);
@@ -1147,7 +1147,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             uint40 _flipOrderId = s_orders[_orderId].flippedId;
             if (!s_orders[_orderId].isBuy) {
                 _size =
-                    uint96(FixedPointMathLib.mulDiv(_size, s_orders[_orderId].price, s_orders[_orderId].flippedPrice));
+                    toU96(FixedPointMathLib.mulDiv(_size, s_orders[_orderId].price, s_orders[_orderId].flippedPrice));
             }
             uint96 _updatedSize = s_orders[_flipOrderId].size + _size;
             s_orders[_flipOrderId].size = _updatedSize;
@@ -1177,7 +1177,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     function _quoteAmountRoundedUp(uint32 _price, uint96 _size) internal view returns (uint96) {
         uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, sizePrecision);
         require(_result < type(uint96).max, OrderBookErrors.TooMuchSizeFilled());
-        return uint96(_result);
+        return toU96(_result);
     }
 
     /**

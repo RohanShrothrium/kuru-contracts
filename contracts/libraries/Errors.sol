@@ -91,6 +91,14 @@ library OrderBookErrors {
      * @dev Thrown when the call is not made by the vault
      */
     error OnlyVaultAllowed();
+    /**
+    * @dev Thrown when safe cast to uint96 fails
+    */
+    error Uint96Overflow();
+    /** 
+    * @dev Thrown when safe cast to uint32 fails
+    */
+    error Uint32Overflow();
 }
 
 library MarginAccountErrors {
@@ -149,6 +157,10 @@ library RouterErrors {
      * @dev Thrown when the native asset transfer fails
      */
     error NativeAssetTransferFail();
+    /**
+    * @dev Thrown when safe cast to uint96 fails
+    */
+    error Uint96Overflow();
 }
 
 library KuruAMMVaultErrors {
@@ -188,6 +200,10 @@ library KuruAMMVaultErrors {
      * @dev Thrown when the amounts withdrawn are negative
      */
     error NegativeAmountWithdrawn();
+    /**
+    * @dev Thrown when safe cast to uint96 fails
+    */
+    error Uint96Overflow();
 }
 
 library KuruForwarderErrors {

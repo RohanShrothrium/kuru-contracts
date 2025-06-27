@@ -67,7 +67,7 @@ abstract contract AbstractAMM is IOrderBook {
         while (_price < _breakPoint && _quoteInput > 0) {
             uint256 _quoteNeededForFill = FixedPointMathLib.mulDivUp(_price, _availableSize, _getSizePrecision());
             if (_quoteNeededForFill > _quoteInput) {
-                uint96 _sizeFilledAtPrice = uint96(_quoteInput * _getSizePrecision() / _price);
+                uint96 _sizeFilledAtPrice = toU96(_quoteInput * _getSizePrecision() / _price);
                 sizeFilled += _sizeFilledAtPrice;
                 askPartiallyFilledSize += _sizeFilledAtPrice;
                 _emitTrade(0, kuruAmmVault, true, _price, _availableSize - _sizeFilledAtPrice, _sizeFilledAtPrice);
@@ -76,7 +76,7 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeFilled += _availableSize;
                 _quoteInput -= _quoteNeededForFill;
-                _cachedLastVaultSize = uint96(
+                _cachedLastVaultSize = toU96(
                     FixedPointMathLib.mulDiv(
                         _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
                     )
@@ -84,7 +84,7 @@ abstract contract AbstractAMM is IOrderBook {
                 _emitTrade(0, kuruAmmVault, true, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
                 _price = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER + SPREAD_CONSTANT, BPS_MULTIPLIER);
-                _cachedPartiallyFilledBid = uint96(
+                _cachedPartiallyFilledBid = toU96(
                     FixedPointMathLib.mulDiv(
                         _cachedPartiallyFilledBid, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT
                     )
@@ -95,12 +95,12 @@ abstract contract AbstractAMM is IOrderBook {
         vaultBestBid = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
         vaultAskOrderSize = _cachedLastVaultSize;
-        vaultBidOrderSize = uint96(
+        vaultBidOrderSize = toU96(
             FixedPointMathLib.mulDiv(
                 _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
             )
         );
-        quoteLeft = uint96(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
+        quoteLeft = toU96(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
         makerCredits =
             _creditVaultOnMarketBuy(sizeFilled, (_quoteSize * vaultPricePrecision / _getPricePrecision() - _quoteInput));
     }
@@ -138,7 +138,7 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeLeft -= _availableSize;
                 _consumedQuote += FixedPointMathLib.mulDivUp(_availableSize, _price, _getSizePrecision());
-                _cachedLastVaultSize = uint96(
+                _cachedLastVaultSize = toU96(
                     FixedPointMathLib.mulDiv(
                         _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
                     )
@@ -146,7 +146,7 @@ abstract contract AbstractAMM is IOrderBook {
                 _emitTrade(0, kuruAmmVault, true, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
                 _price = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER + SPREAD_CONSTANT, BPS_MULTIPLIER);
-                _cachedPartiallyFilledBid = uint96(
+                _cachedPartiallyFilledBid = toU96(
                     FixedPointMathLib.mulDiv(
                         _cachedPartiallyFilledBid, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT
                     )
@@ -157,12 +157,12 @@ abstract contract AbstractAMM is IOrderBook {
         vaultBestBid = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
         vaultAskOrderSize = _cachedLastVaultSize;
-        vaultBidOrderSize = uint96(
+        vaultBidOrderSize = toU96(
             FixedPointMathLib.mulDiv(
                 _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
             )
         );
-        fundsConsumed = uint96(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
+        fundsConsumed = toU96(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
         makerCredits = _creditVaultOnMarketBuy(_size - sizeLeft, _consumedQuote);
     }
 
@@ -196,7 +196,7 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeLeft -= _availableSize;
                 quoteOwedToUser += FixedPointMathLib.mulDiv(_price, _availableSize, _getSizePrecision());
-                _cachedLastVaultSize = uint96(
+                _cachedLastVaultSize = toU96(
                     FixedPointMathLib.mulDiv(
                         _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
                     )
@@ -209,7 +209,7 @@ abstract contract AbstractAMM is IOrderBook {
         vaultBestBid = _price;
         vaultBestAsk = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER + SPREAD_CONSTANT, BPS_MULTIPLIER);
         vaultBidOrderSize = _cachedLastVaultSize;
-        vaultAskOrderSize = uint96(
+        vaultAskOrderSize = toU96(
             FixedPointMathLib.mulDiv(
                 _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
             )
@@ -314,6 +314,14 @@ abstract contract AbstractAMM is IOrderBook {
             vaultBestAsk,
             vaultBestBid
         );
+    }
+
+    function toU32(uint256 _from) internal pure returns (uint32 _to) {
+        require((_to = uint32(_from)) == _from, OrderBookErrors.Uint32Overflow());
+    }
+
+    function toU96(uint256 _from) internal pure returns (uint96 _to) {
+        require((_to = uint96(_from)) == _from, OrderBookErrors.Uint96Overflow());
     }
 
     function _getPricePrecision() internal view virtual returns (uint32);

@@ -300,8 +300,8 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
         // @audit what is the right way to round this value?
         // ideally, should be rounded up during deposits and rounded down during withdrawals
         uint96 _normalizedAskSize = roundUp
-            ? uint96(FixedPointMathLib.mulDivUp(market.vaultAskOrderSize(), 20000 + SPREAD_CONSTANT, SPREAD_CONSTANT))
-            : uint96(FixedPointMathLib.mulDiv(market.vaultAskOrderSize(), 20000 + SPREAD_CONSTANT, SPREAD_CONSTANT));
+            ? toU96(FixedPointMathLib.mulDivUp(market.vaultAskOrderSize(), 20000 + SPREAD_CONSTANT, SPREAD_CONSTANT))
+            : toU96(FixedPointMathLib.mulDiv(market.vaultAskOrderSize(), 20000 + SPREAD_CONSTANT, SPREAD_CONSTANT));
         uint256 _price = market.vaultBestAsk();
         return ((_normalizedAskSize * 10 ** marketParams.baseAssetDecimals) / marketParams.sizePrecision, _price);
     }
@@ -406,11 +406,11 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
 
     function _getVaultSizesForBaseAmount(uint256 _baseAmount) internal view returns (uint96, uint96) {
         MarketParams memory _marketParams = marketParams;
-        uint96 _newAskSize = uint96(
+        uint96 _newAskSize = toU96(
             (SPREAD_CONSTANT * _baseAmount * _marketParams.sizePrecision)
                 / ((20000 + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
         );
-        uint96 _newBidSize = uint96(
+        uint96 _newBidSize = toU96(
             (SPREAD_CONSTANT * _baseAmount * _marketParams.sizePrecision)
                 / (20000 * 10 ** _marketParams.baseAssetDecimals)
         );
@@ -431,6 +431,10 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
             _halfTotalValuationInQuote * vaultPricePrecision * 10 ** _marketParams.baseAssetDecimals
         ) / (10 ** _marketParams.quoteAssetDecimals * _vaultPrice);
         return (_rebalancedBaseAsset, _halfTotalValuationInQuote);
+    }
+
+    function toU96(uint256 _from) internal pure returns (uint96 _to) {
+        require((_to = uint96(_from)) == _from, KuruAMMVaultErrors.Uint96Overflow());
     }
 
     receive() external payable {}
