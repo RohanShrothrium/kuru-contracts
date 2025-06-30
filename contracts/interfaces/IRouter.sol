@@ -35,6 +35,10 @@ interface IRouter {
         uint96 kuruAmmSpread
     );
 
+    event OBImplementationUpdated(address previousImplementation, address newImplementation);
+
+    event VaultImplementationUpdated(address previousImplementation, address newImplementation);
+
     event KuruRouterSwap(
         address msgSender, address debitToken, address creditToken, uint256 amountIn, uint256 amountOut
     );

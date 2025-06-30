@@ -130,6 +130,14 @@ library MarginAccountErrors {
      * @dev Thrown when protocol is paused
      */
     error ProtocolPaused();
+    /**
+     * @dev Thrown when protocol state is not changed
+     */
+    error ProtocolStateNotChanged();
+    /**
+     * @dev Thrown when fee collector is not set
+     */
+    error FeeCollectorNotChanged();
 }
 
 library RouterErrors {

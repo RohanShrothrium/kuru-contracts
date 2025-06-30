@@ -240,6 +240,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      */
     function upgradeOrderBookImplementation(address newImplementation) external onlyOwner {
         require(newImplementation != orderBookImplementation);
+        emit OBImplementationUpdated(orderBookImplementation, newImplementation);
         orderBookImplementation = newImplementation;
     }
 
@@ -249,6 +250,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      */
     function upgradeVaultImplementation(address newImplementation) external onlyOwner {
         require(newImplementation != kuruAmmVaultImplementation);
+        emit VaultImplementationUpdated(kuruAmmVaultImplementation, newImplementation);
         kuruAmmVaultImplementation = newImplementation;
     }
 

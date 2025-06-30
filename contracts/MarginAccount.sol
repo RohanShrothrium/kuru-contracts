@@ -37,11 +37,15 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
 
     // ============ admin ================
     function toggleProtocolState(bool _state) external onlyOwner {
+        require(protocolPaused != _state, MarginAccountErrors.ProtocolStateNotChanged());
         protocolPaused = _state;
+        emit ProtocolStateUpdated(_state);
     }
 
     function setFeeCollector(address _feeCollector) external onlyOwner {
+        require(feeCollector != _feeCollector, MarginAccountErrors.FeeCollectorNotChanged());
         feeCollector = _feeCollector;
+        emit FeeCollectorUpdated(_feeCollector);
     }
 
     // ============ auth =================

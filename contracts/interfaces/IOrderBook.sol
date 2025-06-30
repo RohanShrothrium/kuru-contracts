@@ -26,6 +26,8 @@ interface IOrderBook {
         bool isBuy;
     }
 
+    event MarketStateUpdated(MarketState previousState, MarketState newState);
+
     /**
      * @dev Emitted when a new order is created.
      * @param orderId Unique identifier for the newly created order.

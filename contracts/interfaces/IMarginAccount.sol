@@ -3,6 +3,11 @@
 pragma solidity ^0.8.20;
 
 interface IMarginAccount {
+
+    event ProtocolStateUpdated(bool newState);
+
+    event FeeCollectorUpdated(address newFeeCollector);
+
     event Deposit(address owner, address token, uint256 amount);
 
     event Withdrawal(address owner, address token, uint256 amount);
