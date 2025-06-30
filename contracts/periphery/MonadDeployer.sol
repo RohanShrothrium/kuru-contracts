@@ -2,13 +2,15 @@
 
 pragma solidity ^0.8.20;
 
+import {Ownable} from "solady/src/auth/Ownable.sol";
 import {KuruERC20} from "./ERC20.sol";
 import {IRouter} from "../interfaces/IRouter.sol";
 import {IOrderBook} from "../interfaces/IOrderBook.sol";
 import {IKuruAMMVault} from "../interfaces/IKuruAMMVault.sol";
 import {IMarginAccount} from "../interfaces/IMarginAccount.sol";
 
-contract MonadDeployer {
+contract MonadDeployer is Ownable {
+
     struct TokenParams {
         string name;
         string symbol;
@@ -31,8 +33,8 @@ contract MonadDeployer {
 
     //INTERNAL VARIABLES
     IRouter immutable router;
-    uint96 immutable kuruAmmSpread;
-    address kuruCollective;
+    uint96 public kuruAmmSpread;
+    address public kuruCollective;
     uint256 public kuruCollectiveFee; //in native token amount
     IMarginAccount immutable marginAccount;
 
@@ -47,11 +49,13 @@ contract MonadDeployer {
     //CONSTRUCTOR
     constructor(
         IRouter _router,
+        address _owner,
         address _marginAccount,
         address _kuruCollective,
         uint96 _kuruAmmSpread,
         uint256 _kuruCollectiveFee
     ) {
+        _initializeOwner(_owner);
         router = _router;
         marginAccount = IMarginAccount(_marginAccount);
         kuruAmmSpread = _kuruAmmSpread;
@@ -97,5 +101,13 @@ contract MonadDeployer {
             market,
             metadata
         );
+    }
+
+    function setKuruAmmSpread(uint96 _kuruAmmSpread) external onlyOwner {
+        kuruAmmSpread = _kuruAmmSpread;
+    }
+
+    function setKuruCollective(address _kuruCollective) external onlyOwner {
+        kuruCollective = _kuruCollective;
     }
 }
