@@ -31,7 +31,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     TreeMath.TreeUint32 public s_sellTree;
 
     uint40 public s_orderIdCounter;
-    bool marketPaused;
+    MarketState public marketState;
 
     uint96 internal sizePrecision;
     uint32 internal pricePrecision;
@@ -62,7 +62,12 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     modifier marketActive() {
-        require(!marketPaused, OrderBookErrors.MarketStateError());
+        require(marketState == MarketState.ACTIVE, OrderBookErrors.MarketStateError());
+        _;
+    }
+
+    modifier marketNotHardPaused() override {
+        require(marketState != MarketState.HARD_PAUSED, OrderBookErrors.MarketStateError());
         _;
     }
 
@@ -149,10 +154,10 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     /**
      * @dev Allows admin to pause the market.
      */
-    function toggleMarket(bool _state) external {
+    function toggleMarket(MarketState _state) external {
         _checkOwner();
-        require(_state != marketPaused, OrderBookErrors.MarketStateError());
-        marketPaused = _state;
+        require(_state != marketState, OrderBookErrors.MarketStateError());
+        marketState = _state;
     }
 
     /**
@@ -408,7 +413,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         marginAccount.debitUser(_userAddress, _consumableAsset, _amount);
     }
 
-    function batchCancelFlipOrders(uint40[] calldata _orderIds) external {
+    function batchCancelFlipOrders(uint40[] calldata _orderIds) external marketNotHardPaused {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _cancelFlipOrder(_orderIds[i]);
         }
@@ -420,7 +425,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Cancels multiple orders in a batch.
      * @param _orderIds Array of order IDs to cancel.
      */
-    function batchCancelOrders(uint40[] calldata _orderIds) external {
+    function batchCancelOrders(uint40[] calldata _orderIds) external marketNotHardPaused {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _cancelOrder(_orderIds[i], true);
         }
@@ -428,7 +433,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrdersCanceled(_orderIds, _msgSender());
     }
 
-    function batchCancelOrdersNoRevert(uint40[] calldata _orderIds) external {
+    function batchCancelOrdersNoRevert(uint40[] calldata _orderIds) external marketNotHardPaused {
         uint40[] memory _orderIdsCanceled = new uint40[](_orderIds.length);
         for (uint256 i = 0; i < _orderIds.length; i++) {
             bool _isCanceled = _cancelOrder(_orderIds[i], false);

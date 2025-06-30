@@ -16,9 +16,11 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable, UUPSUpgradeable {
     using SafeTransferLib for address;
-    // Mapping from user addresses to their NATIVE balance
-
     address trustedForwarder;
+
+    bool protocolPaused;
+
+    // Mapping from user keys to their balances
     mapping(bytes32 => uint256) public balances;
 
     // Mapping of hash of token pairs to their market contract addresses
@@ -33,6 +35,15 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         _disableInitializers();
     }
 
+    // ============ admin ================
+    function toggleProtocolState(bool _state) external onlyOwner {
+        protocolPaused = _state;
+    }
+
+    function setFeeCollector(address _feeCollector) external onlyOwner {
+        feeCollector = _feeCollector;
+    }
+
     // ============ auth =================
 
     function _guardInitializeOwner() internal pure override returns (bool guard) {
@@ -45,6 +56,11 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
 
     modifier onlyRouter() {
         require(msg.sender == routerContractAddress, MarginAccountErrors.OnlyRouterAllowed());
+        _;
+    }
+
+    modifier protocolActive() {
+        require(!protocolPaused, MarginAccountErrors.ProtocolPaused());
         _;
     }
 
@@ -80,7 +96,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @dev This function allows the router to register an official verified market.
      * @param _marketAddress Address of the orderbook of the market.
      */
-    function updateMarkets(address _marketAddress) external onlyRouter {
+    function updateMarkets(address _marketAddress) external onlyRouter protocolActive {
         verifiedMarket[_marketAddress] = true;
     }
 
@@ -92,7 +108,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _token address of token to be debited.
      * @param _amount amount to debit.
      */
-    function debitUser(address _user, address _token, uint256 _amount) external {
+    function debitUser(address _user, address _token, uint256 _amount) external protocolActive {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
         require(balances[_accountKey(_user, _token)] >= _amount, MarginAccountErrors.InsufficientBalance());
 
@@ -106,7 +122,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _amount amount to credit.
      * @param _useMargin whether to use margin or not - if not, user will receive token through an erc20 transfer
      */
-    function creditUser(address _user, address _token, uint256 _amount, bool _useMargin) external returns (bool) {
+    function creditUser(address _user, address _token, uint256 _amount, bool _useMargin) external protocolActive returns (bool) {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         if (_useMargin) {
@@ -127,7 +143,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @dev This function is only callable by a verified market. Verified markets credit a bunch of users the tokens.
      * @param _encodedData Address of the user whose account should be credited.
      */
-    function creditUsersEncoded(bytes calldata _encodedData) external returns (bool) {
+    function creditUsersEncoded(bytes calldata _encodedData) external protocolActive returns (bool) {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         uint256 offset = 0;
@@ -158,7 +174,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _assetB Address of second asset
      * @param _feeB Fee amount of _assetB to be credited
      */
-    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external returns (bool) {
+    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external protocolActive returns (bool) {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         balances[_accountKey(feeCollector, _assetA)] += _feeA;
@@ -173,7 +189,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @dev This function allows a user to claim all of their tokens from the margin account.
      * @param _tokens Array of tokens to claim.
      */
-    function batchWithdrawMaxTokens(address[] calldata _tokens) external {
+    function batchWithdrawMaxTokens(address[] calldata _tokens) external protocolActive {
         uint256 _balance;
         for (uint256 i = 0; i < _tokens.length; i++) {
             _balance = balances[_accountKey(_msgSender(), _tokens[i])];
@@ -195,7 +211,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _token address of token to be credit.
      * @param _amount amount to credit.
      */
-    function deposit(address _user, address _token, uint256 _amount) external payable {
+    function deposit(address _user, address _token, uint256 _amount) external protocolActive payable {
         require(_user != address(0), MarginAccountErrors.ZeroAddressNotAllowed());
         if (_token == NATIVE) {
             require(msg.value == _amount, MarginAccountErrors.NativeAssetMismatch());
@@ -214,7 +230,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _amount amount to withdraw.
      * @param _token address of token to be withdrawn.
      */
-    function withdraw(uint256 _amount, address _token) external {
+    function withdraw(uint256 _amount, address _token) external protocolActive {
         require(_amount <= balances[_accountKey(_msgSender(), _token)], MarginAccountErrors.InsufficientBalance());
         balances[_accountKey(_msgSender(), _token)] -= _amount;
         if (_token == NATIVE) {

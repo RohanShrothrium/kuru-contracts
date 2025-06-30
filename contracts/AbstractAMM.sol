@@ -33,6 +33,10 @@ abstract contract AbstractAMM is IOrderBook {
         _;
     }
 
+    modifier marketNotHardPaused() virtual {
+        _;
+    }
+
     function _emitTrade(
         uint40 orderId,
         address makerAddress,
@@ -291,7 +295,7 @@ abstract contract AbstractAMM is IOrderBook {
         uint256 _askPrice,
         uint256 _bidPrice,
         bool _nullifyPartialFills
-    ) external onlyVault {
+    ) external onlyVault marketNotHardPaused {
         vaultBidOrderSize = _vaultBidOrderSize;
         vaultAskOrderSize = _vaultAskOrderSize;
 

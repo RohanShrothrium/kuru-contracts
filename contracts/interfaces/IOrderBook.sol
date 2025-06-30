@@ -9,6 +9,12 @@ interface IOrderBook {
         NATIVE_IN_QUOTE
     }
 
+    enum MarketState {
+        ACTIVE,
+        SOFT_PAUSED,
+        HARD_PAUSED
+    }
+
     struct Order {
         address ownerAddress;
         uint96 size;
@@ -141,7 +147,7 @@ interface IOrderBook {
         address __trustedForwarder
     ) external;
 
-    function toggleMarket(bool _state) external;
+    function toggleMarket(MarketState _state) external;
 
     function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) external;
 

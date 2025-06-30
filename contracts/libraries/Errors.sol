@@ -126,6 +126,10 @@ library MarginAccountErrors {
      * @dev Thrown when zero address is passed as a parameter
      */
     error ZeroAddressNotAllowed();
+    /**
+     * @dev Thrown when protocol is paused
+     */
+    error ProtocolPaused();
 }
 
 library RouterErrors {

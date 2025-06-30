@@ -257,7 +257,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param markets The markets to toggle the state of
      * @param state The state to set the market to
      */
-    function toggleMarkets(address[] memory markets, bool state) external onlyOwner {
+    function toggleMarkets(address[] memory markets, IOrderBook.MarketState state) external onlyOwner {
         for (uint256 i = 0; i < markets.length; i++) {
             IOrderBook(markets[i]).toggleMarket(state);
         }
