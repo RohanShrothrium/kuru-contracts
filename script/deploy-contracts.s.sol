@@ -73,14 +73,18 @@ contract Deployer is Script {
         vm.startBroadcast(deployerAdmin);
         KuruAMMVault kuruAmmVaultImpl = new KuruAMMVault();
         console.log("KuruAMMVault implementation deployed to:", address(kuruAmmVaultImpl));
-        router.initialize(deployerAdmin, address(marginAccount), address(OBImpl), address(kuruAmmVaultImpl), address(kuruForwarder));
+        router.initialize(
+            deployerAdmin, address(marginAccount), address(OBImpl), address(kuruAmmVaultImpl), address(kuruForwarder)
+        );
         vm.stopBroadcast();
         vm.expectRevert(InvalidInitialization.selector);
-        router.initialize(deployerAdmin, address(marginAccount), address(OBImpl), address(kuruAmmVaultImpl), address(kuruForwarder));
+        router.initialize(
+            deployerAdmin, address(marginAccount), address(OBImpl), address(kuruAmmVaultImpl), address(kuruForwarder)
+        );
         assert(router.owner() == deployerAdmin);
         vm.startBroadcast(deployerAdmin);
         MonadDeployer monadDeployer =
-            new MonadDeployer(IRouter(address(proxy)), address(marginAccount), address(kuruForwarder), 100, 0);
+            new MonadDeployer(IRouter(address(proxy)), deployerAdmin, address(marginAccount), address(kuruForwarder), 100, 0);
         console.log("MonadDeployer deployed to:", address(monadDeployer));
         vm.stopBroadcast();
         vm.startBroadcast(deployerAdmin);
