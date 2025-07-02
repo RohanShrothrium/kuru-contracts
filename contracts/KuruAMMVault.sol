@@ -189,7 +189,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
         uint256 _nativeRefund =
             _token1 == address(0) ? (msg.value - baseDeposit) : (_token2 == address(0) ? (msg.value - quoteDeposit) : 0);
         if (_nativeRefund > 0) {
-            (bool success,) = receiver.call{value: _nativeRefund}("");
+            (bool success,) = msg.sender.call{value: _nativeRefund}("");
             require(success, KuruAMMVaultErrors.NativeAssetTransferFail());
         }
         emit KuruVaultDeposit(baseDeposit, quoteDeposit, _shares, receiver);
