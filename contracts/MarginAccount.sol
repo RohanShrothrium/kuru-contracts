@@ -222,8 +222,8 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
             balances[_accountKey(_user, NATIVE)] += _amount;
         } else {
             require(msg.value == 0, MarginAccountErrors.NativeAssetMismatch());
-            _token.safeTransferFrom(_msgSender(), address(this), _amount);
             balances[_accountKey(_user, _token)] += _amount;
+            _token.safeTransferFrom(_msgSender(), address(this), _amount);
         }
 
         emit Deposit(_user, _token, _amount);
