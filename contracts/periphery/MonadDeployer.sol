@@ -10,7 +10,6 @@ import {IKuruAMMVault} from "../interfaces/IKuruAMMVault.sol";
 import {IMarginAccount} from "../interfaces/IMarginAccount.sol";
 
 contract MonadDeployer is Ownable {
-
     struct TokenParams {
         string name;
         string symbol;
@@ -109,5 +108,9 @@ contract MonadDeployer is Ownable {
 
     function setKuruCollective(address _kuruCollective) external onlyOwner {
         kuruCollective = _kuruCollective;
+    }
+
+    function setKuruCollectiveFee(uint256 _kuruCollectiveFee) external onlyOwner {
+        kuruCollectiveFee = _kuruCollectiveFee;
     }
 }
