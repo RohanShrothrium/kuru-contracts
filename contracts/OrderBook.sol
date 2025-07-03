@@ -693,9 +693,10 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
 
         if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin && (msg.sender != address(0))) {
             require(
-                msg.value >= _pricePrecisionToQuoteAssetPrecision(_quoteSize)
-                    && msg.value < _pricePrecisionToQuoteAssetPrecision(_quoteSize + 1),
-                OrderBookErrors.NativeAssetInsufficient()
+                msg.value >= _pricePrecisionToQuoteAssetPrecision(_quoteSize), OrderBookErrors.NativeAssetInsufficient()
+            );
+            require(
+                msg.value < _pricePrecisionToQuoteAssetPrecision(_quoteSize + 1), OrderBookErrors.NativeAssetSurplus()
             );
         } else if (msg.sender != address(0)) {
             require(msg.value == 0, OrderBookErrors.NativeAssetNotRequired());
@@ -744,11 +745,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     {
         OrderBookType _type = orderBookType;
         if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin && (msg.sender != address(0))) {
-            require(
-                msg.value >= _sizePrecisionToBaseAssetPrecision(_size)
-                    && msg.value < _sizePrecisionToBaseAssetPrecision(_size + 1),
-                OrderBookErrors.NativeAssetInsufficient()
-            );
+            require(msg.value >= _sizePrecisionToBaseAssetPrecision(_size), OrderBookErrors.NativeAssetInsufficient());
+            require(msg.value < _sizePrecisionToBaseAssetPrecision(_size + 1), OrderBookErrors.NativeAssetSurplus());
         } else if (msg.sender != address(0)) {
             require(msg.value == 0, OrderBookErrors.NativeAssetNotRequired());
             _isMargin

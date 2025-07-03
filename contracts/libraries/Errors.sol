@@ -64,6 +64,10 @@ library OrderBookErrors {
      */
     error NativeAssetInsufficient();
     /**
+     * @dev Thrown when msg.value is surplus in market orders
+     */
+    error NativeAssetSurplus();
+    /**
      * @dev Thrown when msg.value is greater than 0 when native assets are not required
      */
     error NativeAssetNotRequired();
