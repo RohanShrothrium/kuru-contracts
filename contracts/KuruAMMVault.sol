@@ -17,6 +17,7 @@ import {IOrderBook} from "./interfaces/IOrderBook.sol";
 contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
     using SafeTransferLib for address;
     using FixedPointMathLib for uint256;
+
     address public owner;
     address private token1;
     uint256 private token1Decimals;
@@ -211,37 +212,37 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
     /**
      * @dev Withdraws token1 and token2 from the vault by burning the specified amount of shares.
      */
-    function withdraw(uint256 shares, address receiver, address owner) public returns (uint256, uint256) {
-        require(shares <= balanceOf(owner), KuruAMMVaultErrors.InsufficientBalance());
+    function withdraw(uint256 _shares, address _receiver, address _owner) public returns (uint256, uint256) {
+        require(_shares <= balanceOf(_owner), KuruAMMVaultErrors.InsufficientBalance());
 
-        if (msg.sender != owner) {
-            _spendAllowance(owner, msg.sender, shares);
+        if (msg.sender != _owner) {
+            _spendAllowance(_owner, msg.sender, _shares);
         }
 
-        return _burnAndWithdraw(shares, receiver, owner);
+        return _burnAndWithdraw(_shares, _receiver, _owner);
     }
 
     /**
      * @dev Internal function to handle the burning of shares and withdrawal logic.
      */
-    function _burnAndWithdraw(uint256 shares, address receiver, address owner) internal returns (uint256, uint256) {
+    function _burnAndWithdraw(uint256 _shares, address _receiver, address _owner) internal returns (uint256, uint256) {
         (
             uint256 _baseOwedToUser,
             uint256 _quoteOwedToUser,
             uint96 _newAskSize,
             uint96 _newBidSize,
             bool _nullifyPartialFills
-        ) = _convertToAssetsWithNewSize(shares);
+        ) = _convertToAssetsWithNewSize(_shares);
 
-        _burn(owner, shares);
+        _burn(_owner, _shares);
 
         // we pass 0,0 as the prices because prices are only set on the first deposit
         // since we burn 10 ** 3 shares, supply of total shares never goes to 0
         market.updateVaultOrdSz(_newAskSize, _newBidSize, 0, 0, _nullifyPartialFills);
 
-        _withdrawFromMarginAccount(_baseOwedToUser, _quoteOwedToUser, receiver);
+        _withdrawFromMarginAccount(_baseOwedToUser, _quoteOwedToUser, _receiver);
 
-        emit KuruVaultWithdraw(_baseOwedToUser, _quoteOwedToUser, shares, owner);
+        emit KuruVaultWithdraw(_baseOwedToUser, _quoteOwedToUser, _shares, _owner);
 
         return (_baseOwedToUser, _quoteOwedToUser);
     }
@@ -278,19 +279,6 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
         deposit(baseDeposit, quoteDeposit, receiver);
 
         return (baseDeposit, quoteDeposit);
-    }
-
-    /**
-     * @dev Redeems shares by burning the specified amount and withdrawing token1 and token2 to the receiver.
-     */
-    function redeem(uint256 shares, address receiver, address owner) public returns (uint256, uint256) {
-        require(shares <= balanceOf(owner), KuruAMMVaultErrors.InsufficientBalance());
-
-        if (msg.sender != owner) {
-            _spendAllowance(owner, msg.sender, shares);
-        }
-
-        return _burnAndWithdraw(shares, receiver, owner);
     }
 
     /**
