@@ -68,8 +68,9 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     bytes32 private constant _CANCEL_PRICE_DEPENDENT_TYPEHASH =
         keccak256("CancelPriceDependentRequest(address from,uint256 nonce,uint256 deadline)");
 
-    bytes32 private constant _MARGIN_ACCOUNT_REQUEST_TYPEHASH =
-        keccak256("MarginAccountRequest(address from,address marginAccount,uint256 value,uint256 nonce,uint256 deadline,bytes data)");
+    bytes32 private constant _MARGIN_ACCOUNT_REQUEST_TYPEHASH = keccak256(
+        "MarginAccountRequest(address from,address marginAccount,uint256 value,uint256 nonce,uint256 deadline,bytes data)"
+    );
 
     mapping(address => uint256) private _nonces;
 
@@ -121,8 +122,12 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     function verify(ForwardRequest calldata req, bytes calldata signature) public view returns (bool) {
         require(block.timestamp <= req.deadline, DeadlineExpired());
         address signer = _hashTypedData(
-            keccak256(abi.encode(_FORWARD_TYPEHASH, req.from, req.market, req.value, req.nonce, req.deadline, keccak256(req.data)))
-        ).recover(signature);
+            keccak256(
+                abi.encode(
+                    _FORWARD_TYPEHASH, req.from, req.market, req.value, req.nonce, req.deadline, keccak256(req.data)
+                )
+            )
+        ).recoverCalldata(signature);
         return req.nonce >= _nonces[req.from] && signer == req.from;
     }
 
@@ -148,7 +153,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
                     keccak256(req.data)
                 )
             )
-        ).recover(signature);
+        ).recoverCalldata(signature);
         require(
             !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))],
             KuruForwarderErrors.NonceAlreadyUsed()
@@ -162,8 +167,9 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         returns (bool)
     {
         require(block.timestamp <= req.deadline, DeadlineExpired());
-        address signer = _hashTypedData(keccak256(abi.encode(_CANCEL_PRICE_DEPENDENT_TYPEHASH, req.from, req.nonce, req.deadline)))
-            .recover(signature);
+        address signer = _hashTypedData(
+            keccak256(abi.encode(_CANCEL_PRICE_DEPENDENT_TYPEHASH, req.from, req.nonce, req.deadline))
+        ).recoverCalldata(signature);
         require(
             !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))],
             KuruForwarderErrors.NonceAlreadyUsed()
@@ -189,7 +195,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
                     keccak256(req.data)
                 )
             )
-        ).recover(signature);
+        ).recoverCalldata(signature);
         return req.nonce >= _nonces[req.from] && signer == req.from;
     }
 
