@@ -95,6 +95,20 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         }
     }
 
+    // ============ owner functions =============
+
+    function setAllowedInterfaces(bytes4[] memory _allowedInterfaces) external onlyOwner {
+        for (uint256 i = 0; i < _allowedInterfaces.length; i++) {
+            allowedInterface[_allowedInterfaces[i]] = true;
+        }
+    }
+
+    function removeAllowedInterfaces(bytes4[] memory _allowedInterfaces) external onlyOwner {
+        for (uint256 i = 0; i < _allowedInterfaces.length; i++) {
+            allowedInterface[_allowedInterfaces[i]] = false;
+        }
+    }
+
     function _domainNameAndVersion() internal pure override returns (string memory name, string memory version) {
         name = "KuruForwarder";
         version = "1.0.0";
