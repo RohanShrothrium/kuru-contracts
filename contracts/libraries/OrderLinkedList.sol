@@ -39,24 +39,6 @@ library OrderLinkedList {
     }
 
     /**
-     * @notice Deletes one or multiple orders from the tail.
-     * @param point The price point.
-     * @param orderId The new orderId that has to be set as the tail.
-     */
-    function updateTail(PricePoint storage point, uint40 orderId) internal returns (bool) {
-        if (orderId == NULL) {
-            point.head = NULL;
-            point.tail = NULL;
-
-            return true;
-        }
-
-        point.tail = orderId;
-
-        return false;
-    }
-
-    /**
      * @notice Deletes one or multiple orders from the head.
      * @param point The price point.
      * @param orderId The new orderId that has to be set as the head.
