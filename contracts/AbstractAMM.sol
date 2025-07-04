@@ -276,7 +276,7 @@ abstract contract AbstractAMM is IOrderBook {
             askPartiallyFilledSize,
             vaultBidOrderSize,
             vaultAskOrderSize,
-            SPREAD_CONSTANT * 10
+            SPREAD_CONSTANT
         );
     }
     /**
