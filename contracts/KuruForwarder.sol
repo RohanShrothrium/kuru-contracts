@@ -110,6 +110,10 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         }
     }
 
+    function _domainNameAndVersionMayChange() internal pure override returns (bool result) {
+        return true;
+    }
+
     function _domainNameAndVersion() internal pure override returns (string memory name, string memory version) {
         name = "KuruForwarder";
         version = "1.0.0";
@@ -221,11 +225,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         return returndata;
     }
 
-    function execute(ForwardRequest calldata req, bytes calldata signature)
-        public
-        payable
-        returns (bytes memory)
-    {
+    function execute(ForwardRequest calldata req, bytes calldata signature) public payable returns (bytes memory) {
         require(verify(req, signature), KuruForwarderErrors.SignatureMismatch());
 
         bytes4 selector = bytes4(req.data[:4]);
