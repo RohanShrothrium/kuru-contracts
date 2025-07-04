@@ -63,9 +63,9 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param _tickSize The tick size of the price
      * @param _minSize The minimum size an order must have to be placed
      * @param _maxSize The maximum size an order can have to be placed
-     * @param _takerFeeBps The taker fee in bips per second.
-     * @param _makerFeeBps The maker fee in bips per second. The maker fee must be lower than the taker fee.
-     * @param _kuruAmmSpread The spread in bps for the kuru amm vault
+     * @param _takerFeeBps The taker fee in basis points
+     * @param _makerFeeBps The maker fee in basis points. The maker fee must be lower than the taker fee.
+     * @param _kuruAmmSpread The spread in basis points for the kuru amm vault
      */
     function deployProxy(
         IOrderBook.OrderBookType _type,

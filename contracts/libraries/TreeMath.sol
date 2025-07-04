@@ -111,11 +111,11 @@ library TreeMath {
     }
 
     /**
-     * @dev Returns the first id in the tree that is lower than or equal to the given id.
+     * @dev Returns the first id in the tree that is strictly lower than the given id.
      * It will return type(uint32).max if there is no such id.
      * @param tree The tree
      * @param id The id
-     * @return The first id in the tree that is lower than or equal to the given id
+     * @return The first id in the tree that is strictly lower than the given id
      */
     function findFirstRight(TreeUint32 storage tree, uint32 id) internal view returns (uint32) {
         bytes32 leaves;
@@ -187,11 +187,11 @@ library TreeMath {
     }
 
     /**
-     * @dev Returns the first id in the tree that is higher than or equal to the given id.
+     * @dev Returns the first id in the tree that is strictly higher than the given id.
      * It will return 0 if there is no such id.
      * @param tree The tree
      * @param id The id
-     * @return The first id in the tree that is higher than or equal to the given id
+     * @return The first id in the tree that is strictly higher than the given id
      */
     function findFirstLeft(TreeUint32 storage tree, uint32 id) internal view returns (uint32) {
         bytes32 leaves;

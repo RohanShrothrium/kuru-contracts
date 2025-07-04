@@ -20,7 +20,7 @@ library BitMath {
             uint256 shift = 255 - bit;
             x <<= shift;
 
-            // can't overflow as it's non-zero and we shifted it by `_shift`
+            // can't underflow as it's non-zero and we shifted it by `_shift`
             return (x == 0) ? type(uint256).max : mostSignificantBit(x) - shift;
         }
     }
