@@ -185,8 +185,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
         );
         address _token1 = token1;
         address _token2 = token2;
-        _depositToMarginAccount(baseDeposit, _token1);
-        _depositToMarginAccount(quoteDeposit, _token2);
+        _depositAmountsToMarginAccount(_token1, _token2, baseDeposit, quoteDeposit);
         uint256 _nativeRefund =
             _token1 == address(0) ? (msg.value - baseDeposit) : (_token2 == address(0) ? (msg.value - quoteDeposit) : 0);
         if (_nativeRefund > 0) {
@@ -197,15 +196,21 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
         return _shares;
     }
 
-    /**
-     * @dev Internal function to handle deposits to the margin account.
-     */
-    function _depositToMarginAccount(uint256 amount, address token) internal {
-        if (token == address(0)) {
-            marginAccount.deposit{value: amount}(address(this), token, amount);
+    function _depositAmountsToMarginAccount(address _token1, address _token2, uint256 baseDeposit, uint256 quoteDeposit)
+        internal
+    {
+        if (_token1 == address(0)) {
+            marginAccount.deposit{value: baseDeposit}(address(this), _token1, baseDeposit);
         } else {
-            token.safeTransferFrom(msg.sender, address(this), amount);
-            marginAccount.deposit(address(this), token, amount);
+            _token1.safeTransferFrom(msg.sender, address(this), baseDeposit);
+            marginAccount.deposit(address(this), _token1, baseDeposit);
+        }
+
+        if (_token2 == address(0)) {
+            marginAccount.deposit{value: quoteDeposit}(address(this), _token2, quoteDeposit);
+        } else {
+            _token2.safeTransferFrom(msg.sender, address(this), quoteDeposit);
+            marginAccount.deposit(address(this), _token2, quoteDeposit);
         }
     }
 
