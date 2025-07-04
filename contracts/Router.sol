@@ -67,6 +67,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param _makerFeeBps The maker fee in basis points. The maker fee must be lower than the taker fee.
      * @param _kuruAmmSpread The spread in basis points for the kuru amm vault
      */
+
     function deployProxy(
         IOrderBook.OrderBookType _type,
         address _baseAssetAddress,
@@ -334,33 +335,14 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _amountOut = _isBuy[i]
                 ? (
                     market.placeAndExecuteMarketBuy{value: _value}(
-                        (
-                            _amountToSize(
-                                _amount,
-                                true,
-                                _marketParams.pricePrecision,
-                                _marketParams.sizePrecision,
-                                _marketParams.baseAssetDecimals,
-                                _marketParams.quoteAssetDecimals
-                            )
-                        ),
+                        toU96(_amount * _marketParams.pricePrecision / 10 ** _marketParams.quoteAssetDecimals),
                         0,
                         false,
                         true
                     )
                 )
                 : market.placeAndExecuteMarketSell{value: _value}(
-                    _amountToSize(
-                        _amount,
-                        false,
-                        _marketParams.pricePrecision,
-                        _marketParams.sizePrecision,
-                        _marketParams.baseAssetDecimals,
-                        _marketParams.quoteAssetDecimals
-                    ),
-                    0,
-                    false,
-                    true
+                    toU96(_amount * _marketParams.sizePrecision / 10 ** _marketParams.baseAssetDecimals), 0, false, true
                 );
 
             _amount = _amountOut;
@@ -387,19 +369,6 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      */
     function _authorizeUpgrade(address) internal view override {
         _checkOwner();
-    }
-
-    function _amountToSize(
-        uint256 _amount,
-        bool _isBuy,
-        uint32 pricePrecision,
-        uint96 sizePrecision,
-        uint256 baseAssetDecimals,
-        uint256 quoteAssetDecimals
-    ) internal pure returns (uint96) {
-        return _isBuy
-            ? toU96((_amount * pricePrecision) / 10 ** quoteAssetDecimals)
-            : toU96((_amount * sizePrecision) / 10 ** baseAssetDecimals);
     }
 
     function _getSalt(
