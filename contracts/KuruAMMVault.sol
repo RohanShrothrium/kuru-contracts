@@ -21,7 +21,8 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
     uint256 constant vaultPricePrecision = 10 ** 18;
     uint256 constant MIN_LIQUIDITY = 10 ** 3;
     uint256 constant BPS_MULTIPLIER = 10000;
-    
+    uint256 constant DOUBLE_BPS_MULTIPLIER = 20000;
+
     address public owner;
     address public token1;
     uint256 private token1Decimals;
@@ -295,8 +296,8 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
         // @audit what is the right way to round this value?
         // ideally, should be rounded up during deposits and rounded down during withdrawals
         uint96 _normalizedAskSize = roundUp
-            ? toU96(FixedPointMathLib.mulDivUp(market.vaultAskOrderSize(), 20000 + SPREAD_CONSTANT, SPREAD_CONSTANT))
-            : toU96(FixedPointMathLib.mulDiv(market.vaultAskOrderSize(), 20000 + SPREAD_CONSTANT, SPREAD_CONSTANT));
+            ? toU96(FixedPointMathLib.mulDivUp(market.vaultAskOrderSize(), DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, SPREAD_CONSTANT))
+            : toU96(FixedPointMathLib.mulDiv(market.vaultAskOrderSize(), DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, SPREAD_CONSTANT));
         uint256 _price = market.vaultBestAsk();
         return ((_normalizedAskSize * 10 ** marketParams.baseAssetDecimals) / marketParams.sizePrecision, _price);
     }
@@ -403,11 +404,11 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
         MarketParams memory _marketParams = marketParams;
         uint96 _newAskSize = toU96(
             (SPREAD_CONSTANT * _baseAmount * _marketParams.sizePrecision)
-                / ((20000 + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
+                / ((DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT) * 10 ** _marketParams.baseAssetDecimals)
         );
         uint96 _newBidSize = toU96(
             (SPREAD_CONSTANT * _baseAmount * _marketParams.sizePrecision)
-                / (20000 * 10 ** _marketParams.baseAssetDecimals)
+                / (DOUBLE_BPS_MULTIPLIER * 10 ** _marketParams.baseAssetDecimals)
         );
         return (_newAskSize, _newBidSize);
     }
