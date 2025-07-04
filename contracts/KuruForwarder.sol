@@ -202,7 +202,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     function executeMarginAccountRequest(MarginAccountRequest calldata req, bytes calldata signature)
         public
         payable
-        returns (bool, bytes memory)
+        returns (bytes memory)
     {
         require(verifyMarginAccountRequest(req, signature), KuruForwarderErrors.SignatureMismatch());
 
@@ -218,13 +218,13 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
             revert ExecutionFailed(returndata);
         }
 
-        return (success, returndata);
+        return returndata;
     }
 
     function execute(ForwardRequest calldata req, bytes calldata signature)
         public
         payable
-        returns (bool, bytes memory)
+        returns (bytes memory)
     {
         require(verify(req, signature), KuruForwarderErrors.SignatureMismatch());
 
@@ -240,13 +240,13 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
             revert ExecutionFailed(returndata);
         }
 
-        return (success, returndata);
+        return returndata;
     }
 
     function executePriceDependent(PriceDependentRequest calldata req, bytes calldata signature)
         public
         payable
-        returns (bool, bytes memory)
+        returns (bytes memory)
     {
         require(verifyPriceDependent(req, signature), KuruForwarderErrors.SignatureMismatch());
 
@@ -266,7 +266,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
             revert ExecutionFailed(returndata);
         }
 
-        return (success, returndata);
+        return returndata;
     }
 
     function cancelPriceDependent(CancelPriceDependentRequest calldata req, bytes calldata signature) public {
