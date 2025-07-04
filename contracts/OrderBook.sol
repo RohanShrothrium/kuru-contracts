@@ -448,7 +448,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrdersCanceled(_orderIdsCanceled, _msgSender());
     }
 
-    function _cancelFlipOrder(uint40 _orderId) internal{
+    function _cancelFlipOrder(uint40 _orderId) internal {
         Order memory _order = s_orders[_orderId];
         require(!_checkIfCancelledOrFilled(_orderId, _order), OrderBookErrors.OrderAlreadyFilledOrCancelled());
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
@@ -1307,31 +1307,33 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     function bestAsk() internal view returns (bool, uint256) {
-        uint32 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0);
+        uint256 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0) * vaultPricePrecision / pricePrecision;
         if (firstLeft != 0) {
             if (vaultBestAsk != type(uint256).max) {
-                if (firstLeft * vaultPricePrecision / pricePrecision == vaultBestAsk) {
-                    return (false, firstLeft * vaultPricePrecision / pricePrecision);
+                if (firstLeft == vaultBestAsk) {
+                    return (false, firstLeft);
                 }
-                return (FixedPointMathLib.min(firstLeft * vaultPricePrecision / pricePrecision, vaultBestAsk))
-                    == vaultBestAsk ? (true, vaultBestAsk) : (false, firstLeft * vaultPricePrecision / pricePrecision);
+                return (FixedPointMathLib.min(firstLeft, vaultBestAsk)) == vaultBestAsk
+                    ? (true, vaultBestAsk)
+                    : (false, firstLeft);
             }
-            return (false, firstLeft * vaultPricePrecision / pricePrecision);
+            return (false, firstLeft);
         }
         return (vaultBestAsk != type(uint256).max) ? (true, vaultBestAsk) : (false, 0);
     }
 
     function bestBid() internal view returns (bool, uint256) {
-        uint32 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max);
+        uint256 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max) * vaultPricePrecision / pricePrecision;
         if (firstRight != type(uint32).max) {
             if (vaultBestBid != 0) {
-                if (firstRight * vaultPricePrecision / pricePrecision == vaultBestBid) {
-                    return (false, firstRight * vaultPricePrecision / pricePrecision);
+                if (firstRight == vaultBestBid) {
+                    return (false, firstRight);
                 }
-                return (FixedPointMathLib.max(firstRight * vaultPricePrecision / pricePrecision, vaultBestBid))
-                    == vaultBestBid ? (true, vaultBestBid) : (false, firstRight * vaultPricePrecision / pricePrecision);
+                return (FixedPointMathLib.max(firstRight, vaultBestBid)) == vaultBestBid
+                    ? (true, vaultBestBid)
+                    : (false, firstRight);
             }
-            return (false, firstRight * vaultPricePrecision / pricePrecision);
+            return (false, firstRight);
         }
         return vaultBestBid != 0 ? (true, vaultBestBid) : (false, type(uint256).max);
     }
