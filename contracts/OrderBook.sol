@@ -1324,7 +1324,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
 
     function bestBid() internal view returns (bool, uint256) {
         uint256 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max) * vaultPricePrecision / pricePrecision;
-        if (firstRight != type(uint32).max) {
+        if (firstRight != type(uint32).max * vaultPricePrecision / pricePrecision) {
             if (vaultBestBid != 0) {
                 if (firstRight == vaultBestBid) {
                     return (false, firstRight);
