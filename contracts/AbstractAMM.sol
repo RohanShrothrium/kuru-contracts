@@ -16,15 +16,15 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 abstract contract AbstractAMM is IOrderBook {
     uint256 constant vaultPricePrecision = 10 ** 18;
     uint256 constant DOUBLE_BPS_MULTIPLIER = 20000;
-    address kuruAmmVault;
-    uint256 vaultBestBid;
-    uint96 bidPartiallyFilledSize;
-    uint256 public vaultBestAsk;
-    uint96 askPartiallyFilledSize;
-    uint96 vaultBidOrderSize;
-    uint96 public vaultAskOrderSize;
     uint256 constant BPS_MULTIPLIER = 10000;
-    uint96 SPREAD_CONSTANT;
+    uint256 private vaultBestBid;
+    address public kuruAmmVault;
+    uint96 private bidPartiallyFilledSize;
+    uint256 private vaultBestAsk;
+    uint96 private askPartiallyFilledSize;
+    uint96 private vaultAskOrderSize;
+    uint96 private vaultBidOrderSize;
+    uint96 public SPREAD_CONSTANT;
     uint256[43] private __gap;
 
     modifier onlyVault() {

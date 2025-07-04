@@ -19,18 +19,18 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
     using FixedPointMathLib for uint256;
 
     address public owner;
-    address private token1;
+    address public token1;
     uint256 private token1Decimals;
 
-    address private token2;
+    address public token2;
     uint256 private token2Decimals;
 
-    IMarginAccount private marginAccount;
-    IOrderBook private market;
-    MarketParams private marketParams;
+    IMarginAccount public marginAccount;
+    IOrderBook public market;
+    MarketParams public marketParams;
     uint256 constant vaultPricePrecision = 10 ** 18;
     uint256 constant MIN_LIQUIDITY = 10 ** 3;
-    uint96 SPREAD_CONSTANT;
+    uint96 public SPREAD_CONSTANT;
 
     constructor() {
         _disableInitializers();

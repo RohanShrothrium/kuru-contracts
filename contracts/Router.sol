@@ -28,10 +28,10 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
 
     // used to create base/native and native/quote markets
     address private constant NATIVE = 0x0000000000000000000000000000000000000000;
-    address private TRUSTED_FORWARDER;
-    address orderBookImplementation;
-    address marginAccountAddress;
-    address kuruAmmVaultImplementation;
+    address public TRUSTED_FORWARDER;
+    address public orderBookImplementation;
+    address public marginAccountAddress;
+    address public kuruAmmVaultImplementation;
 
     constructor() {
         _disableInitializers();
@@ -53,7 +53,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         kuruAmmVaultImplementation = _kuruAmmVaultImplementation;
         TRUSTED_FORWARDER = _trustedForwarder;
     }
-
+    // @audit price precision, size precision must be power of 10
     /**
      * @dev Deploys an OrderBook proxy for a set of given parameters
      * @param _type The type of OrderBook which can be NO_NATIVE, NATIVE_IN_BASE or NATIVE_IN_QUOTE
