@@ -29,6 +29,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         uint256 value;
         uint256 nonce;
         uint256 deadline;
+        bytes4 selector;
         bytes data;
     }
 
@@ -40,6 +41,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         uint256 nonce;
         uint256 deadline;
         bool isBelowPrice;
+        bytes4 selector;
         bytes data;
     }
 
@@ -55,21 +57,23 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         uint256 value;
         uint256 nonce;
         uint256 deadline;
+        bytes4 selector;
         bytes data;
     }
 
-    bytes32 private constant _FORWARD_TYPEHASH =
-        keccak256("ForwardRequest(address from,address market,uint256 value,uint256 nonce,uint256 deadline,bytes data)");
+    bytes32 private constant _FORWARD_TYPEHASH = keccak256(
+        "ForwardRequest(address from,address market,uint256 value,uint256 nonce,uint256 deadline,bytes4 selector,bytes data)"
+    );
 
     bytes32 private constant _PRICE_DEPENDENT_TYPEHASH = keccak256(
-        "PriceDependentRequest(address from,address market,uint256 price,uint256 value,uint256 nonce,uint256 deadline,bool isBelowPrice,bytes data)"
+        "PriceDependentRequest(address from,address market,uint256 price,uint256 value,uint256 nonce,uint256 deadline,bool isBelowPrice,bytes4 selector,bytes data)"
     );
 
     bytes32 private constant _CANCEL_PRICE_DEPENDENT_TYPEHASH =
         keccak256("CancelPriceDependentRequest(address from,uint256 nonce,uint256 deadline)");
 
     bytes32 private constant _MARGIN_ACCOUNT_REQUEST_TYPEHASH = keccak256(
-        "MarginAccountRequest(address from,address marginAccount,uint256 value,uint256 nonce,uint256 deadline,bytes data)"
+        "MarginAccountRequest(address from,address marginAccount,uint256 value,uint256 nonce,uint256 deadline,bytes4 selector,bytes data)"
     );
 
     mapping(address => uint256) private _nonces;
@@ -128,7 +132,14 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         address signer = _hashTypedData(
             keccak256(
                 abi.encode(
-                    _FORWARD_TYPEHASH, req.from, req.market, req.value, req.nonce, req.deadline, keccak256(req.data)
+                    _FORWARD_TYPEHASH,
+                    req.from,
+                    req.market,
+                    req.value,
+                    req.nonce,
+                    req.deadline,
+                    req.selector,
+                    keccak256(req.data)
                 )
             )
         ).recoverCalldata(signature);
@@ -154,6 +165,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
                     req.nonce,
                     req.deadline,
                     req.isBelowPrice,
+                    req.selector,
                     keccak256(req.data)
                 )
             )
@@ -196,6 +208,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
                     req.value,
                     req.nonce,
                     req.deadline,
+                    req.selector,
                     keccak256(req.data)
                 )
             )
@@ -210,13 +223,12 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     {
         require(verifyMarginAccountRequest(req, signature), KuruForwarderErrors.SignatureMismatch());
 
-        bytes4 selector = bytes4(req.data[:4]);
-        require(allowedInterface[selector], KuruForwarderErrors.InterfaceNotAllowed());
+        require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
 
         _nonces[req.from] = req.nonce + 1;
 
         (bool success, bytes memory returndata) =
-            req.marginAccount.call{value: req.value}(abi.encodePacked(req.data, req.from));
+            req.marginAccount.call{value: req.value}(abi.encodePacked(req.selector, req.data, req.from));
 
         if (!success) {
             revert ExecutionFailed(returndata);
@@ -228,13 +240,12 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     function execute(ForwardRequest calldata req, bytes calldata signature) public payable returns (bytes memory) {
         require(verify(req, signature), KuruForwarderErrors.SignatureMismatch());
 
-        bytes4 selector = bytes4(req.data[:4]);
-        require(allowedInterface[selector], KuruForwarderErrors.InterfaceNotAllowed());
+        require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
 
         _nonces[req.from] = req.nonce + 1;
 
         (bool success, bytes memory returndata) =
-            req.market.call{value: req.value}(abi.encodePacked(req.data, req.from));
+            req.market.call{value: req.value}(abi.encodePacked(req.selector, req.data, req.from));
 
         if (!success) {
             revert ExecutionFailed(returndata);
@@ -250,8 +261,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     {
         require(verifyPriceDependent(req, signature), KuruForwarderErrors.SignatureMismatch());
 
-        bytes4 selector = bytes4(req.data[:4]);
-        require(allowedInterface[selector], KuruForwarderErrors.InterfaceNotAllowed());
+        require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
         executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))] = true;
 
         (uint256 _currentBidPrice,) = IOrderBook(req.market).bestBidAsk();
@@ -260,7 +270,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
             PriceDependentRequestFailed(_currentBidPrice, req.price)
         );
         (bool success, bytes memory returndata) =
-            req.market.call{value: req.value}(abi.encodePacked(req.data, req.from));
+            req.market.call{value: req.value}(abi.encodePacked(req.selector, req.data, req.from));
 
         if (!success) {
             revert ExecutionFailed(returndata);
