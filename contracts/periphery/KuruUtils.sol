@@ -15,7 +15,7 @@ contract KuruUtils {
         uint256 totalSupply;
     }
 
-    function calculatePriceOverRoute(address[] memory route, bool[] memory isBuy) public view returns (uint256) {
+    function calculatePriceOverRoute(address[] memory route, bool[] memory isBuy) external view returns (uint256) {
         uint256 price = 10 ** 18;
         for (uint256 i = 0; i < route.length; i++) {
             if (isBuy[i]) {
