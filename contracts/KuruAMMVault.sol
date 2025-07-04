@@ -18,6 +18,10 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
     using SafeTransferLib for address;
     using FixedPointMathLib for uint256;
 
+    uint256 constant vaultPricePrecision = 10 ** 18;
+    uint256 constant MIN_LIQUIDITY = 10 ** 3;
+    uint256 constant BPS_MULTIPLIER = 10000;
+    
     address public owner;
     address public token1;
     uint256 private token1Decimals;
@@ -28,8 +32,6 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
     IMarginAccount public marginAccount;
     IOrderBook public market;
     MarketParams public marketParams;
-    uint256 constant vaultPricePrecision = 10 ** 18;
-    uint256 constant MIN_LIQUIDITY = 10 ** 3;
     uint96 public SPREAD_CONSTANT;
 
     constructor() {
@@ -180,7 +182,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
             _newAskSize,
             _newBidSize,
             _currentAskPrice,
-            FixedPointMathLib.mulDivRound(_currentAskPrice, 1000, 1000 + SPREAD_CONSTANT),
+            FixedPointMathLib.mulDivRound(_currentAskPrice, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT),
             false
         );
         address _token1 = token1;
