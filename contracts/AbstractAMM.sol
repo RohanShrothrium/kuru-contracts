@@ -25,6 +25,7 @@ abstract contract AbstractAMM is IOrderBook {
     uint96 public vaultAskOrderSize;
     uint256 constant BPS_MULTIPLIER = 10000;
     uint96 SPREAD_CONSTANT;
+    uint256[43] private __gap;
 
     modifier onlyVault() {
         if (msg.sender != kuruAmmVault) {
