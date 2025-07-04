@@ -448,7 +448,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrdersCanceled(_orderIdsCanceled, _msgSender());
     }
 
-    function _cancelFlipOrder(uint40 _orderId) internal returns (bool) {
+    function _cancelFlipOrder(uint40 _orderId) internal{
         Order memory _order = s_orders[_orderId];
         require(!_checkIfCancelledOrFilled(_orderId, _order), OrderBookErrors.OrderAlreadyFilledOrCancelled());
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
@@ -457,7 +457,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             _executeCancel(_order.flippedId, s_orders[_order.flippedId]);
         }
         _executeCancel(_orderId, _order);
-        return true;
     }
 
     /**

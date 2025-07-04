@@ -3,7 +3,6 @@
 pragma solidity ^0.8.20;
 
 interface IMarginAccount {
-
     event ProtocolStateUpdated(bool newState);
 
     event FeeCollectorUpdated(address newFeeCollector);
@@ -20,11 +19,11 @@ interface IMarginAccount {
 
     function debitUser(address _user, address _token, uint256 _amount) external;
 
-    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external returns (bool);
+    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external;
 
-    function creditUser(address _user, address _token, uint256 _amount, bool _useMargin) external returns (bool);
+    function creditUser(address _user, address _token, uint256 _amount, bool _useMargin) external;
 
-    function creditUsersEncoded(bytes calldata _encodedData) external returns (bool);
+    function creditUsersEncoded(bytes calldata _encodedData) external;
 
     function getBalance(address _user, address _token) external view returns (uint256);
 }

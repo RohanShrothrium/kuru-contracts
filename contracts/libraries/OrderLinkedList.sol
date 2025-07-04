@@ -61,16 +61,12 @@ library OrderLinkedList {
      * @param point The price point.
      * @param orderId The new orderId that has to be set as the head.
      */
-    function updateHead(PricePoint storage point, uint40 orderId) internal returns (bool) {
+    function updateHead(PricePoint storage point, uint40 orderId) internal {
         if (orderId == NULL) {
             point.head = NULL;
             point.tail = NULL;
-
-            return true;
         }
 
         point.head = orderId;
-
-        return false;
     }
 }

@@ -16,6 +16,7 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable, UUPSUpgradeable {
     using SafeTransferLib for address;
+
     address trustedForwarder;
 
     bool protocolPaused;
@@ -126,7 +127,10 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _amount amount to credit.
      * @param _useMargin whether to use margin or not - if not, user will receive token through an erc20 transfer
      */
-    function creditUser(address _user, address _token, uint256 _amount, bool _useMargin) external protocolActive returns (bool) {
+    function creditUser(address _user, address _token, uint256 _amount, bool _useMargin)
+        external
+        protocolActive
+    {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         if (_useMargin) {
@@ -139,15 +143,13 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
                 require(success, MarginAccountErrors.NativeAssetTransferFail());
             }
         }
-
-        return true;
     }
 
     /**
      * @dev This function is only callable by a verified market. Verified markets credit a bunch of users the tokens.
      * @param _encodedData Address of the user whose account should be credited.
      */
-    function creditUsersEncoded(bytes calldata _encodedData) external protocolActive returns (bool) {
+    function creditUsersEncoded(bytes calldata _encodedData) external protocolActive {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         uint256 offset = 0;
@@ -167,8 +169,6 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
                 }
             }
         }
-
-        return true;
     }
 
     /**
@@ -178,13 +178,14 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _assetB Address of second asset
      * @param _feeB Fee amount of _assetB to be credited
      */
-    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external protocolActive returns (bool) {
+    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB)
+        external
+        protocolActive
+    {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         balances[_accountKey(feeCollector, _assetA)] += _feeA;
         balances[_accountKey(feeCollector, _assetB)] += _feeB;
-
-        return true;
     }
 
     // ============ user functions=================
@@ -215,7 +216,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _token address of token to be credit.
      * @param _amount amount to credit.
      */
-    function deposit(address _user, address _token, uint256 _amount) external protocolActive payable {
+    function deposit(address _user, address _token, uint256 _amount) external payable protocolActive {
         require(_user != address(0), MarginAccountErrors.ZeroAddressNotAllowed());
         if (_token == NATIVE) {
             require(msg.value == _amount, MarginAccountErrors.NativeAssetMismatch());
