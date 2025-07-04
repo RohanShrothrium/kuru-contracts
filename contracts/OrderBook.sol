@@ -8,12 +8,12 @@ import {OrderBookErrors} from "./libraries/Errors.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {ERC2771Context} from "./libraries/ERC2771Context.sol";
 import {AbstractAMM} from "./AbstractAMM.sol";
-import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 
 // ============ Internal Contracts Imports ============
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 // ============ External Imports ============
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 

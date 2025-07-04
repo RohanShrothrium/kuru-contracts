@@ -5,9 +5,9 @@ pragma solidity ^0.8.20;
 import {ERC20} from "solady/src/tokens/ERC20.sol";
 import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 
 // ============ Internal Imports ============
-import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {KuruAMMVaultErrors} from "./libraries/Errors.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
