@@ -12,9 +12,10 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {RouterErrors} from "./libraries/Errors.sol";
 
 // ============ External Imports ============
-import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {Ownable} from "solady/src/auth/Ownable.sol";
 import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
@@ -92,6 +93,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             require(_quoteAssetAddress != address(0), RouterErrors.MarketTypeMismatch());
             require(_baseAssetAddress != _quoteAssetAddress, RouterErrors.BaseAndQuoteAssetSame());
         }
+        require(10 ** Math.log10(_sizePrecision) == _sizePrecision, RouterErrors.InvalidSizePrecision());
+        require(10 ** Math.log10(_pricePrecision) == _pricePrecision, RouterErrors.InvalidPricePrecision());
         uint256 _baseAssetDecimals =
             _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20Metadata(_baseAssetAddress).decimals();
         uint256 _quoteAssetDecimals =

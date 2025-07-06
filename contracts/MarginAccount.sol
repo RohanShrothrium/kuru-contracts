@@ -127,10 +127,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _amount amount to credit.
      * @param _useMargin whether to use margin or not - if not, user will receive token through an erc20 transfer
      */
-    function creditUser(address _user, address _token, uint256 _amount, bool _useMargin)
-        external
-        protocolActive
-    {
+    function creditUser(address _user, address _token, uint256 _amount, bool _useMargin) external protocolActive {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         if (_useMargin) {
@@ -178,10 +175,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _assetB Address of second asset
      * @param _feeB Fee amount of _assetB to be credited
      */
-    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB)
-        external
-        protocolActive
-    {
+    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external protocolActive {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         balances[_accountKey(feeCollector, _assetA)] += _feeA;

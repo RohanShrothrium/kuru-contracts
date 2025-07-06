@@ -157,8 +157,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     function toggleMarket(MarketState _state) external {
         _checkOwner();
         require(_state != marketState, OrderBookErrors.MarketStateError());
-        emit MarketStateUpdated(marketState, _state);
         marketState = _state;
+        emit MarketStateUpdated(marketState, _state);
     }
 
     /**
@@ -647,32 +647,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         // Emit an event for the canceled orders
         if (orderIdsCanceled.length > 0) {
             emit OrdersCanceled(orderIdsCanceled, _msgSender());
-        }
-    }
-
-    /**
-     * @dev Places multiple limit buy orders in a single function call.
-     * @param _prices Array of prices for the buy orders.
-     * @param _sizes Array of sizes for the buy orders.
-     */
-    function placeMultipleBuyOrders(uint32[] calldata _prices, uint96[] calldata _sizes, bool _postOnly) external {
-        require(_prices.length == _sizes.length, OrderBookErrors.LengthMismatch());
-
-        for (uint256 i = 0; i < _prices.length; i++) {
-            addBuyOrder(_prices[i], _sizes[i], _postOnly);
-        }
-    }
-
-    /**
-     * @dev Places multiple limit sell orders in a single function call.
-     * @param _prices Array of prices for the sell orders.
-     * @param _sizes Array of sizes for the sell orders.
-     */
-    function placeMultipleSellOrders(uint32[] calldata _prices, uint96[] calldata _sizes, bool _postOnly) external {
-        require(_prices.length == _sizes.length, OrderBookErrors.LengthMismatch());
-
-        for (uint256 i = 0; i < _prices.length; i++) {
-            addSellOrder(_prices[i], _sizes[i], _postOnly);
         }
     }
 
@@ -1179,7 +1153,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      */
     function _quoteAmountRoundedUp(uint32 _price, uint96 _size) internal view returns (uint96) {
         uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, sizePrecision);
-        require(_result < type(uint96).max, OrderBookErrors.TooMuchSizeFilled());
         return toU96(_result);
     }
 
@@ -1341,12 +1314,21 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     /**
      * @notice Returns the Level 2 order book data.
      * @dev Encodes the block number, buy orders, and sell orders.
-     * @return Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.
+     * @return data Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.
      */
-    function getL2Book() external view returns (bytes memory) {
-        bytes memory data = abi.encode(block.number);
+    function getL2Book() external view returns (bytes memory data) {
+        assembly ("memory-safe") {
+            data := mload(0x40) // current free-mem ptr
+            mstore(data, 0) // placeholder for length
+        }
+        uint256 ptr;
 
-        // Encode buy orders
+        assembly ("memory-safe") {
+            ptr := add(data, 32) // cursor after length
+            mstore(ptr, number()) // first word = block.number
+            ptr := add(ptr, 32)
+        }
+
         uint32 price = TreeMath.findFirstLeft(s_buyTree, 0);
         while (price != type(uint32).max && price != 0) {
             uint40 orderId = s_buyPricePoints[price].head;
@@ -1355,12 +1337,19 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 size += s_orders[orderId].size;
                 orderId = s_orders[orderId].next;
             }
-            data = bytes.concat(data, abi.encode(price, size));
+            assembly ("memory-safe") {
+                mstore(ptr, price) // price
+                mstore(add(ptr, 32), size) // aggregated size
+                ptr := add(ptr, 64)
+            }
             price = TreeMath.findFirstLeft(s_buyTree, price);
         }
 
-        data = bytes.concat(data, abi.encode(0)); // Separator between buy and sell orders
-        // Encode sell orders
+        assembly ("memory-safe") {
+            mstore(ptr, 0)
+            ptr := add(ptr, 32)
+        }
+
         price = TreeMath.findFirstLeft(s_sellTree, 0);
         while (price != type(uint32).max && price != 0) {
             uint40 orderId = s_sellPricePoints[price].head;
@@ -1369,10 +1358,19 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 size += s_orders[orderId].size;
                 orderId = s_orders[orderId].next;
             }
-            data = bytes.concat(data, abi.encode(price, size));
+            assembly ("memory-safe") {
+                mstore(ptr, price)
+                mstore(add(ptr, 32), size)
+                ptr := add(ptr, 64)
+            }
             price = TreeMath.findFirstLeft(s_sellTree, price);
         }
 
-        return data;
+        assembly ("memory-safe") {
+            let length := sub(ptr, add(data, 32)) // total bytes written
+            mstore(data, length) // patch real length
+            let newFree := and(add(ptr, 31), not(31)) // round up to 32-byte boundary
+            mstore(0x40, newFree) // update free-mem ptr
+        }
     }
 }

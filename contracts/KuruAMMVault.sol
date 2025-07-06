@@ -295,11 +295,19 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
     function _returnNormalizedAmountAndPrice(bool roundUp) internal view returns (uint256, uint256) {
         // @audit what is the right way to round this value?
         // ideally, should be rounded up during deposits and rounded down during withdrawals
-        uint96 _normalizedAskSize = roundUp
-            ? toU96(FixedPointMathLib.mulDivUp(market.vaultAskOrderSize(), DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, SPREAD_CONSTANT))
-            : toU96(FixedPointMathLib.mulDiv(market.vaultAskOrderSize(), DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, SPREAD_CONSTANT));
+        uint96 _normalizedBaseAmount = roundUp
+            ? toU96(
+                FixedPointMathLib.mulDivUp(
+                    market.vaultAskOrderSize(), DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, SPREAD_CONSTANT
+                )
+            )
+            : toU96(
+                FixedPointMathLib.mulDiv(
+                    market.vaultAskOrderSize(), DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, SPREAD_CONSTANT
+                )
+            );
         uint256 _price = market.vaultBestAsk();
-        return ((_normalizedAskSize * 10 ** marketParams.baseAssetDecimals) / marketParams.sizePrecision, _price);
+        return ((_normalizedBaseAmount * 10 ** marketParams.baseAssetDecimals) / marketParams.sizePrecision, _price);
     }
 
     /**
@@ -329,16 +337,13 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
             if (totalSupply() == 0) {
                 return (0, 0);
             }
-            (uint256 _reserve1,) = totalAssets();
-            uint256 _baseAmount = FixedPointMathLib.mulDiv(shares, _reserve1, totalSupply());
-            uint256 _bestAsk = market.vaultBestAsk();
-            uint256 _expectedQuoteAmount = (
-                (
-                    FixedPointMathLib.mulDivUp(_baseAmount, _bestAsk, vaultPricePrecision)
-                        * 10 ** marketParams.quoteAssetDecimals
-                )
-            ) / 10 ** marketParams.baseAssetDecimals;
-            return (_baseAmount, _expectedQuoteAmount);
+            (uint256 _baseReserve, uint256 _quoteReserve) = totalAssets();
+            (, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(false);
+            (_baseReserve, _quoteReserve) =
+                _returnVirtuallyRebalancedTotalAssets(_baseReserve, _quoteReserve, _currentAskPrice);
+            uint256 _baseAmount = FixedPointMathLib.mulDiv(shares, _baseReserve, totalSupply());
+            uint256 _quoteAmount = FixedPointMathLib.mulDiv(shares, _quoteReserve, totalSupply());
+            return (_baseAmount, _quoteAmount);
         } else {
             (uint256 _baseAmount, uint256 _quoteAmount,,,) = _convertToAssetsWithNewSize(shares);
             return (_baseAmount, _quoteAmount);

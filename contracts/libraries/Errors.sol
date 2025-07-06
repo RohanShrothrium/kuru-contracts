@@ -96,12 +96,12 @@ library OrderBookErrors {
      */
     error OnlyVaultAllowed();
     /**
-    * @dev Thrown when safe cast to uint96 fails
-    */
+     * @dev Thrown when safe cast to uint96 fails
+     */
     error Uint96Overflow();
-    /** 
-    * @dev Thrown when safe cast to uint32 fails
-    */
+    /**
+     * @dev Thrown when safe cast to uint32 fails
+     */
     error Uint32Overflow();
 }
 
@@ -154,6 +154,14 @@ library RouterErrors {
      */
     error MarketTypeMismatch();
     /**
+     * @dev Thrown when size precision is not a power of 10
+     */
+    error InvalidSizePrecision();
+    /**
+     * @dev Thrown when price precision is not a power of 10
+     */
+    error InvalidPricePrecision();
+    /**
      * @dev Thrown when no markets are passed as input
      */
     error NoMarketsPassed();
@@ -174,8 +182,8 @@ library RouterErrors {
      */
     error NativeAssetTransferFail();
     /**
-    * @dev Thrown when safe cast to uint96 fails
-    */
+     * @dev Thrown when safe cast to uint96 fails
+     */
     error Uint96Overflow();
 }
 
@@ -217,8 +225,8 @@ library KuruAMMVaultErrors {
      */
     error NegativeAmountWithdrawn();
     /**
-    * @dev Thrown when safe cast to uint96 fails
-    */
+     * @dev Thrown when safe cast to uint96 fails
+     */
     error Uint96Overflow();
 }
 
