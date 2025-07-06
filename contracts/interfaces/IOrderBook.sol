@@ -172,10 +172,6 @@ interface IOrderBook {
         bool postOnly
     ) external;
 
-    function placeMultipleBuyOrders(uint32[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
-
-    function placeMultipleSellOrders(uint32[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
-
     function placeAndExecuteMarketBuy(uint96 _quoteAmount, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         external
         payable
