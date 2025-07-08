@@ -30,7 +30,7 @@ jobs:
     - name: Create remappings file
       run: |
         echo "forge-std/=lib/forge-std/src/" > remappings.txt
-        echo "@openzeppelin/=node_modules/@openzeppelin/" >> remappings.txt
+        echo "@openzeppelin/=lib/openzeppelin-contracts/" >> remappings.txt
 
     - name: Run Forge Tests
       run: forge test --ffi
