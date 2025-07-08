@@ -1,5 +1,8 @@
 name: Run Forge Tests
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -15,6 +18,8 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
+        ref: ${{ github.head_ref || github.ref_name }}
+        fetch-depth: 0
 
     - name: Install Foundry
       uses: foundry-rs/foundry-toolchain@v1
@@ -23,6 +28,8 @@ jobs:
 
     - name: Set up Node.js
       uses: actions/setup-node@v2
+      with:
+        node-version: '18.x'
 
     - name: Install Dependencies
       run: npm install
@@ -37,3 +44,42 @@ jobs:
 
     - name: Run Forge Tests
       run: forge test --ffi
+
+    - name: Compile contracts
+      run: npx hardhat compile
+
+    - name: Start Hardhat node and run benchmarks
+      run: |
+        # Start hardhat node in background
+        npx hardhat node &
+        
+        # Wait for node to be ready
+        sleep 10
+        
+        # Run deployment script
+        npx hardhat run scripts/deployStorageOrderBook.js
+        
+        # Run benchmark script
+        npx hardhat run scripts/benchmarkStorageMargin.js
+        
+        # Kill the background hardhat node process
+        kill $(lsof -t -i:8545) || true
+
+    - name: Prettify benchmark results
+      run: |
+        node -e '
+        const fs = require("fs");
+        const file = "cranklessStorageOrderBookMargin.json";
+        const data = JSON.parse(fs.readFileSync(file));
+        fs.writeFileSync(file, JSON.stringify(data, null, 2));
+        '
+
+    - name: Commit changes
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add .
+        git commit -m "Update benchmark results" || echo "No changes to commit"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
