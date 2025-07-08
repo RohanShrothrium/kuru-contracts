@@ -1,6 +1,6 @@
 [profile.default]
 via_ir = true
-evm_version = "shanghai"
+evm_version = "cancun"
 fs_permissions = [{ access = "read", path = "script/" }]
 optimizer = true
 

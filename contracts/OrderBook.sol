@@ -13,11 +13,12 @@ import {AbstractAMM} from "./AbstractAMM.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 // ============ External Imports ============
+import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
-contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAMM {
+contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAMM, ReentrancyGuardTransient {
     OrderBookType orderBookType;
     address owner;
     address _trustedForwarder;
@@ -175,7 +176,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _price Price of the buy order.
      * @param size Size of the buy order.
      */
-    function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) public marketActive {
+    function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) public marketActive nonReentrant {
         require(_price > 0, OrderBookErrors.PriceError());
         require(size > minSize, OrderBookErrors.SizeError());
         require(size < maxSize, OrderBookErrors.SizeError());
@@ -213,6 +214,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     function addFlipBuyOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
         public
         marketActive
+        nonReentrant
     {
         require(_price > 0 && _flippedPrice > 0, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
@@ -244,7 +246,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _price Price of the sell order.
      * @param _size Size of the sell order.
      */
-    function addSellOrder(uint32 _price, uint96 _size, bool _postOnly) public marketActive {
+    function addSellOrder(uint32 _price, uint96 _size, bool _postOnly) public marketActive nonReentrant {
         require(_size > minSize, OrderBookErrors.SizeError());
         require(_size < maxSize, OrderBookErrors.SizeError());
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
@@ -280,6 +282,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     function addFlipSellOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
         public
         marketActive
+        nonReentrant
     {
         require(_price > 0 && _flippedPrice > 0, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
@@ -307,6 +310,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     function addPairedLiquidity(uint32 _bidPrice, uint32 _askPrice, uint96 _bidSize, uint96 _askSize)
         public
         marketActive
+        nonReentrant
     {
         require(_bidPrice > 0 && _askPrice > _bidPrice, OrderBookErrors.PriceError());
         require(_bidPrice % tickSize == 0 && _askPrice % tickSize == 0, OrderBookErrors.TickSizeError());
@@ -414,7 +418,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         marginAccount.debitUser(_userAddress, _consumableAsset, _amount);
     }
 
-    function batchCancelFlipOrders(uint40[] calldata _orderIds) external marketNotHardPaused {
+    function batchCancelFlipOrders(uint40[] calldata _orderIds) external marketNotHardPaused nonReentrant {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _cancelFlipOrder(_orderIds[i]);
         }
@@ -426,7 +430,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Cancels multiple orders in a batch.
      * @param _orderIds Array of order IDs to cancel.
      */
-    function batchCancelOrders(uint40[] calldata _orderIds) external marketNotHardPaused {
+    function batchCancelOrders(uint40[] calldata _orderIds) external marketNotHardPaused nonReentrant {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _cancelOrder(_orderIds[i], true);
         }
@@ -434,7 +438,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrdersCanceled(_orderIds, _msgSender());
     }
 
-    function batchCancelOrdersNoRevert(uint40[] calldata _orderIds) external marketNotHardPaused {
+    function batchCancelOrdersNoRevert(uint40[] calldata _orderIds) external marketNotHardPaused nonReentrant {
         uint40[] memory _orderIdsCanceled = new uint40[](_orderIds.length);
         for (uint256 i = 0; i < _orderIds.length; i++) {
             bool _isCanceled = _cancelOrder(_orderIds[i], false);
@@ -616,7 +620,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         uint96[] calldata sellSizes,
         uint40[] calldata orderIdsToCancel,
         bool postOnly
-    ) external marketActive {
+    ) external marketActive nonReentrant {
         // Ensure that the lengths of the buy prices and sizes match
         require(buyPrices.length == buySizes.length, OrderBookErrors.LengthMismatch());
 
@@ -660,6 +664,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         payable
         override
         marketActive
+        nonReentrant
         returns (uint256)
     {
         OrderBookType _type = orderBookType;
@@ -714,6 +719,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         public
         payable
         marketActive
+        nonReentrant
         returns (uint256)
     {
         OrderBookType _type = orderBookType;

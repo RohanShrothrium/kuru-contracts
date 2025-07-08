@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 // ============ External Imports ============
+import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import {ERC20} from "solady/src/tokens/ERC20.sol";
 import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
@@ -14,7 +15,7 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 import {IKuruAMMVault} from "./interfaces/IKuruAMMVault.sol";
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
 
-contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
+contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, ReentrancyGuardTransient {
     using SafeTransferLib for address;
     using FixedPointMathLib for uint256;
 
@@ -139,7 +140,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
     /**
      * @dev Deposits token1 and token2 into the vault and mints shares to the receiver.
      */
-    function deposit(uint256 baseDeposit, uint256 quoteDeposit, address receiver) public payable returns (uint256) {
+    function deposit(uint256 baseDeposit, uint256 quoteDeposit, address receiver) public payable nonReentrant returns (uint256) {
         require(
             (token1 == address(0) || token2 == address(0))
                 ? msg.value >= (token1 == address(0) ? baseDeposit : quoteDeposit)
@@ -220,7 +221,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable {
     /**
      * @dev Withdraws token1 and token2 from the vault by burning the specified amount of shares.
      */
-    function withdraw(uint256 _shares, address _receiver, address _owner) public returns (uint256, uint256) {
+    function withdraw(uint256 _shares, address _receiver, address _owner) public nonReentrant returns (uint256, uint256) {
         require(_shares <= balanceOf(_owner), KuruAMMVaultErrors.InsufficientBalance());
 
         if (msg.sender != _owner) {
