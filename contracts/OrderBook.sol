@@ -1318,11 +1318,20 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @notice Returns the Level 2 order book data.
-     * @dev Encodes the block number, buy orders, and sell orders.
+     * @notice Wrapper around getL2Book that returns all bid and ask price points
+     * @dev This is useful if you want the complete order book, but may fail if the number of price points is a lot
      * @return data Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.
      */
-    function getL2Book(uint32 _bidPricePoints, uint32 _askPricePoints) external view returns (bytes memory data) {
+    function getL2Book() external view returns (bytes memory) {
+        return getL2Book(type(uint32).max, type(uint32).max);
+    }
+
+    /**
+     * @notice Returns the Level 2 order book data.
+     * @dev Encodes the block number, buy orders, and sell orders. Pass the number of bid and ask price points you need
+     * @return data Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.
+     */
+    function getL2Book(uint32 _bidPricePoints, uint32 _askPricePoints) public view returns (bytes memory data) {
         assembly ("memory-safe") {
             data := mload(0x40) // current free-mem ptr
             mstore(data, 0) // placeholder for length
