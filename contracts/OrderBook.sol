@@ -1322,7 +1322,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Encodes the block number, buy orders, and sell orders.
      * @return data Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.
      */
-    function getL2Book() external view returns (bytes memory data) {
+    function getL2Book(uint32 _bidPricePoints, uint32 _askPricePoints) external view returns (bytes memory data) {
         assembly ("memory-safe") {
             data := mload(0x40) // current free-mem ptr
             mstore(data, 0) // placeholder for length
@@ -1335,8 +1335,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             ptr := add(ptr, 32)
         }
 
-        uint32 price = TreeMath.findFirstLeft(s_buyTree, 0);
-        while (price != type(uint32).max && price != 0) {
+        uint32 price = TreeMath.findFirstRight(s_buyTree, type(uint32).max);
+        while (price != type(uint32).max && price != 0 && _bidPricePoints != 0) {
             uint40 orderId = s_buyPricePoints[price].head;
             uint96 size = 0;
             while (orderId != 0) {
@@ -1348,7 +1348,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 mstore(add(ptr, 32), size) // aggregated size
                 ptr := add(ptr, 64)
             }
-            price = TreeMath.findFirstLeft(s_buyTree, price);
+            price = TreeMath.findFirstRight(s_buyTree, price);
+            --_bidPricePoints;
         }
 
         assembly ("memory-safe") {
@@ -1357,7 +1358,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
 
         price = TreeMath.findFirstLeft(s_sellTree, 0);
-        while (price != type(uint32).max && price != 0) {
+        while (price != type(uint32).max && price != 0 && _askPricePoints != 0) {
             uint40 orderId = s_sellPricePoints[price].head;
             uint96 size = 0;
             while (orderId != 0) {
@@ -1370,6 +1371,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 ptr := add(ptr, 64)
             }
             price = TreeMath.findFirstLeft(s_sellTree, price);
+            --_askPricePoints;
         }
 
         assembly ("memory-safe") {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {IOrderBook} from "../interfaces/IOrderBook.sol";
-import {IReadERC20} from "../interfaces/IReadERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IMarginAccount} from "../interfaces/IMarginAccount.sol";
 
 /// @title A periphery contract for Kuru
@@ -46,7 +46,7 @@ contract KuruUtils {
         TokenInfo[] memory info = new TokenInfo[](tokens.length);
 
         for (uint256 i; i < tokens.length; i++) {
-            IReadERC20 token = IReadERC20(tokens[i]);
+            IERC20Metadata token = IERC20Metadata(tokens[i]);
 
             // Default empty values
             string memory name = "";
