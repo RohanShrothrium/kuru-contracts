@@ -1332,18 +1332,22 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @return data Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.
      */
     function getL2Book(uint32 _bidPricePoints, uint32 _askPricePoints) public view returns (bytes memory data) {
-        assembly ("memory-safe") {
-            data := mload(0x40) // current free-mem ptr
-            mstore(data, 0) // placeholder for length
-        }
+
+        uint256 dataStart;
         uint256 ptr;
+        uint256 lastFree;
 
         assembly ("memory-safe") {
-            ptr := add(data, 32) // cursor after length
-            mstore(ptr, number()) // first word = block.number
+            dataStart := mload(0x40)
+            mstore(dataStart, 0) // we insert length at the end
+            ptr := add(dataStart, 32)
+            mstore(ptr, number()) // block number
             ptr := add(ptr, 32)
+            mstore(0x40, ptr)
+            lastFree := ptr
         }
 
+        // -------------------- BID SIDE --------------------
         uint32 price = TreeMath.findFirstRight(s_buyTree, type(uint32).max);
         while (price != type(uint32).max && price != 0 && _bidPricePoints != 0) {
             uint40 orderId = s_buyPricePoints[price].head;
@@ -1353,17 +1357,42 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 orderId = s_orders[orderId].next;
             }
             assembly ("memory-safe") {
-                mstore(ptr, price) // price
-                mstore(add(ptr, 32), size) // aggregated size
+                let curFree := mload(0x40)
+                if iszero(eq(curFree, lastFree)) {
+                    // free pointer has moved, so we will copy data to a new memory region
+                    let producedLen := sub(ptr, add(dataStart, 32))
+                    for { let offset := 0 } lt(offset, add(producedLen, 32)) { offset := add(offset, 32) } {
+                        mstore(add(curFree, offset), mload(add(dataStart, offset)))
+                    }
+                    dataStart := curFree
+                    ptr := add(add(curFree, 32), producedLen)
+                }
+
+                mstore(ptr, price)
+                mstore(add(ptr, 32), size)
                 ptr := add(ptr, 64)
+                mstore(0x40, ptr)
+                lastFree := ptr
             }
             price = TreeMath.findFirstRight(s_buyTree, price);
             --_bidPricePoints;
         }
 
         assembly ("memory-safe") {
+            let curFree := mload(0x40)
+            if iszero(eq(curFree, lastFree)) {
+                let producedLen := sub(ptr, add(dataStart, 32))
+                for { let offset := 0 } lt(offset, add(producedLen, 32)) { offset := add(offset, 32) } {
+                    mstore(add(curFree, offset), mload(add(dataStart, offset)))
+                }
+                dataStart := curFree
+                ptr := add(add(curFree, 32), producedLen)
+            }
+
             mstore(ptr, 0)
             ptr := add(ptr, 32)
+            mstore(0x40, ptr)
+            lastFree := ptr
         }
 
         price = TreeMath.findFirstLeft(s_sellTree, 0);
@@ -1375,19 +1404,32 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 orderId = s_orders[orderId].next;
             }
             assembly ("memory-safe") {
+                let curFree := mload(0x40)
+                if iszero(eq(curFree, lastFree)) {
+                    // free memory pointer has moved
+                    let producedLen := sub(ptr, add(dataStart, 32))
+                    for { let offset := 0 } lt(offset, add(producedLen, 32)) { offset := add(offset, 32) } {
+                        mstore(add(curFree, offset), mload(add(dataStart, offset)))
+                    }
+                    dataStart := curFree
+                    ptr := add(add(curFree, 32), producedLen)
+                }
+
                 mstore(ptr, price)
                 mstore(add(ptr, 32), size)
                 ptr := add(ptr, 64)
+                mstore(0x40, ptr)
+                lastFree := ptr
             }
             price = TreeMath.findFirstLeft(s_sellTree, price);
             --_askPricePoints;
         }
 
         assembly ("memory-safe") {
-            let length := sub(ptr, add(data, 32)) // total bytes written
-            mstore(data, length) // patch real length
-            let newFree := and(add(ptr, 31), not(31)) // round up to 32-byte boundary
-            mstore(0x40, newFree) // update free-mem ptr
+            mstore(dataStart, sub(ptr, add(dataStart, 32)))
+            let newFree := and(add(ptr, 31), not(31))
+            mstore(0x40, newFree)
+            data := dataStart
         }
     }
 }
