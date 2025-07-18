@@ -875,7 +875,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             } else {
                 // Calculate base size fillable by current unconsumed quote size for a particular price
                 uint96 _sizeFillableAtPriceLeft =
-                    toU96(_quoteSize * sizePrecision * vaultPricePrecision / (_bestAsk * _pricePrecision));
+                    toU96(_quoteSize * _sizePrecision * vaultPricePrecision / (_bestAsk * _pricePrecision));
                 uint96 _sizeFillableAtPriceBefore = _sizeFillableAtPriceLeft; // Save old size to be filled
                 (_sizeFillableAtPriceLeft, priceUpdate) = _fillSizeForPrice(
                     s_sellTree,
@@ -886,7 +886,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 sizeToCreditTaker += (_sizeFillableAtPriceBefore - _sizeFillableAtPriceLeft);
                 _quoteSize = toU96(
                     FixedPointMathLib.mulDiv(
-                        _bestAsk * _pricePrecision, _sizeFillableAtPriceLeft, sizePrecision * vaultPricePrecision
+                        _bestAsk * _pricePrecision, _sizeFillableAtPriceLeft, _sizePrecision * vaultPricePrecision
                     )
                 );
             }
