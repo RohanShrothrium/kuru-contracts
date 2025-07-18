@@ -247,4 +247,8 @@ library KuruForwarderErrors {
      * @dev Thrown when the nonce is already used
      */
     error NonceAlreadyUsed();
+    /**
+     * @dev Thrown when the value is insufficient
+     */
+    error InsufficientValue();
 }

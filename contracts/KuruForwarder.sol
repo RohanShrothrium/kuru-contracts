@@ -222,7 +222,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         returns (bytes memory)
     {
         require(verifyMarginAccountRequest(req, signature), KuruForwarderErrors.SignatureMismatch());
-
+        require(msg.value >= req.value, KuruForwarderErrors.InsufficientValue());
         require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
 
         _nonces[req.from] = req.nonce + 1;
@@ -239,7 +239,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
 
     function execute(ForwardRequest calldata req, bytes calldata signature) public payable returns (bytes memory) {
         require(verify(req, signature), KuruForwarderErrors.SignatureMismatch());
-
+        require(msg.value >= req.value, KuruForwarderErrors.InsufficientValue());
         require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
 
         _nonces[req.from] = req.nonce + 1;
@@ -260,7 +260,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         returns (bytes memory)
     {
         require(verifyPriceDependent(req, signature), KuruForwarderErrors.SignatureMismatch());
-
+        require(msg.value >= req.value, KuruForwarderErrors.InsufficientValue());
         require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
         executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))] = true;
 
