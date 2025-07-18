@@ -21,15 +21,13 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
 
     bool protocolPaused;
 
-    // Mapping from user keys to their balances
     mapping(bytes32 => uint256) public balances;
 
-    // Mapping of hash of token pairs to their market contract addresses
     mapping(address => bool) public verifiedMarket;
 
     address routerContractAddress;
     address feeCollector;
-    // Native token
+
     address private constant NATIVE = 0x0000000000000000000000000000000000000000;
 
     constructor() {

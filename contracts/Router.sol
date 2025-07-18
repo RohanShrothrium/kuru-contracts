@@ -8,10 +8,10 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 import {IKuruAMMVault} from "./interfaces/IKuruAMMVault.sol";
 
 // ============ Internal Library Imports ============
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {RouterErrors} from "./libraries/Errors.sol";
 
 // ============ External Imports ============
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -22,11 +22,9 @@ import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
 contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     using SafeTransferLib for address;
-    // Mapping of hash of token pairs to their market contract addresses
 
     mapping(address => MarketParams) public verifiedMarket;
 
-    // used to create base/native and native/quote markets
     address private constant NATIVE = 0x0000000000000000000000000000000000000000;
     address public TRUSTED_FORWARDER;
     address public orderBookImplementation;
@@ -53,7 +51,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         kuruAmmVaultImplementation = _kuruAmmVaultImplementation;
         TRUSTED_FORWARDER = _trustedForwarder;
     }
-    // @audit price precision, size precision must be power of 10
+
     /**
      * @dev Deploys an OrderBook proxy for a set of given parameters
      * @param _type The type of OrderBook which can be NO_NATIVE, NATIVE_IN_BASE or NATIVE_IN_QUOTE
@@ -125,7 +123,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(kuruAmmVaultImplementation, bytes("")))
             )
         );
-        // @note native decimals hardcoded to 18
+
         {
             IOrderBook(proxy).initialize(
                 address(this),
@@ -287,7 +285,6 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         }
     }
 
-    // Register a market for a token pair
     function _registerMarket(
         address _baseAsset,
         address _quoteAsset,
@@ -306,8 +303,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         IMarginAccount(marginAccountAddress).updateMarkets(_marketAddress);
     }
 
-    //@note should change this to accomodate native
-    // Perform an any-to-any swap
+
     function anyToAnySwap(
         address[] calldata _marketAddresses,
         bool[] calldata _isBuy,
@@ -324,11 +320,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _debitToken.safeTransferFrom(msg.sender, address(this), _amount);
         }
         uint256 _cachedAmountIn = _amount;
-        // @note: We don't validate msg.value cause we do it in the market contract and we assume no funds ever stay on the router.
 
-        // @audit: Do we check if we debit token against token from first market params? Do we check if we credit token against token from last market params?
-        // If router has any balance, it can be drained.
-        // Will the router ever have non zero balances? Idts.
         for (uint256 i = 0; i < _marketAddresses.length; i++) {
             address _currentMarket = _marketAddresses[i];
             MarketParams memory _marketParams = verifiedMarket[_currentMarket];
