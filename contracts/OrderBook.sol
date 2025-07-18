@@ -702,8 +702,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 );
             }
         } else if (_type == OrderBookType.NATIVE_IN_QUOTE) {
-            (bool _success,) = address(marginAccount).call{value: msg.value}("");
-            require(_success, OrderBookErrors.NativeAssetTransferFail());
+            marginAccount.safeTransferETH(msg.value);
         }
         require(_baseTokensCredited >= _minAmountOut, OrderBookErrors.SlippageExceeded());
 
@@ -749,8 +748,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 marginAccount.creditUser(_msgSender(), baseAsset, _sizePrecisionToBaseAssetPrecision(_size), _isMargin);
             }
         } else if (_type == OrderBookType.NATIVE_IN_BASE) {
-            (bool _success,) = address(marginAccount).call{value: msg.value}("");
-            require(_success, OrderBookErrors.NativeAssetTransferFail());
+            marginAccount.safeTransferETH(msg.value);
         }
         require(_quoteCredited >= _minAmountOut, OrderBookErrors.SlippageExceeded());
         return _quoteCredited;
@@ -761,12 +759,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _refund The native token refund to be credited to the taker
      */
     function _handleNativeMarketRefundTransfer(uint256 _refund) internal {
-        (bool _success,) = address(marginAccount).call{value: msg.value - _refund}("");
-        require(_success, OrderBookErrors.NativeAssetTransferFail());
-
-        // @audit: Does this lead to bugs?
-        (_success,) = address(_msgSender()).call{value: _refund}("");
-        require(_success, OrderBookErrors.NativeAssetTransferFail());
+        marginAccount.safeTransferETH(msg.value - _refund);
+        _msgSender().safeTransferETH(_refund);
     }
 
     function _pricePrecisionToQuoteAssetPrecision(uint96 _quote) internal view returns (uint256) {
@@ -1332,7 +1326,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @return data Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.
      */
     function getL2Book(uint32 _bidPricePoints, uint32 _askPricePoints) public view returns (bytes memory data) {
-
         uint256 dataStart;
         uint256 ptr;
         uint256 lastFree;

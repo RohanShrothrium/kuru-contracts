@@ -140,7 +140,12 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     /**
      * @dev Deposits token1 and token2 into the vault and mints shares to the receiver.
      */
-    function deposit(uint256 baseDeposit, uint256 quoteDeposit, address receiver) public payable nonReentrant returns (uint256) {
+    function deposit(uint256 baseDeposit, uint256 quoteDeposit, address receiver)
+        public
+        payable
+        nonReentrant
+        returns (uint256)
+    {
         require(
             (token1 == address(0) || token2 == address(0))
                 ? msg.value >= (token1 == address(0) ? baseDeposit : quoteDeposit)
@@ -193,8 +198,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
         uint256 _nativeRefund =
             _token1 == address(0) ? (msg.value - baseDeposit) : (_token2 == address(0) ? (msg.value - quoteDeposit) : 0);
         if (_nativeRefund > 0) {
-            (bool success,) = msg.sender.call{value: _nativeRefund}("");
-            require(success, KuruAMMVaultErrors.NativeAssetTransferFail());
+            msg.sender.safeTransferETH(_nativeRefund);
         }
         emit KuruVaultDeposit(baseDeposit, quoteDeposit, _shares, receiver);
         return _shares;
@@ -221,7 +225,11 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     /**
      * @dev Withdraws token1 and token2 from the vault by burning the specified amount of shares.
      */
-    function withdraw(uint256 _shares, address _receiver, address _owner) public nonReentrant returns (uint256, uint256) {
+    function withdraw(uint256 _shares, address _receiver, address _owner)
+        public
+        nonReentrant
+        returns (uint256, uint256)
+    {
         require(_shares <= balanceOf(_owner), KuruAMMVaultErrors.InsufficientBalance());
 
         if (msg.sender != _owner) {
@@ -272,8 +280,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
      */
     function _transferTokensToUser(uint256 amount, address token, address receiver) internal {
         if (token == address(0)) {
-            (bool success,) = receiver.call{value: amount}("");
-            require(success, KuruAMMVaultErrors.NativeAssetTransferFail());
+            receiver.safeTransferETH(amount);
         } else {
             token.safeTransfer(receiver, amount);
         }

@@ -355,8 +355,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         if (_creditToken != address(0)) {
             _creditToken.safeTransfer(msg.sender, _amountOut);
         } else {
-            (bool _success,) = (msg.sender).call{value: _amountOut}("");
-            require(_success, RouterErrors.NativeAssetTransferFail());
+            msg.sender.safeTransferETH(_amountOut);
         }
     }
 

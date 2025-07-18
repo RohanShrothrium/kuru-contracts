@@ -136,8 +136,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
             if (_token != NATIVE) {
                 _token.safeTransfer(_user, _amount);
             } else {
-                (bool success,) = _user.call{value: _amount}("");
-                require(success, MarginAccountErrors.NativeAssetTransferFail());
+                _user.safeTransferETH(_amount);
             }
         }
     }
@@ -161,8 +160,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
                 if (_token != NATIVE) {
                     _token.safeTransfer(_user, _amount);
                 } else {
-                    (bool success,) = _user.call{value: _amount}("");
-                    require(success, MarginAccountErrors.NativeAssetTransferFail());
+                    _user.safeTransferETH(_amount);
                 }
             }
         }
@@ -195,8 +193,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
             balances[_accountKey(_msgSender(), _tokens[i])] = 0;
             if (_balance > 0) {
                 if (_tokens[i] == NATIVE) {
-                    (bool success,) = _msgSender().call{value: _balance}("");
-                    require(success, MarginAccountErrors.NativeAssetTransferFail());
+                    _msgSender().safeTransferETH(_balance);
                 } else {
                     _tokens[i].safeTransfer(_msgSender(), _balance);
                 }
@@ -233,8 +230,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         require(_amount <= balances[_accountKey(_msgSender(), _token)], MarginAccountErrors.InsufficientBalance());
         balances[_accountKey(_msgSender(), _token)] -= _amount;
         if (_token == NATIVE) {
-            (bool _success,) = (_msgSender()).call{value: _amount}("");
-            require(_success, MarginAccountErrors.NativeAssetTransferFail());
+            _msgSender().safeTransferETH(_amount);
         } else {
             _token.safeTransfer(_msgSender(), _amount);
         }
