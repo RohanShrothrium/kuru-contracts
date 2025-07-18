@@ -19,18 +19,6 @@ library TreeMath {
     }
 
     /**
-     * @dev Returns true if the tree contains the id
-     * @param tree The tree
-     * @param id The id
-     * @return True if the tree contains the id
-     */
-    function contains(TreeUint32 storage tree, uint32 id) internal view returns (bool) {
-        bytes32 key3 = bytes32(uint256(id) >> 8);
-
-        return tree.level3[key3] & bytes32(1 << (id & type(uint8).max)) != 0;
-    }
-
-    /**
      * @dev Adds the id to the tree and returns true if the id was not already in the tree
      * It will also propagate the change to the parent levels.
      * @param tree The tree

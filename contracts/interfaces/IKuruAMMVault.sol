@@ -26,9 +26,7 @@ interface IKuruAMMVault {
         address token2_,
         address _marginAccount,
         address _market,
-        uint96 _spread,
-        string memory _name,
-        string memory _symbol
+        uint96 _spread
     ) external;
 
     function setMarketParams() external;

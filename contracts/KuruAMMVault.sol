@@ -35,6 +35,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     IOrderBook public market;
     MarketParams public marketParams;
     uint96 public SPREAD_CONSTANT;
+    string internal _name;
 
     constructor() {
         _disableInitializers();
@@ -47,9 +48,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
         address token2_,
         address _marginAccount,
         address _market,
-        uint96 _spreadConstant,
-        string memory _name,
-        string memory _symbol
+        uint96 _spreadConstant
     ) public initializer {
         owner = _owner;
         token1 = token1_;
@@ -65,6 +64,19 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
         if (token2_ != address(0)) {
             token2_.safeApprove(_marginAccount, type(uint256).max);
         }
+        string memory token1Symbol;
+        string memory token2Symbol;
+        if (token1_ != address(0)) {
+            token1Symbol = ERC20(token1_).symbol();
+        } else {
+            token1Symbol = "MON";
+        }
+        if (token2_ != address(0)) {
+            token2Symbol = ERC20(token2_).symbol();
+        } else {
+            token2Symbol = "MON";
+        }
+        _name = string.concat(token1Symbol, "-", token2Symbol, "-", "KURU-AMM-VAULT");
     }
 
     // ============ auth =================
@@ -82,11 +94,11 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     }
 
     function name() public view virtual override returns (string memory) {
-        return "KuruAMMVault";
+        return _name;
     }
 
     function symbol() public view virtual override returns (string memory) {
-        return "KURU-AMM-VAULT";
+        return _name;
     }
 
     /**

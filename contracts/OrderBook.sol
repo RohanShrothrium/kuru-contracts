@@ -620,7 +620,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         uint96[] calldata sellSizes,
         uint40[] calldata orderIdsToCancel,
         bool postOnly
-    ) external marketActive nonReentrant {
+    ) external marketNotHardPaused nonReentrant {
         // Ensure that the lengths of the buy prices and sizes match
         require(buyPrices.length == buySizes.length, OrderBookErrors.LengthMismatch());
 

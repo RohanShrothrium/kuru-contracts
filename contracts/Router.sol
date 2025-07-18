@@ -146,7 +146,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             );
         }
         _kuruAmmVault.initialize(
-            address(this), _baseAssetAddress, _quoteAssetAddress, marginAccountAddress, proxy, _kuruAmmSpread, "", ""
+            address(this), _baseAssetAddress, _quoteAssetAddress, marginAccountAddress, proxy, _kuruAmmSpread
         );
         verifiedMarket[proxy] = MarketParams(
             _pricePrecision,
