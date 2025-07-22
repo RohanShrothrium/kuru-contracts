@@ -124,6 +124,20 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             )
         );
 
+        verifiedMarket[proxy] = MarketParams(
+            _pricePrecision,
+            _sizePrecision,
+            _baseAssetAddress,
+            _baseAssetDecimals,
+            _quoteAssetAddress,
+            _quoteAssetDecimals,
+            _tickSize,
+            _minSize,
+            _maxSize,
+            _takerFeeBps,
+            _makerFeeBps
+        );
+        IMarginAccount(marginAccountAddress).updateMarkets(proxy);
         {
             IOrderBook(proxy).initialize(
                 address(this),
@@ -146,25 +160,12 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             );
         }
 
-        verifiedMarket[proxy] = MarketParams(
-            _pricePrecision,
-            _sizePrecision,
-            _baseAssetAddress,
-            _baseAssetDecimals,
-            _quoteAssetAddress,
-            _quoteAssetDecimals,
-            _tickSize,
-            _minSize,
-            _maxSize,
-            _takerFeeBps,
-            _makerFeeBps
-        );
 
         _kuruAmmVault.initialize(
             address(this), _baseAssetAddress, _quoteAssetAddress, marginAccountAddress, proxy, _kuruAmmSpread
         );
 
-        _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
+        _setApprovalsForMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
 
         emit MarketRegistered(
             _baseAssetAddress,
@@ -285,7 +286,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         }
     }
 
-    function _registerMarket(
+    function _setApprovalsForMarket(
         address _baseAsset,
         address _quoteAsset,
         address _marketAddress,
@@ -299,8 +300,6 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _baseAsset.safeApprove(_marketAddress, type(uint256).max);
             _quoteAsset.safeApprove(_marketAddress, type(uint256).max);
         }
-
-        IMarginAccount(marginAccountAddress).updateMarkets(_marketAddress);
     }
 
 
