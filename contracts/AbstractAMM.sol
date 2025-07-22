@@ -67,7 +67,7 @@ abstract contract AbstractAMM is IOrderBook {
             askPartiallyFilledSize = 0;
         }
 
-        while (_price < _breakPoint && _quoteInput > 0) {
+        while (_price <= _breakPoint && _quoteInput > 0) {
             uint256 _quoteNeededForFill = FixedPointMathLib.mulDivUp(_price, _availableSize, _getSizePrecision());
             if (_quoteNeededForFill > _quoteInput) {
                 uint96 _sizeFilledAtPrice = toU96(_quoteInput * _getSizePrecision() / _price);
@@ -133,7 +133,7 @@ abstract contract AbstractAMM is IOrderBook {
         if (_availableSize <= sizeLeft) {
             askPartiallyFilledSize = 0;
         }
-        while (_price < _breakPoint && sizeLeft > 0) {
+        while (_price <= _breakPoint && sizeLeft > 0) {
             if (_availableSize > sizeLeft) {
                 askPartiallyFilledSize += sizeLeft;
                 _consumedQuote += FixedPointMathLib.mulDivUp(sizeLeft, _price, _getSizePrecision());
@@ -193,7 +193,7 @@ abstract contract AbstractAMM is IOrderBook {
             bidPartiallyFilledSize = 0;
         }
 
-        while (_price > _breakPoint && sizeLeft > 0) {
+        while (_price >= _breakPoint && sizeLeft > 0) {
             if (_availableSize > sizeLeft) {
                 bidPartiallyFilledSize += sizeLeft;
                 quoteOwedToUser += FixedPointMathLib.mulDiv(_price, sizeLeft, _getSizePrecision());
