@@ -94,15 +94,17 @@ abstract contract AbstractAMM is IOrderBook {
                 );
             }
         }
-        vaultBestAsk = _price;
-        vaultBestBid = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
+        if (_price != vaultBestAsk) {
+            vaultBestAsk = _price;
+            vaultBestBid = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
+            vaultAskOrderSize = _cachedLastVaultSize;
+            vaultBidOrderSize = toU96(
+                FixedPointMathLib.mulDiv(
+                    _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
+                )
+            );
+        }
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
-        vaultAskOrderSize = _cachedLastVaultSize;
-        vaultBidOrderSize = toU96(
-            FixedPointMathLib.mulDiv(
-                _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
-            )
-        );
         quoteLeft = toU96(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
         makerCredits =
             _creditVaultOnMarketBuy(sizeFilled, (_quoteSize * vaultPricePrecision / _getPricePrecision() - _quoteInput));
@@ -156,15 +158,17 @@ abstract contract AbstractAMM is IOrderBook {
                 );
             }
         }
-        vaultBestAsk = _price;
-        vaultBestBid = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
+        if (_price != vaultBestAsk) {
+            vaultBestAsk = _price;
+            vaultBestBid = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
+            vaultAskOrderSize = _cachedLastVaultSize;
+            vaultBidOrderSize = toU96(
+                FixedPointMathLib.mulDiv(
+                    _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
+                )
+            );
+        }
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
-        vaultAskOrderSize = _cachedLastVaultSize;
-        vaultBidOrderSize = toU96(
-            FixedPointMathLib.mulDiv(
-                _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
-            )
-        );
         fundsConsumed = toU96(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
         makerCredits = _creditVaultOnMarketBuy(_size - sizeLeft, _consumedQuote);
     }
@@ -209,14 +213,16 @@ abstract contract AbstractAMM is IOrderBook {
                 _price = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
             }
         }
-        vaultBestBid = _price;
-        vaultBestAsk = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER + SPREAD_CONSTANT, BPS_MULTIPLIER);
-        vaultBidOrderSize = _cachedLastVaultSize;
-        vaultAskOrderSize = toU96(
-            FixedPointMathLib.mulDiv(
-                _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
-            )
-        );
+        if (_price != vaultBestBid) {
+            vaultBestBid = _price;
+            vaultBestAsk = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER + SPREAD_CONSTANT, BPS_MULTIPLIER);
+            vaultBidOrderSize = _cachedLastVaultSize;
+            vaultAskOrderSize = toU96(
+                FixedPointMathLib.mulDiv(
+                    _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
+                )
+            );
+        }
         makerCredits = _creditVaultOnMarketSell(_size - sizeLeft, quoteOwedToUser);
     }
 
