@@ -185,7 +185,7 @@ abstract contract AbstractAMM is IOrderBook {
         uint96 _availableSize = vaultBidOrderSize - bidPartiallyFilledSize;
         uint96 _cachedLastVaultSize = vaultBidOrderSize;
         sizeLeft = _size;
-        if (sizeLeft > _availableSize) {
+        if (sizeLeft >= _availableSize) {
             bidPartiallyFilledSize = 0;
         }
 

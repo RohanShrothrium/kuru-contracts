@@ -418,7 +418,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         marginAccount.debitUser(_userAddress, _consumableAsset, _amount);
     }
 
-    function batchCancelFlipOrders(uint40[] calldata _orderIds) external marketNotHardPaused nonReentrant {
+    function batchCancelFlipOrders(uint40[] calldata _orderIds) external marketNotHardPaused {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _cancelFlipOrder(_orderIds[i]);
         }
@@ -430,7 +430,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Cancels multiple orders in a batch.
      * @param _orderIds Array of order IDs to cancel.
      */
-    function batchCancelOrders(uint40[] calldata _orderIds) external marketNotHardPaused nonReentrant {
+    function batchCancelOrders(uint40[] calldata _orderIds) external marketNotHardPaused {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _cancelOrder(_orderIds[i], true);
         }
@@ -438,7 +438,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrdersCanceled(_orderIds, _msgSender());
     }
 
-    function batchCancelOrdersNoRevert(uint40[] calldata _orderIds) external marketNotHardPaused nonReentrant {
+    function batchCancelOrdersNoRevert(uint40[] calldata _orderIds) external marketNotHardPaused {
         uint40[] memory _orderIdsCanceled = new uint40[](_orderIds.length);
         for (uint256 i = 0; i < _orderIds.length; i++) {
             bool _isCanceled = _cancelOrder(_orderIds[i], false);
@@ -452,7 +452,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrdersCanceled(_orderIdsCanceled, _msgSender());
     }
 
-    function _cancelFlipOrder(uint40 _orderId) internal {
+    function _cancelFlipOrder(uint40 _orderId) internal nonReentrant {
         Order memory _order = s_orders[_orderId];
         require(!_checkIfCancelledOrFilled(_orderId, _order), OrderBookErrors.OrderAlreadyFilledOrCancelled());
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
@@ -467,7 +467,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Internal helper function to cancel a single order.
      * @param _orderId ID of the order to cancel.
      */
-    function _cancelOrder(uint40 _orderId, bool _revertIfInvalid) internal returns (bool) {
+    function _cancelOrder(uint40 _orderId, bool _revertIfInvalid) internal nonReentrant returns (bool) {
         Order memory _order = s_orders[_orderId];
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
         require(_order.flippedPrice == 0, OrderBookErrors.WrongOrderTypeCancel());
@@ -620,7 +620,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         uint96[] calldata sellSizes,
         uint40[] calldata orderIdsToCancel,
         bool postOnly
-    ) external marketNotHardPaused nonReentrant {
+    ) external marketNotHardPaused {
         // Ensure that the lengths of the buy prices and sizes match
         require(buyPrices.length == buySizes.length, OrderBookErrors.LengthMismatch());
 
