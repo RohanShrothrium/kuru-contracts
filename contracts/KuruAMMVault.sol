@@ -58,6 +58,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
         marginAccount = IMarginAccount(_marginAccount);
         market = IOrderBook(_market);
         SPREAD_CONSTANT = _spreadConstant;
+        setMarketParams();
         if (token1_ != address(0)) {
             token1_.safeApprove(_marginAccount, type(uint256).max);
         }
@@ -104,7 +105,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     /**
      * @dev Fetches and stores the market params from the market contract.
      */
-    function setMarketParams() external {
+    function setMarketParams() public {
         (
             marketParams.pricePrecision,
             marketParams.sizePrecision,

@@ -145,9 +145,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 TRUSTED_FORWARDER
             );
         }
-        _kuruAmmVault.initialize(
-            address(this), _baseAssetAddress, _quoteAssetAddress, marginAccountAddress, proxy, _kuruAmmSpread
-        );
+
         verifiedMarket[proxy] = MarketParams(
             _pricePrecision,
             _sizePrecision,
@@ -162,7 +160,9 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _makerFeeBps
         );
 
-        _kuruAmmVault.setMarketParams();
+        _kuruAmmVault.initialize(
+            address(this), _baseAssetAddress, _quoteAssetAddress, marginAccountAddress, proxy, _kuruAmmSpread
+        );
 
         _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
 
