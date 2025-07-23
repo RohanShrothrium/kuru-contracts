@@ -175,6 +175,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Adds a buy order to the order book.
      * @param _price Price of the buy order.
      * @param size Size of the buy order.
+     * @param _postOnly Whether the order is post-only. The transaction reverts if the order is matched while placing.
      */
     function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) public marketActive nonReentrant {
         require(_price > 0, OrderBookErrors.PriceError());
@@ -205,11 +206,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @dev Adds a flip buy order to the order book
+     * @dev Adds a flip buy order to the order book. This function will just return if it matches against the book.
      * @param _price Price of the buy order.
      * @param _flippedPrice Price of the sell order to which this order will flip on a fill
      * @param _size Size of the buy order.
-     * @param _provisionOrRevert Whether to provision or revert the order.
+     * @param _provisionOrRevert The transaction reverts if this is set to true and the flip order matches on placement.
      */
     function addFlipBuyOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
         public
@@ -245,6 +246,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Adds a sell order to the order book.
      * @param _price Price of the sell order.
      * @param _size Size of the sell order.
+     * @param _postOnly Whether the order is post-only. The transaction reverts if the order is matched while placing.
      */
     function addSellOrder(uint32 _price, uint96 _size, bool _postOnly) public marketActive nonReentrant {
         require(_size > minSize, OrderBookErrors.SizeError());
@@ -273,11 +275,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @dev Adds a flip sell order to the order book
+     * @dev Adds a flip sell order to the order book. This function will just return if it matches against the book.
      * @param _price Price of the sell order.
      * @param _flippedPrice Price of the buy order to which this order will flip on a fill
      * @param _size Size of the sell order.
-     * @param _provisionOrRevert Whether to provision or revert the order.
+     * @param _provisionOrRevert The transaction reverts if this is set to true and the flip order matches on placement.
      */
     function addFlipSellOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
         public
@@ -307,6 +309,13 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         _addFlipOrder(_price, _flippedPrice, _size, _msgSender(), _orderId, OrderLinkedList.NULL, false, _prevOrderId);
     }
 
+    /**
+     * @dev Adds a paired liquidity order to the order book. This function will revert if the order matches against the book.
+     * @param _bidPrice Price of the bid order.
+     * @param _askPrice Price of the ask order.
+     * @param _bidSize Size of the bid order.
+     * @param _askSize Size of the ask order.
+     */
     function addPairedLiquidity(uint32 _bidPrice, uint32 _askPrice, uint96 _bidSize, uint96 _askSize)
         public
         marketActive
@@ -351,6 +360,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Internal function to add an order to the order book.
      * @param _price Price of the order.
      * @param _size Size of the order.
+     * @param _orderId ID of the order.
+     * @param _isBuy Whether the order is a buy order.
+     * @param _prevOrderId ID of the previous order in the linked list.
      */
     function _addOrder(uint32 _price, uint96 _size, uint40 _orderId, bool _isBuy, uint40 _prevOrderId) internal {
         if (_isBuy) {
@@ -366,6 +378,17 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrderCreated(_orderId, _msgSender(), _size, _price, _isBuy);
     }
 
+    /**
+     * @dev Internal function to add a flip order to the order book.
+     * @param _price Price of the order.
+     * @param _flippedPrice Price which the order will flip to on a fill.
+     * @param _size Size of the order.
+     * @param _owner Address of the owner of the order.
+     * @param _orderId ID of the order.
+     * @param _flippedId ID of the flipped order on the other side, in case of a paired liquidity order. 
+     * @param _isBuy Whether the order is a buy order.
+     * @param _prevOrderId ID of the previous order in the linked list.
+     */
     function _addFlipOrder(
         uint32 _price,
         uint32 _flippedPrice,
@@ -387,6 +410,17 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit FlipOrderCreated(_orderId, _flippedId, _owner, _size, _price, _flippedPrice, _isBuy);
     }
 
+    /**
+     * @dev Internal function to add a flipped order to the order book. This function is called when a flip order is filled for the first time
+     * @param _price Price of the order.
+     * @param _flippedPrice Price which the order will flip to on a fill.
+     * @param _size Size of the order.
+     * @param _owner Address of the owner of the order.
+     * @param _orderId ID of the order.
+     * @param _flippedId ID of the flipped order on the other side, which is the flip order that was filled. 
+     * @param _isBuy Whether the order is a buy order.
+     * @param _prevOrderId ID of the previous order in the linked list.
+     */
     function _addFlippedOrder(
         uint32 _price,
         uint32 _flippedPrice,
@@ -418,6 +452,10 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         marginAccount.debitUser(_userAddress, _consumableAsset, _amount);
     }
 
+    /**
+     * @dev Cancels multiple flip orders in a batch. For a flip order pair, you only need to input ID of one of the orders.
+     * @param _orderIds Array of order IDs to cancel.
+     */
     function batchCancelFlipOrders(uint40[] calldata _orderIds) external marketNotHardPaused {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _cancelFlipOrder(_orderIds[i]);
@@ -427,7 +465,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @dev Cancels multiple orders in a batch.
+     * @dev Cancels multiple orders in a batch. 
+     * @dev Reverts if you pass an order ID which is filled or cancelled already.
      * @param _orderIds Array of order IDs to cancel.
      */
     function batchCancelOrders(uint40[] calldata _orderIds) external marketNotHardPaused {
@@ -438,6 +477,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrdersCanceled(_orderIds, _msgSender());
     }
 
+    /**
+     * @dev Cancels multiple orders in a batch. 
+     * @dev Does not revert if you pass an order ID which is filled or cancelled already.
+     * @param _orderIds Array of order IDs to cancel.
+     */
     function batchCancelOrdersNoRevert(uint40[] calldata _orderIds) external marketNotHardPaused {
         uint40[] memory _orderIdsCanceled = new uint40[](_orderIds.length);
         for (uint256 i = 0; i < _orderIds.length; i++) {
@@ -452,6 +496,10 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrdersCanceled(_orderIdsCanceled, _msgSender());
     }
 
+    /**
+     * @dev Internal function to cancel both sides of a flip order pair.
+     * @param _orderId ID of the order to cancel.
+     */
     function _cancelFlipOrder(uint40 _orderId) internal nonReentrant {
         Order memory _order = s_orders[_orderId];
         require(!_checkIfCancelledOrFilled(_orderId, _order), OrderBookErrors.OrderAlreadyFilledOrCancelled());
@@ -482,6 +530,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return true;
     }
 
+    /**
+     * @dev Internal function to cancel an order. This does all necessary state changes and credits the user.
+     * @param _orderId ID of the order to cancel.
+     * @param _order Order details in memory.
+     */
     function _executeCancel(uint40 _orderId, Order memory _order) internal {
         // update neighbouring orders
         if (_order.prev != OrderLinkedList.NULL) {
@@ -571,6 +624,13 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
     }
 
+    /**
+     * @dev Batch adds paired liquidity to the order book.
+     * @param bidPrices Array of prices for the bid orders.
+     * @param askPrices Array of prices for the ask orders.
+     * @param bidSizes Array of sizes for the bid orders.
+     * @param askSizes Array of sizes for the ask orders.
+     */
     function batchAddPairedLiquidity(
         uint32[] calldata bidPrices,
         uint32[] calldata askPrices,
@@ -657,7 +717,10 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     /**
      * @dev Places and executes a market buy order.
      * @param _quoteSize amount of quote asset user is ready to pay.
+     * @param _minAmountOut minimum amount of base asset user is willing to receive in base asset decimals.
+     * @param _isMargin bool representing if the market order is to be debited from the margin account of the user.
      * @param _isFillOrKill bool representing if function should revert if full qty is not received.
+     * @return _baseTokensCredited amount of base asset user received in base asset decimals.
      */
     function placeAndExecuteMarketBuy(uint96 _quoteSize, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         public
@@ -712,7 +775,10 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     /**
      * @dev Places and executes a market sell order.
      * @param _size Size of the market sell order.
+     * @param _minAmountOut minimum amount of quote asset user is willing to receive in quote asset decimals.
+     * @param _isMargin bool representing if the market order is to be debited from the margin account of the user.
      * @param _isFillOrKill bool representing if function should revert if full qty is not received.
+     * @return _quoteCredited amount of quote asset user received in quote asset decimals.
      */
     function placeAndExecuteMarketSell(uint96 _size, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         public
