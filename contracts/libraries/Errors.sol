@@ -154,6 +154,10 @@ library RouterErrors {
      */
     error MarketTypeMismatch();
     /**
+     * @dev Thrown when tick size is 0
+     */
+    error InvalidTickSize();
+    /**
      * @dev Thrown when size precision is not a power of 10
      */
     error InvalidSizePrecision();

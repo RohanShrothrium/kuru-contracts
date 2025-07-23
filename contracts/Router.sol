@@ -37,6 +37,10 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
 
     /**
      * @param _owner The owner of the contract.
+     * @param _marginAccount The address of the margin account
+     * @param _orderbookImplementation The address of the orderbook implementation
+     * @param _kuruAmmVaultImplementation The address of the kuru amm vault implementation
+     * @param _trustedForwarder The address of the trusted forwarder
      */
     function initialize(
         address _owner,
@@ -65,8 +69,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param _takerFeeBps The taker fee in basis points
      * @param _makerFeeBps The maker fee in basis points. The maker fee must be lower than the taker fee.
      * @param _kuruAmmSpread The spread in basis points for the kuru amm vault
+     * @return proxy The address of the deployed proxy
      */
-
     function deployProxy(
         IOrderBook.OrderBookType _type,
         address _baseAssetAddress,
@@ -91,6 +95,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             require(_quoteAssetAddress != address(0), RouterErrors.MarketTypeMismatch());
             require(_baseAssetAddress != _quoteAssetAddress, RouterErrors.BaseAndQuoteAssetSame());
         }
+        require(_tickSize > 0, RouterErrors.InvalidTickSize());
         require(10 ** Math.log10(_sizePrecision) == _sizePrecision, RouterErrors.InvalidSizePrecision());
         require(10 ** Math.log10(_pricePrecision) == _pricePrecision, RouterErrors.InvalidPricePrecision());
         uint256 _baseAssetDecimals =
@@ -271,7 +276,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     }
 
     /**
-     * @dev This function lets anyone batch upgrade orderbooks if a new implementation is available
+     * @dev This function lets the owner batch upgrade orderbooks if a new implementation is available
      * @param proxies The proxies which are to be upgraded to the latest orderbook implementation
      */
     function upgradeMultipleOrderBookProxies(address[] memory proxies, bytes[] memory data) public onlyOwner {
@@ -283,6 +288,17 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     function upgradeMultipleVaultProxies(address[] memory proxies, bytes[] memory data) public onlyOwner {
         for (uint256 i = 0; i < proxies.length; i++) {
             UUPSUpgradeable(proxies[i]).upgradeToAndCall(kuruAmmVaultImplementation, data[i]);
+        }
+    }
+
+    /**
+     * @dev This function lets the owner batch transfer ownership of contracts to a new owner
+     * @param contracts The contracts which are to be transferred to the new owner
+     * @param _newOwner The new owner of the contracts
+     */
+    function transferOwnershipForContracts(address[] memory contracts, address _newOwner) external onlyOwner {
+        for (uint256 i = 0; i < contracts.length; i++) {
+            Ownable(contracts[i]).transferOwnership(_newOwner);
         }
     }
 
@@ -302,7 +318,17 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         }
     }
 
-
+    /**
+     * @dev This function lets the user swap any token to any token across multiple markets
+     * @param _marketAddresses The markets to swap through
+     * @param _isBuy Whether the user wants to buy from or sell to the i-th market
+     * @param _nativeSend Whether the user is sending native tokens or not to the i-th market
+     * @param _debitToken The token the user wants to send
+     * @param _creditToken The token the user wants to receive
+     * @param _amount The amount of the debit token the user wants to send
+     * @param _minAmountOut The minimum amount of the credit token the user wants to receive
+     * @return _amountOut The amount of the credit token the user received
+     */
     function anyToAnySwap(
         address[] calldata _marketAddresses,
         bool[] calldata _isBuy,
