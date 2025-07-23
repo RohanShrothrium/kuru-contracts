@@ -402,9 +402,6 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint256 _makerFeeBps,
         uint96 _kuruAmmSpread
     ) internal pure returns (bytes32) {
-        {
-            (_baseAssetAddress, _quoteAssetAddress) = _reOrder(_baseAssetAddress, _quoteAssetAddress);
-        }
         return keccak256(
             abi.encodePacked(
                 _baseAssetAddress,
@@ -419,14 +416,6 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 _kuruAmmSpread
             )
         );
-    }
-
-    function _reOrder(address _tokenA, address _tokenB)
-        internal
-        pure
-        returns (address _baseAsset, address _quoteAsset)
-    {
-        (_baseAsset, _quoteAsset) = (_tokenA > _tokenB) ? (_tokenB, _tokenA) : (_tokenA, _tokenB);
     }
 
     function toU96(uint256 _from) internal pure returns (uint96 _to) {
