@@ -126,7 +126,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
      */
     function previewDeposit(uint256 asset1, uint256 asset2) public view virtual returns (uint256) {
         (, uint256 _price) = _returnNormalizedAmountAndPrice(true);
-        return _convertToShares(asset1, asset2, _price, false);
+        return _convertToShares(asset1, asset2, _price);
     }
 
     /**
@@ -183,7 +183,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
                 )
             ) / 10 ** marketParams.baseAssetDecimals;
             require(_expectedQuoteAmount <= quoteDeposit, KuruAMMVaultErrors.InsufficientQuoteToken());
-            _shares = _convertToShares(baseDeposit, _expectedQuoteAmount, _currentAskPrice, false);
+            _shares = _convertToShares(baseDeposit, _expectedQuoteAmount, _currentAskPrice);
             quoteDeposit = _expectedQuoteAmount;
             _mint(receiver, _shares);
         } else {
@@ -334,40 +334,38 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     /**
      * @dev Internal function to convert asset amounts to shares.
      */
-    function _convertToShares(uint256 baseAmount, uint256 quoteAmount, uint256 _currentAskPrice, bool roundUp)
+    function _convertToShares(uint256 baseAmount, uint256 quoteAmount, uint256 _currentAskPrice)
         internal
         view
         returns (uint256)
     {
         (uint256 _reserve1, uint256 _reserve2) = totalAssets();
-        if (!roundUp) {
-            (_reserve1, _reserve2) = _returnVirtuallyRebalancedTotalAssets(_reserve1, _reserve2, _currentAskPrice);
-        }
+        (_reserve1, _reserve2) = _returnVirtuallyRebalancedTotalAssets(_reserve1, _reserve2, _currentAskPrice);
         return FixedPointMathLib.min(
-            roundUp
-                ? FixedPointMathLib.mulDivUp(baseAmount, totalSupply(), _reserve1)
-                : FixedPointMathLib.mulDiv(baseAmount, totalSupply(), _reserve1),
-            roundUp
-                ? FixedPointMathLib.mulDivUp(quoteAmount, totalSupply(), _reserve2)
-                : FixedPointMathLib.mulDiv(quoteAmount, totalSupply(), _reserve2)
+            FixedPointMathLib.mulDiv(baseAmount, totalSupply(), _reserve1),
+            FixedPointMathLib.mulDiv(quoteAmount, totalSupply(), _reserve2)
         );
     }
 
-    function _convertToAssets(uint256 shares, bool isDeposit) internal view returns (uint256, uint256) {
+    function _convertToAssets(uint256 shares, bool isDeposit) internal view returns (uint256 _baseAmount, uint256 _quoteAmount) {
         if (isDeposit) {
             if (totalSupply() == 0) {
                 return (0, 0);
             }
             (uint256 _baseReserve, uint256 _quoteReserve) = totalAssets();
-            (, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(false);
+            (, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(true);
             (_baseReserve, _quoteReserve) =
                 _returnVirtuallyRebalancedTotalAssets(_baseReserve, _quoteReserve, _currentAskPrice);
-            uint256 _baseAmount = FixedPointMathLib.mulDiv(shares, _baseReserve, totalSupply());
-            uint256 _quoteAmount = FixedPointMathLib.mulDiv(shares, _quoteReserve, totalSupply());
+            _baseAmount = FixedPointMathLib.mulDiv(shares, _baseReserve, totalSupply());
+            _quoteAmount = (
+                (
+                    FixedPointMathLib.mulDivUp(_baseAmount, _currentAskPrice, vaultPricePrecision)
+                        * 10 ** marketParams.quoteAssetDecimals
+                )
+            ) / 10 ** marketParams.baseAssetDecimals;
             return (_baseAmount, _quoteAmount);
         } else {
             (uint256 _baseAmount, uint256 _quoteAmount,,,) = _convertToAssetsWithNewSize(shares);
-            return (_baseAmount, _quoteAmount);
         }
     }
 
