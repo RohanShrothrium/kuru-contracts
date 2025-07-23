@@ -11,7 +11,10 @@ import {OrderBookErrors} from "./libraries/Errors.sol";
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
-abstract contract AbstractAMM is IOrderBook {
+// ============ External Imports ============
+import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+
+abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
     uint256 constant vaultPricePrecision = 10 ** 18;
     uint256 constant DOUBLE_BPS_MULTIPLIER = 20000;
     uint256 constant BPS_MULTIPLIER = 10000;
@@ -300,7 +303,7 @@ abstract contract AbstractAMM is IOrderBook {
         uint256 _askPrice,
         uint256 _bidPrice,
         bool _nullifyPartialFills
-    ) external onlyVault marketNotHardPaused {
+    ) external onlyVault nonReentrant marketNotHardPaused {
         vaultBidOrderSize = _vaultBidOrderSize;
         vaultAskOrderSize = _vaultAskOrderSize;
 

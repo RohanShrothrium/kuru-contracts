@@ -13,12 +13,11 @@ import {AbstractAMM} from "./AbstractAMM.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 // ============ External Imports ============
-import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
-contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAMM, ReentrancyGuardTransient {
+contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAMM {
     OrderBookType orderBookType;
     address owner;
     address _trustedForwarder;
