@@ -832,9 +832,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @notice Anyone can call this function
      */
     function collectFees() external {
+        uint256 _baseFeeCollected = baseFeeCollected;
+        uint256 _quoteFeeCollected = quoteFeeCollected;
         baseFeeCollected = 0;
         quoteFeeCollected = 0;
-        marginAccount.creditFee(baseAsset, baseFeeCollected, quoteAsset, quoteFeeCollected);
+        marginAccount.creditFee(baseAsset, _baseFeeCollected, quoteAsset, _quoteFeeCollected);
     }
 
     function _matchAggressiveBuyWithCap(uint256 _limitPrice, uint96 _sizeToBeFilled)
