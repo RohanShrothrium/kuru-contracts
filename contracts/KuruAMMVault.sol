@@ -139,7 +139,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     /**
      * @dev Previews the amount of token1 and token2 to be received for a given amount of shares to be burned.
      */
-    function previewRedeem(uint256 shares) public view virtual returns (uint256, uint256) {
+    function previewWithdraw(uint256 shares) public view virtual returns (uint256, uint256) {
         return _convertToAssets(shares, false);
     }
 
