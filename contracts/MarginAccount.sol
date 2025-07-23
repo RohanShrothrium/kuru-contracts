@@ -71,16 +71,6 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         return forwarder == trustedForwarder;
     }
 
-    function _msgSender() internal view virtual override returns (address) {
-        uint256 calldataLength = msg.data.length;
-        uint256 contextSuffixLength = _contextSuffixLength();
-        if (isTrustedForwarder(msg.sender) && calldataLength >= contextSuffixLength) {
-            return address(bytes20(msg.data[calldataLength - contextSuffixLength:]));
-        } else {
-            return msg.sender;
-        }
-    }
-
     // ============ initializer =================
 
     function initialize(address _owner, address _router, address _feeCollector, address _trustedForwarder)

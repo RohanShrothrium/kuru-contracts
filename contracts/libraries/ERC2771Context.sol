@@ -12,8 +12,6 @@ pragma solidity ^0.8.20;
 abstract contract ERC2771Context {
     function isTrustedForwarder(address) public view virtual returns (bool) {}
 
-    function _msgSender() internal view virtual returns (address);
-
     function _msgData() internal view returns (bytes calldata) {
         uint256 calldataLength = msg.data.length;
         uint256 contextSuffixLength = _contextSuffixLength();
@@ -21,6 +19,16 @@ abstract contract ERC2771Context {
             return msg.data[:calldataLength - contextSuffixLength];
         } else {
             return msg.data;
+        }
+    }
+
+    function _msgSender() internal view returns (address) {
+        uint256 calldataLength = msg.data.length;
+        uint256 contextSuffixLength = _contextSuffixLength();
+        if (isTrustedForwarder(msg.sender) && calldataLength >= contextSuffixLength) {
+            return address(bytes20(msg.data[calldataLength - contextSuffixLength:]));
+        } else {
+            return msg.sender;
         }
     }
 
