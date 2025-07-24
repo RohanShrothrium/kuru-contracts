@@ -32,6 +32,12 @@ contract KuruUtils {
         address quoteAssetAddress;
         address factoryAddress;
         uint256 fee;
+        uint32 pricePrecision;
+        uint96 sizePrecision;
+        uint32 tickSize;
+        uint96 minSize;
+        uint96 maxSize;
+        uint256 makerFeeBps;
     }
 
     function calculatePriceOverRoute(
@@ -132,60 +138,179 @@ contract KuruUtils {
         address market
     ) public view returns (TokenInfo[] memory, MarketInfo memory, bool) {
         IOrderBook orderBook = IOrderBook(market);
-        (, , address baseAsset, , address quoteAsset, , , , , uint256 takerFeeBps, ) = orderBook.getMarketParams();
-        address router = IKuruOrderBook(market).owner();
+        address router;
+        uint32 pricePrecision;
+        uint96 sizePrecision;
+        address baseAsset;
+        address quoteAsset;
+        uint32 tickSize;
+        uint96 minSize;
+        uint96 maxSize;
+        uint256 takerFeeBps;
+        uint256 makerFeeBps;
+        
+        try IKuruOrderBook(market).owner() returns (address _router) {
+            router = _router;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
+        try orderBook.getMarketParams() returns (
+            uint32 _pricePrecision,
+            uint96 _sizePrecision,
+            address _baseAsset,
+            uint256,  // baseAssetDecimals
+            address _quoteAsset,
+            uint256,  // quoteAssetDecimals
+            uint32 _tickSize,
+            uint96 _minSize,
+            uint96 _maxSize,
+            uint256 _takerFeeBps,
+            uint256 _makerFeeBps
+        ) {
+            pricePrecision = _pricePrecision;
+            sizePrecision = _sizePrecision;
+            baseAsset = _baseAsset;
+            quoteAsset = _quoteAsset;
+            tickSize = _tickSize;
+            minSize = _minSize;
+            maxSize = _maxSize;
+            takerFeeBps = _takerFeeBps;
+            makerFeeBps = _makerFeeBps;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
         address[] memory tokens = new address[](2);
         tokens[0] = baseAsset;
         tokens[1] = quoteAsset;
         TokenInfo[] memory info = getTokensInfo(tokens, market);
-        // TODO: check if factory is valid
-        MarketInfo memory marketInfo = MarketInfo(baseAsset, quoteAsset, router, takerFeeBps);
-        return (info, marketInfo, verifyKuruMarket(market, router));
+        MarketInfo memory marketInfo = MarketInfo(baseAsset, quoteAsset, router, takerFeeBps, pricePrecision, sizePrecision, tickSize, minSize, maxSize, makerFeeBps);
+        
+        bool isValid;
+        try IKuruRouter(router).verifiedMarket(market) returns (IKuruRouter.MarketParams memory marketParams) {
+            isValid = marketParams.pricePrecision != 0;
+        } catch {
+            isValid = false;
+        }
+        
+        return (info, marketInfo, isValid);
     }
 
     function getUniswapV2PoolDetailsAndValidateFactory(
         address pool
     ) public view returns (TokenInfo[] memory, MarketInfo memory, bool) {
         IUniswapV2Pair pair = IUniswapV2Pair(pool);
-        address token0 = pair.token0();
-        address token1 = pair.token1();
-        address factory = pair.factory();
+        address token0;
+        address token1;
+        address factory;
+
+        try pair.token0() returns (address _token0) {
+            token0 = _token0;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
+        try pair.token1() returns (address _token1) {
+            token1 = _token1;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
+        try pair.factory() returns (address _factory) {
+            factory = _factory;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
         address[] memory tokens = new address[](2);
         tokens[0] = token0;
         tokens[1] = token1;
         TokenInfo[] memory info = getTokensInfo(tokens, pool);
-        MarketInfo memory marketInfo = MarketInfo(token0, token1, factory, 30);
-        return (info, marketInfo, verifyUniswapV2Pair(factory, token0, token1, pool));
+        MarketInfo memory marketInfo = MarketInfo(token0, token1, factory, 30, 0, 0, 0, 0, 0, 0);
+
+        bool isValid;
+        try IUniswapV2Factory(factory).getPair(token0, token1) returns (address actualPair) {
+            isValid = actualPair == pool;
+        } catch {
+            isValid = false;
+        }
+        
+        return (info, marketInfo, isValid);
     }
 
     function getUniswapV3PoolDetailsAndValidateFactory(
         address pool
     ) public view returns (TokenInfo[] memory, MarketInfo memory, bool) {
         IUniswapV3Pool pair = IUniswapV3Pool(pool);
-        address token0 = pair.token0();
-        address token1 = pair.token1();
-        address factory = pair.factory();
-        uint24 fee = pair.fee();
+        address token0;
+        address token1;
+        address factory;
+        uint24 fee;
+
+        try pair.token0() returns (address _token0) {
+            token0 = _token0;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
+        try pair.token1() returns (address _token1) {
+            token1 = _token1;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
+        try pair.factory() returns (address _factory) {
+            factory = _factory;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
+        try pair.fee() returns (uint24 _fee) {
+            fee = _fee;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
         address[] memory tokens = new address[](2);
         tokens[0] = token0;
         tokens[1] = token1;
         TokenInfo[] memory info = getTokensInfo(tokens, pool);
-        MarketInfo memory marketInfo = MarketInfo(token0, token1, factory, fee);
-        return (info, marketInfo, verifyUniswapV3Pool(factory, token0, token1, fee, pool));
+        MarketInfo memory marketInfo = MarketInfo(token0, token1, factory, fee, 0, 0, 0, 0, 0, 0);
+
+        bool isValid;
+        try IUniswapV3Factory(factory).getPool(token0, token1, fee) returns (address actualPool) {
+            isValid = actualPool == pool;
+        } catch {
+            isValid = false;
+        }
+        
+        return (info, marketInfo, isValid);
     }
 
     // ===== UTILITY FUNCTIONS =====
     function verifyKuruMarket(address market, address router) public view returns (bool) {
-        IKuruRouter.MarketParams memory marketParams = IKuruRouter(router).verifiedMarket(market);
-        return marketParams.pricePrecision != 0;
+        try IKuruRouter(router).verifiedMarket(market) returns (IKuruRouter.MarketParams memory marketParams) {
+            return marketParams.pricePrecision != 0;
+        } catch {
+            return false;
+        }
     }
 
     function verifyUniswapV2Pair(address factory, address tokenA, address tokenB, address claimedPair) public view returns (bool) {
-        return IUniswapV2Factory(factory).getPair(tokenA, tokenB) == claimedPair;
+        try IUniswapV2Factory(factory).getPair(tokenA, tokenB) returns (address actualPair) {
+            return actualPair == claimedPair;
+        } catch {
+            return false;
+        }
     }
 
     function verifyUniswapV3Pool(address factory, address tokenA, address tokenB, uint24 fee, address claimedPool) public view returns (bool) {
-        return IUniswapV3Factory(factory).getPool(tokenA, tokenB, fee) == claimedPool;
+        try IUniswapV3Factory(factory).getPool(tokenA, tokenB, fee) returns (address actualPool) {
+            return actualPool == claimedPool;
+        } catch {
+            return false;
+        }
     }
 
 }
