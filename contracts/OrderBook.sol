@@ -195,6 +195,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
+     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Adds a flip buy order to the order book. This function will just return if it matches against the book.
      * @param _price Price of the buy order.
      * @param _flippedPrice Price of the sell order to which this order will flip on a fill
@@ -264,6 +265,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
+     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Adds a flip sell order to the order book. This function will just return if it matches against the book.
      * @param _price Price of the sell order.
      * @param _flippedPrice Price of the buy order to which this order will flip on a fill
@@ -299,6 +301,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
+     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Adds a paired liquidity order to the order book. This function will revert if the order matches against the book.
      * @param _bidPrice Price of the bid order.
      * @param _askPrice Price of the ask order.
@@ -442,6 +445,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
+     * @notice If you cancel a flip order, both sides of the order pair will be cancelled. You cannot cancel one side of the order pair alone.
      * @dev Cancels multiple flip orders in a batch. For a flip order pair, you only need to input ID of one of the orders.
      * @param _orderIds Array of order IDs to cancel.
      */
@@ -614,6 +618,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
+     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Batch adds paired liquidity to the order book.
      * @param bidPrices Array of prices for the bid orders.
      * @param askPrices Array of prices for the ask orders.
@@ -634,6 +639,15 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
     }
 
+    /**
+     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
+     * @dev Batch adds flip orders to the order book.
+     * @param prices Array of prices for the flip orders.
+     * @param flipPrices Array of prices for the flip orders.
+     * @param sizes Array of sizes for the flip orders.
+     * @param isBuy Array of booleans indicating if the i'th order is a buy order
+     * @param _provisionOrRevert If set to true, if a flip order matches against the book, the transaction reverts.
+     */
     function batchProvisionLiquidity(
         uint32[] calldata prices,
         uint32[] calldata flipPrices,
