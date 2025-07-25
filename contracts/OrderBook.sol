@@ -1263,11 +1263,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
 
     /**
      * internal helper function to get payable amount
-     * @param _size size of token
-     * @param _price conversion price from A to B
+     * @param _size filled size 
+     * @param _price price at which the size is filled
      */
-    function _quoteAmountRoundedDown(uint96 _size, uint32 _price) internal view returns (uint256) {
-        return (uint256(((_price * _size) / sizePrecision)) * quoteDecimalMultiplier) / pricePrecision;
+    function _quoteAmountRoundedDown(uint256 _size, uint32 _price) internal view returns (uint256) {
+        return ((_price * _size) / sizePrecision) * quoteDecimalMultiplier / pricePrecision;
     }
 
     function _getPricePrecision() internal view override returns (uint32) {
