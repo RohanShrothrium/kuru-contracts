@@ -857,7 +857,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             if (_isVaultFill) {
                 uint96 _vaultFundsConsumed;
                 (_sizeToBeFilled, _vaultFundsConsumed, priceUpdate) =
-                    _fillVaultForBuy(_getOBAsk() > _limitPrice ? _limitPrice : _getOBAsk(), _sizeToBeFilled);
+                    _fillVaultForBuy(_getOBAsk() > _limitPrice ? _limitPrice + 1 : _getOBAsk(), _sizeToBeFilled);
                 fundsConsumed += _vaultFundsConsumed;
             } else {
                 (_sizeToBeFilled, priceUpdate) = _fillSizeForPrice(
@@ -1005,7 +1005,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             if (_isVaultFill) {
                 uint256 _quoteToTaker;
                 (_sizeToBeFilledLeft, _quoteToTaker, priceUpdate) =
-                    _fillVaultForSell(_getOBBid() >= _limitPrice ? _getOBBid() : _limitPrice, _sizeToBeFilledLeft);
+                    _fillVaultForSell(_getOBBid() >= _limitPrice ? _getOBBid() : _limitPrice - 1, _sizeToBeFilledLeft);
                 quoteCreditVaultTaker += _quoteToTaker;
             } else {
                 (_sizeToBeFilledLeft, priceUpdate) = _fillSizeForPrice(
