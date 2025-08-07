@@ -347,7 +347,11 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
         );
     }
 
-    function _convertToAssets(uint256 shares, bool isDeposit) internal view returns (uint256 _baseAmount, uint256 _quoteAmount) {
+    function _convertToAssets(uint256 shares, bool isDeposit)
+        internal
+        view
+        returns (uint256 _baseAmount, uint256 _quoteAmount)
+    {
         if (isDeposit) {
             if (totalSupply() == 0) {
                 return (0, 0);
@@ -365,7 +369,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
             ) / 10 ** marketParams.baseAssetDecimals;
             return (_baseAmount, _quoteAmount);
         } else {
-            (uint256 _baseAmount, uint256 _quoteAmount,,,) = _convertToAssetsWithNewSize(shares);
+            (_baseAmount, _quoteAmount,,,) = _convertToAssetsWithNewSize(shares);
         }
     }
 
