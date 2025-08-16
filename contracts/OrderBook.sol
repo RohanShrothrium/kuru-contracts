@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
 // ============ Library Imports ============
@@ -377,7 +377,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _size Size of the order.
      * @param _owner Address of the owner of the order.
      * @param _orderId ID of the order.
-     * @param _flippedId ID of the flipped order on the other side, in case of a paired liquidity order. 
+     * @param _flippedId ID of the flipped order on the other side, in case of a paired liquidity order.
      * @param _isBuy Whether the order is a buy order.
      * @param _prevOrderId ID of the previous order in the linked list.
      */
@@ -409,7 +409,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _size Size of the order.
      * @param _owner Address of the owner of the order.
      * @param _orderId ID of the order.
-     * @param _flippedId ID of the flipped order on the other side, which is the flip order that was filled. 
+     * @param _flippedId ID of the flipped order on the other side, which is the flip order that was filled.
      * @param _isBuy Whether the order is a buy order.
      * @param _prevOrderId ID of the previous order in the linked list.
      */
@@ -458,7 +458,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @dev Cancels multiple orders in a batch. 
+     * @dev Cancels multiple orders in a batch.
      * @dev Reverts if you pass an order ID which is filled or cancelled already.
      * @param _orderIds Array of order IDs to cancel.
      */
@@ -471,7 +471,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @dev Cancels multiple orders in a batch. 
+     * @dev Cancels multiple orders in a batch.
      * @dev Does not revert if you pass an order ID which is filled or cancelled already.
      * @param _orderIds Array of order IDs to cancel.
      */
@@ -1263,7 +1263,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
 
     /**
      * internal helper function to get payable amount
-     * @param _size filled size 
+     * @param _size filled size
      * @param _price price at which the size is filled
      */
     function _quoteAmountRoundedDown(uint256 _size, uint32 _price) internal view returns (uint256) {

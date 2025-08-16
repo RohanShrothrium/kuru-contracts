@@ -1,8 +1,7 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.20;
 
-import {Ownable} from "solady/src/auth/Ownable.sol";
 import {KuruERC20} from "./ERC20.sol";
 import {IRouter} from "../interfaces/IRouter.sol";
 import {IOrderBook} from "../interfaces/IOrderBook.sol";
@@ -48,13 +47,11 @@ contract MonadDeployer is Ownable {
     //CONSTRUCTOR
     constructor(
         IRouter _router,
-        address _owner,
         address _marginAccount,
         address _kuruCollective,
         uint96 _kuruAmmSpread,
         uint256 _kuruCollectiveFee
     ) {
-        _initializeOwner(_owner);
         router = _router;
         marginAccount = IMarginAccount(_marginAccount);
         kuruAmmSpread = _kuruAmmSpread;

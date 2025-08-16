@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
 // ============ Internal Interface Imports ============
@@ -164,7 +164,6 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 TRUSTED_FORWARDER
             );
         }
-
 
         _kuruAmmVault.initialize(
             address(this), _baseAssetAddress, _quoteAssetAddress, marginAccountAddress, proxy, _kuruAmmSpread
