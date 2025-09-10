@@ -266,7 +266,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
 
         (uint256 _currentBidPrice,) = IOrderBook(req.market).bestBidAsk();
         require(
-            (req.isBelowPrice && req.price < _currentBidPrice) || (!req.isBelowPrice && req.price > _currentBidPrice),
+            (req.isBelowPrice && req.price <= _currentBidPrice) || (!req.isBelowPrice && req.price >= _currentBidPrice),
             PriceDependentRequestFailed(_currentBidPrice, req.price)
         );
         (bool success, bytes memory returndata) =
