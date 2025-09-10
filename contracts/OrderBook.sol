@@ -168,8 +168,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      */
     function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) public marketActive nonReentrant {
         require(_price > 0 && _price < type(uint32).max, OrderBookErrors.PriceError());
-        require(size > minSize, OrderBookErrors.SizeError());
-        require(size < maxSize, OrderBookErrors.SizeError());
+        require(size >= minSize, OrderBookErrors.SizeError());
+        require(size <= maxSize, OrderBookErrors.SizeError());
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
 
         //The buy order is filled aggressively and the leftover size is added as a limit buy order
@@ -210,7 +210,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         require(_price > 0 && _flippedPrice > 0 && _flippedPrice < type(uint32).max, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price < _flippedPrice, OrderBookErrors.PriceError());
-        require(_size > minSize && _size < maxSize, OrderBookErrors.SizeError());
+        require(_size >= minSize && _size <= maxSize, OrderBookErrors.SizeError());
 
         {
             (, uint256 _bestAsk) = bestAsk();
@@ -239,8 +239,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _postOnly Whether the order is post-only. The transaction reverts if the order is matched while placing.
      */
     function addSellOrder(uint32 _price, uint96 _size, bool _postOnly) public marketActive nonReentrant {
-        require(_size > minSize, OrderBookErrors.SizeError());
-        require(_size < maxSize, OrderBookErrors.SizeError());
+        require(_size >= minSize, OrderBookErrors.SizeError());
+        require(_size <= maxSize, OrderBookErrors.SizeError());
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price > 0 && _price < type(uint32).max, OrderBookErrors.PriceError());
 
@@ -280,7 +280,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         require(_price > 0 && _flippedPrice > 0 && _price < type(uint32).max, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price > _flippedPrice, OrderBookErrors.PriceError());
-        require(_size > minSize && _size < maxSize, OrderBookErrors.SizeError());
+        require(_size >= minSize && _size <= maxSize, OrderBookErrors.SizeError());
 
         {
             (, uint256 _bestBid) = bestBid();
@@ -315,8 +315,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     {
         require(_bidPrice > 0 && _askPrice > _bidPrice && _askPrice < type(uint32).max, OrderBookErrors.PriceError());
         require(_bidPrice % tickSize == 0 && _askPrice % tickSize == 0, OrderBookErrors.TickSizeError());
-        require(_bidSize > minSize && _bidSize < maxSize, OrderBookErrors.SizeError());
-        require(_askSize > minSize && _askSize < maxSize, OrderBookErrors.SizeError());
+        require(_bidSize >= minSize && _bidSize <= maxSize, OrderBookErrors.SizeError());
+        require(_askSize >= minSize && _askSize <= maxSize, OrderBookErrors.SizeError());
         {
             (, uint256 _bestBid) = bestBid();
             (, uint256 _bestAsk) = bestAsk();
