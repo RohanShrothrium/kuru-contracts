@@ -150,6 +150,10 @@ library MarginAccountErrors {
 
 library RouterErrors {
     /**
+     * @dev Thrown when zero address is passed as a parameter
+     */
+    error ZeroAddressNotAllowed();
+    /**
      * @dev Thrown when base and quote asset addresses are the same
      */
     error BaseAndQuoteAssetSame();
@@ -204,9 +208,9 @@ library KuruAMMVaultErrors {
      * @dev Thrown when native token passed as argument and msg.value does not match
      */
     error NativeAssetMismatch();
-    /** 
-    * @dev Thrown when first deposit ask price is 0
-    */
+    /**
+     * @dev Thrown when first deposit ask price is 0
+     */
     error AskPriceZero();
     /**
      * @dev Thrown when amount of quote tokens passed is insufficient
@@ -221,8 +225,8 @@ library KuruAMMVaultErrors {
      */
     error InsufficientBalance();
     /**
-    * @dev Thrown when quote used in a deposit is too low
-    */
+     * @dev Thrown when quote used in a deposit is too low
+     */
     error InsufficientQuoteUsed();
     /**
      * @dev Thrown when native asset transfer fails
@@ -243,6 +247,10 @@ library KuruAMMVaultErrors {
 }
 
 library KuruForwarderErrors {
+    /**
+     * @dev Thrown when zero address is passed as a parameter
+     */
+    error ZeroAddressNotAllowed();
     /**
      * @dev Thrown when the signature does not match the request
      */

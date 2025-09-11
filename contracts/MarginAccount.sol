@@ -77,6 +77,11 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         public
         initializer
     {
+        require(
+            _owner != address(0) && _router != address(0) && _feeCollector != address(0)
+                && _trustedForwarder != address(0),
+            MarginAccountErrors.ZeroAddressNotAllowed()
+        );
         _initializeOwner(_owner);
         routerContractAddress = _router;
         feeCollector = _feeCollector;

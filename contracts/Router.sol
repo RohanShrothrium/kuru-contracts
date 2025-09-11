@@ -49,6 +49,11 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         address _kuruAmmVaultImplementation,
         address _trustedForwarder
     ) public initializer {
+        require(
+            _owner != address(0) && _marginAccount != address(0) && _orderbookImplementation != address(0)
+                && _kuruAmmVaultImplementation != address(0) && _trustedForwarder != address(0),
+            RouterErrors.ZeroAddressNotAllowed()
+        );
         _initializeOwner(_owner);
         marginAccountAddress = _marginAccount;
         orderBookImplementation = _orderbookImplementation;
@@ -259,6 +264,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      */
     function upgradeVaultImplementation(address newImplementation) external onlyOwner {
         require(newImplementation != kuruAmmVaultImplementation);
+        require(newImplementation != address(0), RouterErrors.ZeroAddressNotAllowed());
         emit VaultImplementationUpdated(kuruAmmVaultImplementation, newImplementation);
         kuruAmmVaultImplementation = newImplementation;
     }

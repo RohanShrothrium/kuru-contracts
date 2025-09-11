@@ -94,6 +94,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     // ============ initializer =================
 
     function initialize(address _owner, bytes4[] memory _allowedInterfaces) public initializer {
+        require(_owner != address(0), KuruForwarderErrors.ZeroAddressNotAllowed());
         _initializeOwner(_owner);
         for (uint256 i = 0; i < _allowedInterfaces.length; i++) {
             allowedInterface[_allowedInterfaces[i]] = true;
