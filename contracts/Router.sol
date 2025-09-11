@@ -253,7 +253,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param newImplementation The new deployed orderbook implementation
      */
     function upgradeOrderBookImplementation(address newImplementation) external onlyOwner {
-        require(newImplementation != orderBookImplementation);
+        require(newImplementation != orderBookImplementation, RouterErrors.ImplementationNotChanged());
+        require(newImplementation != address(0), RouterErrors.ZeroAddressNotAllowed());
         emit OBImplementationUpdated(orderBookImplementation, newImplementation);
         orderBookImplementation = newImplementation;
     }
@@ -263,7 +264,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param newImplementation The new deployed kuru amm vault implementation
      */
     function upgradeVaultImplementation(address newImplementation) external onlyOwner {
-        require(newImplementation != kuruAmmVaultImplementation);
+        require(newImplementation != kuruAmmVaultImplementation, RouterErrors.ImplementationNotChanged());
         require(newImplementation != address(0), RouterErrors.ZeroAddressNotAllowed());
         emit VaultImplementationUpdated(kuruAmmVaultImplementation, newImplementation);
         kuruAmmVaultImplementation = newImplementation;

@@ -197,6 +197,10 @@ library RouterErrors {
      * @dev Thrown when safe cast to uint96 fails
      */
     error Uint96Overflow();
+    /**
+     * @dev Thrown when there is no change in the implementation
+     */
+    error ImplementationNotChanged();
 }
 
 library KuruAMMVaultErrors {
