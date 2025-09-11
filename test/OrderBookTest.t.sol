@@ -36,7 +36,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
     address lastGenAddress;
     address trustedForwarder;
 
-    function setUp() public {
+    function setUp() public virtual {
         eth = new MintableERC20("ETH", "ETH");
         usdc = new MintableERC20("USDC", "USDC");
         uint96 _sizePrecision = 10 ** 10;
@@ -63,7 +63,13 @@ contract OrderBookTest is Test, PropertiesAsserts {
         marginAccount.initialize(address(this), address(router), address(router), trustedForwarder);
         uint96 SPREAD = 100;
         KuruAMMVault kuruAmmVaultImplementation = new KuruAMMVault();
-        router.initialize(address(this), address(marginAccount), address(implementation), address(kuruAmmVaultImplementation), trustedForwarder);
+        router.initialize(
+            address(this),
+            address(marginAccount),
+            address(implementation),
+            address(kuruAmmVaultImplementation),
+            trustedForwarder
+        );
 
         address proxy = router.deployProxy(
             _type,
@@ -1313,7 +1319,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(vault), _amountBase);
         usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _maker);
+        vault.deposit(_amountBase, _amountQuote, _amountQuote, _maker);
         (, uint256 _vaultBestBid,, uint256 _vaultBestAsk,,,,) = orderBook.getVaultParams();
         console.log((_vaultBestAsk * 10000000 / _vaultBestBid));
         vm.stopPrank();
@@ -1332,7 +1338,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(vault), _amountBase);
         usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _maker);
+        vault.deposit(_amountBase, _amountQuote, _amountQuote, _maker);
         vm.stopPrank();
         address _taker = genAddress();
         eth.mint(_taker, _amountBase);
@@ -1362,7 +1368,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(vault), _amountBase);
         usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _maker);
+        vault.deposit(_amountBase, _amountQuote, _amountQuote, _maker);
         vm.stopPrank();
         address _taker = genAddress();
         usdc.mint(_taker, _amountQuote);
@@ -1387,7 +1393,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_maker);
         eth.approve(address(vault), 1000000000 ether);
         usdc.approve(address(vault), 1 ether);
-        vault.deposit(1000000000 ether, 1 ether, _maker);
+        vault.deposit(1000000000 ether, 1 ether, 1 ether, _maker);
         vm.stopPrank();
         address _taker = genAddress();
         usdc.mint(_taker, 43 * 10 ** 16);
@@ -1415,7 +1421,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_vaultMaker);
         eth.approve(address(vault), _amountBase);
         usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _vaultMaker);
+        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
         vm.stopPrank();
         for (uint256 i; i < 20; i++) {
             uint96 _takerBaseSize = _targetVaultSize / 10; //fill 1/10th of the vault size
@@ -1448,7 +1454,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_vaultMaker);
         eth.approve(address(vault), _amountBase);
         usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _vaultMaker);
+        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
         vm.stopPrank();
         (,,, uint256 _vaultBestAsk,, uint96 _vaultBidOrderSize, uint96 _vaultAskOrderSize,) = orderBook.getVaultParams();
         uint256 _bidTakerBaseAmount = (_vaultBidOrderSize * 10 ** eth.decimals()) / (2 * SIZE_PRECISION); //half of bid order size
@@ -1484,7 +1490,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_vaultMaker);
         eth.approve(address(vault), _amountBase);
         usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _vaultMaker);
+        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
         vm.stopPrank();
         _targetVaultPrice = 10 ** 18;
         _amountBase = (_targetVaultSize * 10 ** eth.decimals()) / SIZE_PRECISION;
@@ -1497,7 +1503,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         eth.approve(address(vault), _amountBase);
         usdc.approve(address(vault), _amountQuote);
         vm.expectRevert(KuruAMMVaultErrors.InsufficientQuoteToken.selector);
-        vault.deposit(_amountBase, _amountQuote, _vaultMaker);
+        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
         vm.stopPrank();
     }
 
@@ -1510,13 +1516,13 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_vaultMaker);
         eth.approve(address(vault), _amountBase);
         usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _vaultMaker);
+        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
         vm.stopPrank();
         _amountBase = 0;
         _amountQuote = 0;
         vm.startPrank(_vaultMaker);
         vm.expectRevert(KuruAMMVaultErrors.InsufficientLiquidityMinted.selector);
-        vault.deposit(0, 0, _vaultMaker);
+        vault.deposit(0, 0, 0, _vaultMaker);
         vm.stopPrank();
     }
 
@@ -1533,7 +1539,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.startPrank(_vaultMaker);
         eth.approve(address(vault), _amountBase);
         usdc.approve(address(vault), _amountQuote);
-        uint256 _shares = vault.deposit(_amountBase, _amountQuote, _vaultMaker);
+        uint256 _shares = vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
         vm.stopPrank();
         (,,,,, uint96 _vaultBidOrderSize,,) = orderBook.getVaultParams();
         uint256 _bidTakerBaseAmount = (_vaultBidOrderSize * 10 ** eth.decimals()) / (2 * SIZE_PRECISION); //half of bid order size
@@ -1550,6 +1556,24 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
         (,, _partiallyFilledBid,, _partiallyFilledAsk,,,) = orderBook.getVaultParams();
         assert(_partiallyFilledBid == 0 && _partiallyFilledAsk == 0);
+    }
+
+    function testKuruVaultDisallowInitialDepositCrossingBook() public {
+        _addBuyOrder(address(0), 4000 * PRICE_PRECISION, 100 * SIZE_PRECISION, 0, true);
+        uint256 _illegalAskPrice = 4000 * 10 ** 18;
+        uint96 _targetVaultSize = 100 * SIZE_PRECISION;
+        uint256 _amountBase = (_targetVaultSize * 10 ** eth.decimals()) / SIZE_PRECISION;
+        uint256 _amountQuote =
+            (_targetVaultSize * 10 ** usdc.decimals() * _illegalAskPrice) / (vaultPricePrecision * SIZE_PRECISION);
+        address _vaultMaker = genAddress();
+        eth.mint(_vaultMaker, _amountBase);
+        usdc.mint(_vaultMaker, _amountQuote);
+        vm.startPrank(_vaultMaker);
+        eth.approve(address(vault), _amountBase);
+        usdc.approve(address(vault), _amountQuote);
+        vm.expectRevert(OrderBookErrors.VaultInitializationPriceCrossesBook.selector);
+        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
+        vm.stopPrank();
     }
 
     function testV3PositionNormal() public {
@@ -1669,4 +1693,5 @@ contract OrderBookTest is Test, PropertiesAsserts {
         }
         return uint96(_result);
     }
+
 }

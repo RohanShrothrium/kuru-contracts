@@ -27,6 +27,10 @@ library OrderBookErrors {
      */
     error PriceError();
     /**
+     * @dev Thrown when vault initialization price crosses the book
+     */
+    error VaultInitializationPriceCrossesBook();
+    /**
      * @dev Thrown when the size inputted is invalid, i.e, < minSize or > maxSize
      */
     error SizeError();
@@ -228,10 +232,6 @@ library KuruAMMVaultErrors {
      * @dev Thrown when new size exceeds partially filled size
      */
     error NewSizeExceedsPartiallyFilledSize();
-    /**
-     * @dev Thrown when vault initialization price crosses the book
-     */
-    error VaultInitializationPriceCrossesBook();
     /**
      * @dev Thrown when the amounts withdrawn are negative
      */

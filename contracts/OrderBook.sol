@@ -1335,7 +1335,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return (_bestBid, _bestAsk);
     }
 
-    function _getOBAsk() internal view returns (uint256) {
+    function _getOBAsk() internal view override returns (uint256) {
         uint32 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0);
         if (firstLeft != 0) {
             return firstLeft * vaultPricePrecision / pricePrecision;
@@ -1343,7 +1343,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return type(uint256).max;
     }
 
-    function _getOBBid() internal view returns (uint256) {
+    function _getOBBid() internal view override returns (uint256) {
         uint32 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max);
         if (firstRight != type(uint32).max) {
             return firstRight * vaultPricePrecision / pricePrecision;
