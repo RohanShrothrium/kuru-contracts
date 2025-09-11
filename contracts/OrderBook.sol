@@ -147,8 +147,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     function toggleMarket(MarketState _state) external {
         _checkOwner();
         require(_state != marketState, OrderBookErrors.MarketStateError());
+        MarketState _cachedState = marketState;
         marketState = _state;
-        emit MarketStateUpdated(marketState, _state);
+        emit MarketStateUpdated(_cachedState, _state);
     }
 
     /**
