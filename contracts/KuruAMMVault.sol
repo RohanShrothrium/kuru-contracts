@@ -394,7 +394,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
         ) = market.getVaultParams();
         MarketParams memory _marketParams = marketParams;
         (uint256 _reserveBase, uint256 _reserveQuote) = totalAssets();
-        if (_partiallyFilledAskSize > _newAskSize || _partiallyFilledBidSize > _newBidSize) {
+        if (_partiallyFilledAskSize >= _newAskSize || _partiallyFilledBidSize >= _newBidSize) {
             int256 _baseOwedToVault = (
                 int256(uint256(_partiallyFilledAskSize)) - int256(uint256(_partiallyFilledBidSize))
             ) * int256(10 ** _marketParams.baseAssetDecimals) / int256(uint256(_marketParams.sizePrecision));
