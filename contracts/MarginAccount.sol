@@ -186,6 +186,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
                     _tokens[i].safeTransfer(_msgSender(), _balance);
                 }
             }
+            emit Withdrawal(_msgSender(), _tokens[i], _balance);
         }
     }
 
