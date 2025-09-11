@@ -197,6 +197,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
                 ((quoteDeposit * 10 ** marketParams.baseAssetDecimals)) * vaultPricePrecision
                     / 10 ** marketParams.quoteAssetDecimals
             ) / (baseDeposit);
+            require(_currentAskPrice > 0, KuruAMMVaultErrors.AskPriceZero());
         }
         require(_shares > 0, KuruAMMVaultErrors.InsufficientLiquidityMinted());
         (uint96 _newAskSize, uint96 _newBidSize) = _getVaultSizesForBaseAmount(_baseAmount + baseDeposit);

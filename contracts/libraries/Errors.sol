@@ -200,6 +200,10 @@ library KuruAMMVaultErrors {
      * @dev Thrown when native token passed as argument and msg.value does not match
      */
     error NativeAssetMismatch();
+    /** 
+    * @dev Thrown when first deposit ask price is 0
+    */
+    error AskPriceZero();
     /**
      * @dev Thrown when amount of quote tokens passed is insufficient
      */
