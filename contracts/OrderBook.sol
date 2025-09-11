@@ -1134,7 +1134,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             _orderUpdate = _creditMaker(
                 !s_orders[_orderId].isBuy,
                 s_orders[_orderId].ownerAddress,
-                (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : s_orders[_orderId].size,
+                (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : _preExistingOrderSize,
                 s_orders[_orderId].price
             );
         }
