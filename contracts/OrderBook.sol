@@ -633,7 +633,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         uint96[] calldata askSizes
     ) external {
         require(
-            bidPrices.length == bidSizes.length && askPrices.length == askSizes.length, OrderBookErrors.LengthMismatch()
+            bidPrices.length == bidSizes.length && askPrices.length == askSizes.length && bidPrices.length == askPrices.length, OrderBookErrors.LengthMismatch()
         );
         for (uint256 i = 0; i < bidPrices.length; i++) {
             addPairedLiquidity(bidPrices[i], askPrices[i], bidSizes[i], askSizes[i]);
