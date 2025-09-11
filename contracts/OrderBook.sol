@@ -1137,6 +1137,13 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : _preExistingOrderSize,
                 s_orders[_orderId].price
             );
+        } else {
+            _orderUpdate = _creditMakerRebate(
+                !s_orders[_orderId].isBuy,
+                s_orders[_orderId].ownerAddress,
+                (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : _preExistingOrderSize,
+                s_orders[_orderId].price
+            );
         }
 
         if (incomingOrderRemainingSize == 0) {
@@ -1244,9 +1251,15 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         address creditAsset = _isMarketBuy ? quoteAsset : baseAsset;
         uint256 amount =
             _isMarketBuy ? _quoteAmountRoundedDown(_size, _price) : ((_size * baseDecimalMultiplier) / sizePrecision);
+        
+        bytes memory feeRebateData = _creditMakerRebate(_isMarketBuy, _ownerAddress, _size, _price);
+
+        return bytes.concat(feeRebateData, abi.encode(_ownerAddress, creditAsset, amount, true));
+    }
+
+    function _creditMakerRebate(bool _isMarketBuy, address _ownerAddress, uint96 _size, uint32 _price) internal view returns (bytes memory) {
         uint256 feeRebate;
         address feeAsset;
-        bytes memory returnData;
         if (_isMarketBuy) {
             feeAsset = baseAsset;
             feeRebate = (((_size * baseDecimalMultiplier) / sizePrecision) * makerFeeBps) / BPS_MULTIPLIER;
@@ -1256,11 +1269,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
         //feeRebate only exists if makerFeeBps > 0
         if (feeRebate > 0) {
-            returnData = abi.encode(_ownerAddress, feeAsset, feeRebate, true);
+            return abi.encode(_ownerAddress, feeAsset, feeRebate, true);
         }
-
-        return bytes.concat(returnData, abi.encode(_ownerAddress, creditAsset, amount, true));
+        return "";
     }
+
 
     /**
      * internal helper function to get payable amount
