@@ -213,6 +213,10 @@ library KuruAMMVaultErrors {
      */
     error InsufficientBalance();
     /**
+    * @dev Thrown when quote used in a deposit is too low
+    */
+    error InsufficientQuoteUsed();
+    /**
      * @dev Thrown when native asset transfer fails
      */
     error NativeAssetTransferFail();

@@ -31,5 +31,5 @@ interface IKuruAMMVault {
 
     function setMarketParams() external;
 
-    function deposit(uint256 amount1, uint256 amount2, address receiver) external payable returns (uint256);
+    function deposit(uint256 baseDeposit, uint256 quoteDeposit, uint256 minQuoteConsumed, address receiver) external payable returns (uint256);
 }

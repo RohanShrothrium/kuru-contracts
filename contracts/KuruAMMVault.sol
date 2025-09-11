@@ -153,7 +153,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     /**
      * @dev Deposits token1 and token2 into the vault and mints shares to the receiver.
      */
-    function deposit(uint256 baseDeposit, uint256 quoteDeposit, address receiver)
+    function deposit(uint256 baseDeposit, uint256 quoteDeposit, uint256 minQuoteConsumed, address receiver)
         public
         payable
         nonReentrant
@@ -165,14 +165,16 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
                 : msg.value == 0,
             KuruAMMVaultErrors.NativeAssetMismatch()
         );
-
-        return _mintAndDeposit(baseDeposit, quoteDeposit, receiver);
+        uint256 _sharesMinted;
+        (_sharesMinted, quoteDeposit) = _mintAndDeposit(baseDeposit, quoteDeposit, receiver);
+        require(quoteDeposit >= minQuoteConsumed, KuruAMMVaultErrors.InsufficientQuoteUsed());
+        return _sharesMinted;
     }
 
     /**
      * @dev Internal function to handle the deposit logic and minting of shares.
      */
-    function _mintAndDeposit(uint256 baseDeposit, uint256 quoteDeposit, address receiver) internal returns (uint256) {
+    function _mintAndDeposit(uint256 baseDeposit, uint256 quoteDeposit, address receiver) internal returns (uint256, uint256) {
         (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(true);
         uint256 _shares;
         if (totalSupply() != 0) {
@@ -214,7 +216,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
             msg.sender.safeTransferETH(_nativeRefund);
         }
         emit KuruVaultDeposit(baseDeposit, quoteDeposit, _shares, receiver);
-        return _shares;
+        return (_shares, quoteDeposit);
     }
 
     function _depositAmountsToMarginAccount(address _token1, address _token2, uint256 baseDeposit, uint256 quoteDeposit)
@@ -305,7 +307,7 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     function mint(uint256 shares, address receiver) public payable returns (uint256, uint256) {
         (uint256 baseDeposit, uint256 quoteDeposit) = previewMint(shares);
 
-        deposit(baseDeposit, quoteDeposit, receiver);
+        deposit(baseDeposit, quoteDeposit, quoteDeposit, receiver);
 
         return (baseDeposit, quoteDeposit);
     }

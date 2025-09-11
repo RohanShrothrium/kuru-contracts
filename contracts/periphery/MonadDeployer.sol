@@ -88,7 +88,7 @@ contract MonadDeployer is Ownable {
         uint256 _supplyToVault = tokenParams.initialSupply * (10 ** 4 - tokenParams.supplyToDev) / 10 ** 4;
         token.approve(vault, _supplyToVault);
         IKuruAMMVault(vault).deposit{value: marketParams.nativeTokenAmount}(
-            _supplyToVault, marketParams.nativeTokenAmount, address(this)
+            _supplyToVault, marketParams.nativeTokenAmount, marketParams.nativeTokenAmount, address(this)
         );
         token.transfer(tokenParams.dev, tokenParams.initialSupply - _supplyToVault);
         marginAccount.deposit{value: kuruCollectiveFee}(kuruCollective, address(0), kuruCollectiveFee);
