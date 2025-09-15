@@ -399,7 +399,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
         s_orders[_orderId] =
             Order(_owner, _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, _flippedPrice, _isBuy);
-        s_orders[_prevOrderId].next = _orderId;
+        if (_prevOrderId != OrderLinkedList.NULL) {
+            s_orders[_prevOrderId].next = _orderId;
+        }
         emit FlipOrderCreated(_orderId, _flippedId, _owner, _size, _price, _flippedPrice, _isBuy);
     }
 
@@ -431,7 +433,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
         s_orders[_orderId] =
             Order(_owner, _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, _flippedPrice, _isBuy);
-        s_orders[_prevOrderId].next = _orderId;
+        if (_prevOrderId != OrderLinkedList.NULL) {
+            s_orders[_prevOrderId].next = _orderId;
+        }
         emit FlippedOrderCreated(_orderId, _flippedId, _owner, _size, _price, _flippedPrice, _isBuy);
     }
 
@@ -496,9 +500,12 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      */
     function _cancelFlipOrder(uint40 _orderId) internal nonReentrant {
         Order memory _order = s_orders[_orderId];
-        require(!_checkIfCancelledOrFilled(_orderId, _order), OrderBookErrors.OrderAlreadyFilledOrCancelled());
-        require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
+        OrderStatus _orderStatus = _checkIfCancelledOrFilled(_orderId, _order);
+        if (_orderStatus == OrderStatus.FILLED || _orderStatus == OrderStatus.CANCELED) {
+            revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
+        }
         require(_order.flippedPrice != 0, OrderBookErrors.WrongOrderTypeCancel());
+        require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
         if (_order.flippedId != OrderLinkedList.NULL) {
             _executeCancel(_order.flippedId, s_orders[_order.flippedId]);
         }
@@ -513,13 +520,13 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         Order memory _order = s_orders[_orderId];
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
         require(_order.flippedPrice == 0, OrderBookErrors.WrongOrderTypeCancel());
-        if (_checkIfCancelledOrFilled(_orderId, _order)) {
-            if (_revertIfInvalid) {
-                revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
-            } else {
-                return false;
-            }
-        }
+        OrderStatus _orderStatus = _checkIfCancelledOrFilled(_orderId, _order);
+        if ((_orderStatus == OrderStatus.FILLED || _orderStatus == OrderStatus.CANCELED) && _revertIfInvalid) {
+            revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
+        } else if (_orderStatus == OrderStatus.FILLED) {
+            delete s_orders[_orderId];
+            return false;
+        }   
         _executeCancel(_orderId, _order);
         return true;
     }
@@ -571,7 +578,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 _order.ownerAddress, baseAsset, ((_order.size * baseDecimalMultiplier) / sizePrecision), true
             );
         }
-
+        delete s_orders[_orderId];
         emit OrderCanceled(_orderId, _order.ownerAddress, _order.price, _order.size, _order.isBuy);
     }
 
@@ -584,37 +591,23 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _orderId ID of the order.
      * @param _order Order details in memory.
      */
-    function _checkIfCancelledOrFilled(uint40 _orderId, Order memory _order) internal view returns (bool) {
-        if (_order.prev != OrderLinkedList.NULL) {
-            if (s_orders[_order.prev].next != _orderId) {
-                return true;
+    function _checkIfCancelledOrFilled(uint40 _orderId, Order memory _order) internal view returns (OrderStatus) {
+        if (_order.price == 0) {
+            return OrderStatus.CANCELED;
+        }
+        if (_order.isBuy) {
+            //Since all orders are filled FCFS in each price point, if head > order id, it means order id was already filled
+            uint40 _head = s_buyPricePoints[_order.price].head;
+            if (_head > _orderId || _head == OrderLinkedList.NULL) {
+                return OrderStatus.FILLED;
             }
-            if (_order.isBuy) {
-                //Since all orders are filled FCFS in each price point, if head > order id, it means order id was already filled
-                uint40 _head = s_buyPricePoints[_order.price].head;
-                if (_head > _orderId || _head == OrderLinkedList.NULL) {
-                    return true;
-                }
-                return false;
-            } else {
-                uint40 _head = s_sellPricePoints[_order.price].head;
-                if (_head > _orderId || _head == OrderLinkedList.NULL) {
-                    return true;
-                }
-                return false;
-            }
+            return OrderStatus.ACTIVE;
         } else {
-            if (_order.isBuy) {
-                if (s_buyPricePoints[_order.price].head != _orderId) {
-                    return true;
-                }
-                return false;
-            } else {
-                if (s_sellPricePoints[_order.price].head != _orderId) {
-                    return true;
-                }
-                return false;
+            uint40 _head = s_sellPricePoints[_order.price].head;
+            if (_head > _orderId || _head == OrderLinkedList.NULL) {
+                return OrderStatus.FILLED;
             }
+            return OrderStatus.ACTIVE;
         }
     }
 
@@ -633,7 +626,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         uint96[] calldata askSizes
     ) external {
         require(
-            bidPrices.length == bidSizes.length && askPrices.length == askSizes.length && bidPrices.length == askPrices.length, OrderBookErrors.LengthMismatch()
+            bidPrices.length == bidSizes.length && askPrices.length == askSizes.length
+                && bidPrices.length == askPrices.length,
+            OrderBookErrors.LengthMismatch()
         );
         for (uint256 i = 0; i < bidPrices.length; i++) {
             addPairedLiquidity(bidPrices[i], askPrices[i], bidSizes[i], askSizes[i]);
@@ -1187,6 +1182,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             }
             if (!nullify) {
                 s_orders[_orderId].flippedId = _flipOrderId;
+            } else {
+                delete s_orders[_orderId];
             }
             _addFlippedOrder(
                 _filledOrder.flippedPrice,
@@ -1210,6 +1207,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             emit FlipOrderUpdated(_flipOrderId, _updatedSize);
             if (nullify) {
                 s_orders[_flipOrderId].flippedId = OrderLinkedList.NULL;
+                delete s_orders[_orderId];
             }
         }
     }
@@ -1251,13 +1249,17 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         address creditAsset = _isMarketBuy ? quoteAsset : baseAsset;
         uint256 amount =
             _isMarketBuy ? _quoteAmountRoundedDown(_size, _price) : ((_size * baseDecimalMultiplier) / sizePrecision);
-        
+
         bytes memory feeRebateData = _creditMakerRebate(_isMarketBuy, _ownerAddress, _size, _price);
 
         return bytes.concat(feeRebateData, abi.encode(_ownerAddress, creditAsset, amount, true));
     }
 
-    function _creditMakerRebate(bool _isMarketBuy, address _ownerAddress, uint96 _size, uint32 _price) internal view returns (bytes memory) {
+    function _creditMakerRebate(bool _isMarketBuy, address _ownerAddress, uint96 _size, uint32 _price)
+        internal
+        view
+        returns (bytes memory)
+    {
         uint256 feeRebate;
         address feeAsset;
         if (_isMarketBuy) {
@@ -1273,7 +1275,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
         return "";
     }
-
 
     /**
      * internal helper function to get payable amount

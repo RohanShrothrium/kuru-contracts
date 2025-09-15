@@ -9,6 +9,12 @@ interface IOrderBook {
         NATIVE_IN_QUOTE
     }
 
+    enum OrderStatus {
+        ACTIVE,
+        FILLED,
+        CANCELED
+    }
+
     enum MarketState {
         ACTIVE,
         SOFT_PAUSED,

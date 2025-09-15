@@ -174,7 +174,10 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     /**
      * @dev Internal function to handle the deposit logic and minting of shares.
      */
-    function _mintAndDeposit(uint256 baseDeposit, uint256 quoteDeposit, address receiver) internal returns (uint256, uint256) {
+    function _mintAndDeposit(uint256 baseDeposit, uint256 quoteDeposit, address receiver)
+        internal
+        returns (uint256, uint256)
+    {
         (uint256 _baseAmount, uint256 _currentAskPrice) = _returnNormalizedAmountAndPrice(true);
         uint256 _shares;
         if (totalSupply() != 0) {
