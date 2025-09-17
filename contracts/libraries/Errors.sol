@@ -216,6 +216,9 @@ library KuruAMMVaultErrors {
      * @dev Thrown when first deposit ask price is 0
      */
     error AskPriceZero();
+    /** 
+    * @dev Thrown when vault sizes are 0 */
+    error InvalidVaultSize();
     /**
      * @dev Thrown when amount of quote tokens passed is insufficient
      */
