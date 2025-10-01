@@ -19,6 +19,10 @@ library OrderBookErrors {
      */
     error MarketSizeError();
     /**
+     * @dev Thrown when available size is rounded down to zero
+     */
+    error VaultSizeZero();
+    /**
      * @dev Thrown when Kuru AMM Vault spread passed to initializer is too high or too low or is not a multiple of 10
      */
     error InvalidSpread();
@@ -216,6 +220,10 @@ library KuruAMMVaultErrors {
      * @dev Thrown when first deposit ask price is 0
      */
     error AskPriceZero();
+    /**
+     * @dev Thrown when vault sizes are 0
+     */
+    error InvalidVaultSize();
     /**
      * @dev Thrown when amount of quote tokens passed is insufficient
      */

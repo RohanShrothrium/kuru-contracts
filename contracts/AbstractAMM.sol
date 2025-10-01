@@ -106,6 +106,7 @@ abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
                     _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
                 )
             );
+            require(vaultAskOrderSize > 0, OrderBookErrors.VaultSizeZero());
         }
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
         quoteLeft = toU96(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
@@ -170,6 +171,7 @@ abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
                     _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
                 )
             );
+            require(vaultAskOrderSize > 0, OrderBookErrors.VaultSizeZero());
         }
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
         fundsConsumed = toU96(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
@@ -225,6 +227,7 @@ abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
                     _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
                 )
             );
+            require(vaultAskOrderSize > 0, OrderBookErrors.VaultSizeZero());
         }
         makerCredits = _creditVaultOnMarketSell(_size - sizeLeft, quoteOwedToUser);
     }

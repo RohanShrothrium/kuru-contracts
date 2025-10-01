@@ -280,7 +280,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
         (,,,, uint40 initFlippedId,, uint32 initFlippedPrice,) = orderBook.s_orders(1);
         assertEq(initFlippedId, 0);
-        assertEq(initFlippedPrice, _flippedPrice);
+        assertEq(initFlippedPrice, 0);
         (,,,, uint40 flippedFlippedId,, uint32 flippedFlippedPrice,) = orderBook.s_orders(2);
         assertEq(flippedFlippedId, 0);
         assertEq(flippedFlippedPrice, _price);
@@ -305,7 +305,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
         (,,,, uint40 flippedId1,, uint32 flippedPrice1,) = orderBook.s_orders(1);
         assertEq(flippedId1, 0);
-        assertEq(flippedPrice1, _flippedPrice);
+        assertEq(flippedPrice1, 0);
         (,,,, uint40 flippedId2,, uint32 flippedPrice2,) = orderBook.s_orders(2);
         assertEq(flippedId2, 3);
         assertEq(flippedPrice2, _price);
@@ -436,7 +436,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
         (,,,, uint40 flippedId1,, uint32 flippedPrice1,) = orderBook.s_orders(1);
         assertEq(flippedId1, 0);
-        assertEq(flippedPrice1, _flippedPrice);
+        assertEq(flippedPrice1, 0);
         (,,,, uint40 flippedId2,, uint32 flippedPrice2,) = orderBook.s_orders(2);
         assertEq(flippedId2, 0);
         assertEq(flippedPrice2, _price);
@@ -458,7 +458,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
         (,,,, uint40 flippedId1,, uint32 flippedPrice1,) = orderBook.s_orders(1);
         assertEq(flippedId1, 0);
-        assertEq(flippedPrice1, _flippedPrice);
+        assertEq(flippedPrice1, 0);
         (,,,, uint40 flippedId2,, uint32 flippedPrice2,) = orderBook.s_orders(2);
         assertEq(flippedId2, 3);
         assertEq(flippedPrice2, _price);
@@ -1023,7 +1023,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
             vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
             testAddBuyFlipOrderFullFill(_price, _flippedPrice, _size);
-            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            (address _maker,,,,,,,) = orderBook.s_orders(2);
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
@@ -1038,7 +1038,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
             vm.assume(_size > _minSize && _size < _maxSize);
             testAddSellFlipOrderFullFill(_price, _flippedPrice, _size);
-            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            (address _maker,,,,,,,) = orderBook.s_orders(2);
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
@@ -1056,7 +1056,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
             vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
             testAddBuyFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
-            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            (address _maker,,,,,,,) = orderBook.s_orders(2);
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
@@ -1074,7 +1074,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
             vm.assume(_size > _minSize && _size < _maxSize);
             testAddSellFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
-            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            (address _maker,,,,,,,) = orderBook.s_orders(2);
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
@@ -1095,7 +1095,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
             vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
             testAddBuyFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
-            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            (address _maker,,,,,,,) = orderBook.s_orders(2);
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
@@ -1113,7 +1113,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
             vm.assume(_size > _minSize && _size < _maxSize);
             testAddSellFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
-            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            (address _maker,,,,,,,) = orderBook.s_orders(2);
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](1);
             _orders[0] = 1;
@@ -1135,7 +1135,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             vm.assume(_price > _tickSize && _flippedPrice > 2 * _tickSize);
             vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
             testAddBuyFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
-            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            (address _maker,,,,,,,) = orderBook.s_orders(2);
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](2);
             _orders[0] = _interChange ? 2 : 3;
@@ -1149,7 +1149,7 @@ contract OrderBookTest is Test, PropertiesAsserts {
             vm.assume(_price < _maxPrice && _flippedPrice < _maxPrice);
             vm.assume(_size > _minSize && _size < _maxSize);
             testAddSellFlipOrderFullFillAndPartialFill(_price, _flippedPrice, _size);
-            (address _maker,,,,,,,) = orderBook.s_orders(1);
+            (address _maker,,,,,,,) = orderBook.s_orders(2);
             vm.startPrank(_maker);
             uint40[] memory _orders = new uint40[](2);
             _orders[0] = _interChange ? 2 : 3;
