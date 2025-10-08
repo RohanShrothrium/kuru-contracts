@@ -11,6 +11,7 @@ contract KuruUtilsForkTest is Test {
     address constant KURU_MARKET = 0x277bF4a0AAc16f19d7bf592FeFFc8D2d9a890508;
     address constant UNIV2_PAIR = 0xc0ce32EEe0eb8bF24FA2b00923a78abc5002f91e;
     address constant UNIV3_POOL = 0x01F4E5aeAe0Dd95048b526a11eB7e20F68802F2e;
+    address constant TRADERJOE_POOL = 0x8e9b15278B7B721Fc828640d57C482911f66245f;
 
     function setUp() public {
         // Fork from RPC_URL environment variable
@@ -241,5 +242,76 @@ contract KuruUtilsForkTest is Test {
         console.log("UniV2 as Kuru valid:", isValid1);
         console.log("Kuru as UniV3 valid:", isValid2);
         console.log("UniV3 as UniV2 valid:", isValid3);
+    }
+
+    function testGetTraderJoeMarketInfo() public {
+        console.log("Testing TraderJoe pool:", TRADERJOE_POOL);
+        
+        (
+            KuruUtils.TokenInfo[] memory tokenInfo,
+            KuruUtils.MarketInfo memory marketInfo,
+            bool isValid
+        ) = kuruUtils.getMarketInfo(
+            TRADERJOE_POOL, 
+            KuruUtils.MarketType.TRADERJOE
+        );
+
+        // Assert that market info is populated
+        assertTrue(marketInfo.baseAssetAddress != address(0), "TokenX should not be zero address");
+        assertTrue(marketInfo.quoteAssetAddress != address(0), "TokenY should not be zero address");
+        assertTrue(marketInfo.factoryAddress != address(0), "Factory address should not be zero address");
+        assertTrue(isValid, "TraderJoe pool should be valid");
+        
+        // Assert that we get token info for both tokens
+        assertEq(tokenInfo.length, 2, "Should return info for 2 tokens");
+        
+        // Log market details
+        console.log("TokenX:", marketInfo.baseAssetAddress);
+        console.log("TokenY:", marketInfo.quoteAssetAddress);
+        console.log("Factory:", marketInfo.factoryAddress);
+        console.log("Is Valid:", isValid);
+        
+        // Log token info
+        for (uint i = 0; i < tokenInfo.length; i++) {
+            console.log("Token", i, "- Name:", tokenInfo[i].name);
+            console.log("Token", i, "- Symbol:", tokenInfo[i].symbol);
+            console.log("Token", i, "- Decimals:", tokenInfo[i].decimals);
+            console.log("Token", i, "- Balance:", tokenInfo[i].balance);
+            console.log("Token", i, "- Total Supply:", tokenInfo[i].totalSupply);
+        }
+    }
+
+    function testInvalidTraderJoeMarketInfo() public {
+        // Using a non-TraderJoe pool address to test invalid case
+        address invalidPool = UNIV2_PAIR;
+        console.log("Testing invalid TraderJoe pool:", invalidPool);
+        
+        (
+            KuruUtils.TokenInfo[] memory tokenInfo,
+            KuruUtils.MarketInfo memory marketInfo,
+            bool isValid
+        ) = kuruUtils.getMarketInfo(
+            invalidPool, 
+            KuruUtils.MarketType.TRADERJOE
+        );
+
+        // Assert that the pool is marked as invalid
+        assertFalse(isValid, "Non-TraderJoe pool should be marked as invalid");
+        
+        // Assert that we get empty token info
+        assertEq(tokenInfo.length, 0, "Should return empty token info for invalid pool");
+        
+        // Assert that market info is zeroed
+        assertEq(marketInfo.baseAssetAddress, address(0), "TokenX should be zero address for invalid pool");
+        assertEq(marketInfo.quoteAssetAddress, address(0), "TokenY should be zero address for invalid pool");
+        assertEq(marketInfo.factoryAddress, address(0), "Factory should be zero address for invalid pool");
+        
+        // Log results
+        console.log("Is Valid:", isValid);
+        console.log("Market Info zeroed:", 
+            marketInfo.baseAssetAddress == address(0) && 
+            marketInfo.quoteAssetAddress == address(0) && 
+            marketInfo.factoryAddress == address(0)
+        );
     }
 }

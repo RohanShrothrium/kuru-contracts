@@ -10,13 +10,16 @@ import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pool.sol";
 import {IUniswapV2Factory} from "../interfaces/IUniswapV2Factory.sol";
 import {IUniswapV3Factory} from "../interfaces/IUniswapV3Factory.sol";
 import {IUniswapV3Pool} from "../interfaces/IUniswapV3Pool.sol";
+import {ILBPair} from "../interfaces/ILBPair.sol";
+import {ILBFactory} from "../interfaces/ILBFactory.sol";
 
 /// @title A periphery contract for Kuru
 contract KuruUtils {
     enum MarketType {
         KURU,
         UNISWAP_V2,
-        UNISWAP_V3
+        UNISWAP_V3,
+        TRADERJOE
     }
 
     struct TokenInfo {
@@ -131,6 +134,8 @@ contract KuruUtils {
             return getUniswapV2PoolDetailsAndValidateFactory(market);
         } else if (marketType == MarketType.UNISWAP_V3) {
             return getUniswapV3PoolDetailsAndValidateFactory(market);
+        } else if (marketType == MarketType.TRADERJOE) {
+            return getTraderJoePoolDetailsAndValidateFactory(market);
         }
         revert("Invalid market type");
     }
@@ -285,6 +290,55 @@ contract KuruUtils {
             isValid = false;
         }
         
+        return (info, marketInfo, isValid);
+    }
+
+    function getTraderJoePoolDetailsAndValidateFactory(
+        address pool
+    ) public view returns (TokenInfo[] memory, MarketInfo memory, bool) {
+        ILBPair pair = ILBPair(pool);
+        address token0;
+        address token1;
+        uint16 binStep;
+        address factory;
+
+        try pair.getTokenX() returns (address _token0) {
+            token0 = _token0;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
+        try pair.getTokenY() returns (address _token1) {
+            token1 = _token1;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
+        try pair.getBinStep() returns (uint16 _binStep) {
+            binStep = _binStep;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
+        try pair.getFactory() returns (address _factory) {
+            factory = _factory;
+        } catch {
+            return (new TokenInfo[](0), MarketInfo(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0, 0), false);
+        }
+
+        bool isValid;
+        try ILBFactory(factory).getLBPairInformation(token0, token1, binStep) returns (ILBFactory.LBPairInformation memory actualPool) {
+            isValid = actualPool.LBPair == pool;
+        } catch {
+            isValid = false;
+        }
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = token0;
+        tokens[1] = token1;
+        TokenInfo[] memory info = getTokensInfo(tokens, pool);
+        MarketInfo memory marketInfo = MarketInfo(token0, token1, factory, 0, 0, 0, 0, 0, 0, 0);
+
         return (info, marketInfo, isValid);
     }
 
