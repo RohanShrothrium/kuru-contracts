@@ -1,4 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
+
+//   ░█████░     ░█████▓    ███                                                       
+//   ███████    ▓███████▒   ███▒                                                      
+//   ███████   █████████▒   ███▒                                                      
+//   ███████  ██████████░   ███▒    ████  ████     ████  ▓████████ ░███░    ░███▓     
+//     ░████▒██████▒░       ███▒   ████   ████     ████  ▓████████ ▒███▒    ░███▓     
+//                          ███▒ ▒████    ████     ████  ▓████     ▒███░    ░███▓     
+//     ▓████▒███████▓       █████████     ████     ████  ▓███░     ▒███░    ░███▓     
+//   ███████  ██████████▒   █████████▒    ████     ████  ▓███      ░███▒    ░███▒     
+//   ███████   █████████▒   ███▒  ████▓   ▓███▒   ░████  ▓███       ████    ████░     
+//   ███████    ▓███████▒   ███▒   ▒████   ███████████   ▓███       ░██████████▒      
+//    ▒▓▓▓▓       ▒▓▓▓▓▒    ▓██      ███▒    ░█████░      ██▓          ▒████▒           
+                                                                                       
 pragma solidity ^0.8.20;
 
 // ============ Library Imports ============
@@ -1366,15 +1379,15 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
 
-    function bestAsk() internal returns (bool, uint256) {
+    function bestAsk() internal view returns (bool, uint256) {
         uint256 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0) * vaultPricePrecision / pricePrecision;
         uint96 _vaultAskSize = _getVaultAskSize();
         if (firstLeft != 0) {
             if (vaultBestAsk != type(uint256).max) {
-                if (firstLeft == vaultBestAsk) {
+                if (_vaultAskSize == 0 || firstLeft == vaultBestAsk) {
                     return (false, firstLeft);
                 }
-                if (FixedPointMathLib.min(firstLeft, vaultBestAsk) == vaultBestAsk && _vaultAskSize != 0) {
+                if (FixedPointMathLib.min(firstLeft, vaultBestAsk) == vaultBestAsk) {
                     return (true, vaultBestAsk);
                 }
                 return (false, firstLeft);
@@ -1384,15 +1397,15 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return (vaultBestAsk != type(uint256).max && _vaultAskSize != 0) ? (true, vaultBestAsk) : (false, 0);
     }
 
-    function bestBid() internal returns (bool, uint256) {
+    function bestBid() internal view returns (bool, uint256) {
         uint256 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max) * vaultPricePrecision / pricePrecision;
         uint96 _vaultBidSize = _getVaultBidSize();
         if (firstRight != type(uint32).max * vaultPricePrecision / pricePrecision) {
             if (vaultBestBid != 0) {
-                if (firstRight == vaultBestBid) {
+                if (_vaultBidSize == 0 || firstRight == vaultBestBid) {
                     return (false, firstRight);
                 }
-                if (FixedPointMathLib.max(firstRight, vaultBestBid) == vaultBestBid && _vaultBidSize != 0) {
+                if (FixedPointMathLib.max(firstRight, vaultBestBid) == vaultBestBid) {
                     return (true, vaultBestBid);
                 }
                 return (false, firstRight);
