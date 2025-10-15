@@ -106,7 +106,6 @@ abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
                     _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
                 )
             );
-            require(vaultAskOrderSize > 0, OrderBookErrors.VaultSizeZero());
         }
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
         quoteLeft = toU96(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
@@ -171,7 +170,6 @@ abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
                     _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
                 )
             );
-            require(vaultAskOrderSize > 0, OrderBookErrors.VaultSizeZero());
         }
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
         fundsConsumed = toU96(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
@@ -227,7 +225,6 @@ abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
                     _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
                 )
             );
-            require(vaultAskOrderSize > 0, OrderBookErrors.VaultSizeZero());
         }
         makerCredits = _creditVaultOnMarketSell(_size - sizeLeft, quoteOwedToUser);
     }
@@ -333,6 +330,14 @@ abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
             vaultBestAsk,
             vaultBestBid
         );
+    }
+
+    function _getVaultAskSize() internal view returns (uint96) {
+        return vaultAskOrderSize;
+    }
+
+    function _getVaultBidSize() internal view returns (uint96) {
+        return vaultBidOrderSize;
     }
 
     function toU32(uint256 _from) internal pure returns (uint32 _to) {

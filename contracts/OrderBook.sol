@@ -477,7 +477,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
 
     /**
      * @dev Cancels multiple orders in a batch.
-     * @dev Does not revert if you pass an order ID which is filled or cancelled already.
+     * @dev Does not revert if you pass an order ID which is filled already.
      * @param _orderIds Array of order IDs to cancel.
      */
     function batchCancelOrdersNoRevert(uint40[] calldata _orderIds) external marketNotHardPaused {
@@ -526,7 +526,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         } else if (_orderStatus == OrderStatus.FILLED) {
             delete s_orders[_orderId];
             return false;
-        }   
+        }
         _executeCancel(_orderId, _order);
         return true;
     }
@@ -1365,36 +1365,41 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return 0;
     }
 
-    function bestAsk() internal view returns (bool, uint256) {
+
+    function bestAsk() internal returns (bool, uint256) {
         uint256 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0) * vaultPricePrecision / pricePrecision;
+        uint96 _vaultAskSize = _getVaultAskSize();
         if (firstLeft != 0) {
             if (vaultBestAsk != type(uint256).max) {
                 if (firstLeft == vaultBestAsk) {
                     return (false, firstLeft);
                 }
-                return (FixedPointMathLib.min(firstLeft, vaultBestAsk)) == vaultBestAsk
-                    ? (true, vaultBestAsk)
-                    : (false, firstLeft);
+                if (FixedPointMathLib.min(firstLeft, vaultBestAsk) == vaultBestAsk && _vaultAskSize != 0) {
+                    return (true, vaultBestAsk);
+                }
+                return (false, firstLeft);
             }
             return (false, firstLeft);
         }
-        return (vaultBestAsk != type(uint256).max) ? (true, vaultBestAsk) : (false, 0);
+        return (vaultBestAsk != type(uint256).max && _vaultAskSize != 0) ? (true, vaultBestAsk) : (false, 0);
     }
 
-    function bestBid() internal view returns (bool, uint256) {
+    function bestBid() internal returns (bool, uint256) {
         uint256 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max) * vaultPricePrecision / pricePrecision;
+        uint96 _vaultBidSize = _getVaultBidSize();
         if (firstRight != type(uint32).max * vaultPricePrecision / pricePrecision) {
             if (vaultBestBid != 0) {
                 if (firstRight == vaultBestBid) {
                     return (false, firstRight);
                 }
-                return (FixedPointMathLib.max(firstRight, vaultBestBid)) == vaultBestBid
-                    ? (true, vaultBestBid)
-                    : (false, firstRight);
+                if (FixedPointMathLib.max(firstRight, vaultBestBid) == vaultBestBid && _vaultBidSize != 0) {
+                    return (true, vaultBestBid);
+                }
+                return (false, firstRight);
             }
             return (false, firstRight);
         }
-        return vaultBestBid != 0 ? (true, vaultBestBid) : (false, type(uint256).max);
+        return (vaultBestBid != 0 && _vaultBidSize != 0) ? (true, vaultBestBid) : (false, type(uint256).max);
     }
 
     /**
