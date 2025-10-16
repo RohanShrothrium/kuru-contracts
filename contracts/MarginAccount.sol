@@ -1,4 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
+
+//   ░█████░     ░█████▓    ███                                                       
+//   ███████    ▓███████▒   ███▒                                                      
+//   ███████   █████████▒   ███▒                                                      
+//   ███████  ██████████░   ███▒    ████  ████     ████  ▓████████ ░███░    ░███▓     
+//     ░████▒██████▒░       ███▒   ████   ████     ████  ▓████████ ▒███▒    ░███▓     
+//                          ███▒ ▒████    ████     ████  ▓████     ▒███░    ░███▓     
+//     ▓████▒███████▓       █████████     ████     ████  ▓███░     ▒███░    ░███▓     
+//   ███████  ██████████▒   █████████▒    ████     ████  ▓███      ░███▒    ░███▒     
+//   ███████   █████████▒   ███▒  ████▓   ▓███▒   ░████  ▓███       ████    ████░     
+//   ███████    ▓███████▒   ███▒   ▒████   ███████████   ▓███       ░██████████▒      
+//    ▒▓▓▓▓       ▒▓▓▓▓▒    ▓██      ███▒    ░█████░      ██▓          ▒████▒           
+                                                                                       
 pragma solidity ^0.8.20;
 
 // ============ External Imports ============
@@ -77,6 +90,11 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         public
         initializer
     {
+        require(
+            _owner != address(0) && _router != address(0) && _feeCollector != address(0)
+                && _trustedForwarder != address(0),
+            MarginAccountErrors.ZeroAddressNotAllowed()
+        );
         _initializeOwner(_owner);
         routerContractAddress = _router;
         feeCollector = _feeCollector;
@@ -186,6 +204,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
                     _tokens[i].safeTransfer(_msgSender(), _balance);
                 }
             }
+            emit Withdrawal(_msgSender(), _tokens[i], _balance);
         }
     }
 

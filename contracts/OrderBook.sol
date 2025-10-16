@@ -1,4 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
+
+//   ░█████░     ░█████▓    ███                                                       
+//   ███████    ▓███████▒   ███▒                                                      
+//   ███████   █████████▒   ███▒                                                      
+//   ███████  ██████████░   ███▒    ████  ████     ████  ▓████████ ░███░    ░███▓     
+//     ░████▒██████▒░       ███▒   ████   ████     ████  ▓████████ ▒███▒    ░███▓     
+//                          ███▒ ▒████    ████     ████  ▓████     ▒███░    ░███▓     
+//     ▓████▒███████▓       █████████     ████     ████  ▓███░     ▒███░    ░███▓     
+//   ███████  ██████████▒   █████████▒    ████     ████  ▓███      ░███▒    ░███▒     
+//   ███████   █████████▒   ███▒  ████▓   ▓███▒   ░████  ▓███       ████    ████░     
+//   ███████    ▓███████▒   ███▒   ▒████   ███████████   ▓███       ░██████████▒      
+//    ▒▓▓▓▓       ▒▓▓▓▓▒    ▓██      ███▒    ░█████░      ██▓          ▒████▒           
+                                                                                       
 pragma solidity ^0.8.20;
 
 // ============ Library Imports ============
@@ -147,8 +160,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     function toggleMarket(MarketState _state) external {
         _checkOwner();
         require(_state != marketState, OrderBookErrors.MarketStateError());
+        MarketState _cachedState = marketState;
         marketState = _state;
-        emit MarketStateUpdated(marketState, _state);
+        emit MarketStateUpdated(_cachedState, _state);
     }
 
     /**
@@ -168,8 +182,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      */
     function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) public marketActive nonReentrant {
         require(_price > 0 && _price < type(uint32).max, OrderBookErrors.PriceError());
-        require(size > minSize, OrderBookErrors.SizeError());
-        require(size < maxSize, OrderBookErrors.SizeError());
+        require(size >= minSize, OrderBookErrors.SizeError());
+        require(size <= maxSize, OrderBookErrors.SizeError());
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
 
         //The buy order is filled aggressively and the leftover size is added as a limit buy order
@@ -195,7 +209,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Adds a flip buy order to the order book. This function will just return if it matches against the book.
      * @param _price Price of the buy order.
      * @param _flippedPrice Price of the sell order to which this order will flip on a fill
@@ -210,7 +223,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         require(_price > 0 && _flippedPrice > 0 && _flippedPrice < type(uint32).max, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price < _flippedPrice, OrderBookErrors.PriceError());
-        require(_size > minSize && _size < maxSize, OrderBookErrors.SizeError());
+        require(_size >= minSize && _size <= maxSize, OrderBookErrors.SizeError());
 
         {
             (, uint256 _bestAsk) = bestAsk();
@@ -239,8 +252,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _postOnly Whether the order is post-only. The transaction reverts if the order is matched while placing.
      */
     function addSellOrder(uint32 _price, uint96 _size, bool _postOnly) public marketActive nonReentrant {
-        require(_size > minSize, OrderBookErrors.SizeError());
-        require(_size < maxSize, OrderBookErrors.SizeError());
+        require(_size >= minSize, OrderBookErrors.SizeError());
+        require(_size <= maxSize, OrderBookErrors.SizeError());
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price > 0 && _price < type(uint32).max, OrderBookErrors.PriceError());
 
@@ -265,7 +278,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Adds a flip sell order to the order book. This function will just return if it matches against the book.
      * @param _price Price of the sell order.
      * @param _flippedPrice Price of the buy order to which this order will flip on a fill
@@ -280,7 +292,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         require(_price > 0 && _flippedPrice > 0 && _price < type(uint32).max, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price > _flippedPrice, OrderBookErrors.PriceError());
-        require(_size > minSize && _size < maxSize, OrderBookErrors.SizeError());
+        require(_size >= minSize && _size <= maxSize, OrderBookErrors.SizeError());
 
         {
             (, uint256 _bestBid) = bestBid();
@@ -301,7 +313,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Adds a paired liquidity order to the order book. This function will revert if the order matches against the book.
      * @param _bidPrice Price of the bid order.
      * @param _askPrice Price of the ask order.
@@ -315,8 +326,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     {
         require(_bidPrice > 0 && _askPrice > _bidPrice && _askPrice < type(uint32).max, OrderBookErrors.PriceError());
         require(_bidPrice % tickSize == 0 && _askPrice % tickSize == 0, OrderBookErrors.TickSizeError());
-        require(_bidSize > minSize && _bidSize < maxSize, OrderBookErrors.SizeError());
-        require(_askSize > minSize && _askSize < maxSize, OrderBookErrors.SizeError());
+        require(_bidSize >= minSize && _bidSize <= maxSize, OrderBookErrors.SizeError());
+        require(_askSize >= minSize && _askSize <= maxSize, OrderBookErrors.SizeError());
         {
             (, uint256 _bestBid) = bestBid();
             (, uint256 _bestAsk) = bestAsk();
@@ -398,7 +409,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
         s_orders[_orderId] =
             Order(_owner, _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, _flippedPrice, _isBuy);
-        s_orders[_prevOrderId].next = _orderId;
+        if (_prevOrderId != OrderLinkedList.NULL) {
+            s_orders[_prevOrderId].next = _orderId;
+        }
         emit FlipOrderCreated(_orderId, _flippedId, _owner, _size, _price, _flippedPrice, _isBuy);
     }
 
@@ -430,7 +443,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
         s_orders[_orderId] =
             Order(_owner, _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, _flippedPrice, _isBuy);
-        s_orders[_prevOrderId].next = _orderId;
+        if (_prevOrderId != OrderLinkedList.NULL) {
+            s_orders[_prevOrderId].next = _orderId;
+        }
         emit FlippedOrderCreated(_orderId, _flippedId, _owner, _size, _price, _flippedPrice, _isBuy);
     }
 
@@ -472,7 +487,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
 
     /**
      * @dev Cancels multiple orders in a batch.
-     * @dev Does not revert if you pass an order ID which is filled or cancelled already.
+     * @dev Does not revert if you pass an order ID which is filled already.
      * @param _orderIds Array of order IDs to cancel.
      */
     function batchCancelOrdersNoRevert(uint40[] calldata _orderIds) external marketNotHardPaused {
@@ -495,9 +510,12 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      */
     function _cancelFlipOrder(uint40 _orderId) internal nonReentrant {
         Order memory _order = s_orders[_orderId];
-        require(!_checkIfCancelledOrFilled(_orderId, _order), OrderBookErrors.OrderAlreadyFilledOrCancelled());
-        require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
+        OrderStatus _orderStatus = _checkIfCancelledOrFilled(_orderId, _order);
+        if (_orderStatus == OrderStatus.FILLED || _orderStatus == OrderStatus.CANCELED) {
+            revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
+        }
         require(_order.flippedPrice != 0, OrderBookErrors.WrongOrderTypeCancel());
+        require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
         if (_order.flippedId != OrderLinkedList.NULL) {
             _executeCancel(_order.flippedId, s_orders[_order.flippedId]);
         }
@@ -512,12 +530,12 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         Order memory _order = s_orders[_orderId];
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
         require(_order.flippedPrice == 0, OrderBookErrors.WrongOrderTypeCancel());
-        if (_checkIfCancelledOrFilled(_orderId, _order)) {
-            if (_revertIfInvalid) {
-                revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
-            } else {
-                return false;
-            }
+        OrderStatus _orderStatus = _checkIfCancelledOrFilled(_orderId, _order);
+        if ((_orderStatus == OrderStatus.FILLED || _orderStatus == OrderStatus.CANCELED) && _revertIfInvalid) {
+            revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
+        } else if (_orderStatus == OrderStatus.FILLED) {
+            delete s_orders[_orderId];
+            return false;
         }
         _executeCancel(_orderId, _order);
         return true;
@@ -570,7 +588,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 _order.ownerAddress, baseAsset, ((_order.size * baseDecimalMultiplier) / sizePrecision), true
             );
         }
-
+        delete s_orders[_orderId];
         emit OrderCanceled(_orderId, _order.ownerAddress, _order.price, _order.size, _order.isBuy);
     }
 
@@ -583,42 +601,27 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _orderId ID of the order.
      * @param _order Order details in memory.
      */
-    function _checkIfCancelledOrFilled(uint40 _orderId, Order memory _order) internal view returns (bool) {
-        if (_order.prev != OrderLinkedList.NULL) {
-            if (s_orders[_order.prev].next != _orderId) {
-                return true;
+    function _checkIfCancelledOrFilled(uint40 _orderId, Order memory _order) internal view returns (OrderStatus) {
+        if (_order.price == 0) {
+            return OrderStatus.CANCELED;
+        }
+        if (_order.isBuy) {
+            //Since all orders are filled FCFS in each price point, if head > order id, it means order id was already filled
+            uint40 _head = s_buyPricePoints[_order.price].head;
+            if (_head > _orderId || _head == OrderLinkedList.NULL) {
+                return OrderStatus.FILLED;
             }
-            if (_order.isBuy) {
-                //Since all orders are filled FCFS in each price point, if head > order id, it means order id was already filled
-                uint40 _head = s_buyPricePoints[_order.price].head;
-                if (_head > _orderId || _head == OrderLinkedList.NULL) {
-                    return true;
-                }
-                return false;
-            } else {
-                uint40 _head = s_sellPricePoints[_order.price].head;
-                if (_head > _orderId || _head == OrderLinkedList.NULL) {
-                    return true;
-                }
-                return false;
-            }
+            return OrderStatus.ACTIVE;
         } else {
-            if (_order.isBuy) {
-                if (s_buyPricePoints[_order.price].head != _orderId) {
-                    return true;
-                }
-                return false;
-            } else {
-                if (s_sellPricePoints[_order.price].head != _orderId) {
-                    return true;
-                }
-                return false;
+            uint40 _head = s_sellPricePoints[_order.price].head;
+            if (_head > _orderId || _head == OrderLinkedList.NULL) {
+                return OrderStatus.FILLED;
             }
+            return OrderStatus.ACTIVE;
         }
     }
 
     /**
-     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Batch adds paired liquidity to the order book.
      * @param bidPrices Array of prices for the bid orders.
      * @param askPrices Array of prices for the ask orders.
@@ -632,7 +635,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         uint96[] calldata askSizes
     ) external {
         require(
-            bidPrices.length == bidSizes.length && askPrices.length == askSizes.length, OrderBookErrors.LengthMismatch()
+            bidPrices.length == bidSizes.length && askPrices.length == askSizes.length
+                && bidPrices.length == askPrices.length,
+            OrderBookErrors.LengthMismatch()
         );
         for (uint256 i = 0; i < bidPrices.length; i++) {
             addPairedLiquidity(bidPrices[i], askPrices[i], bidSizes[i], askSizes[i]);
@@ -640,7 +645,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Batch adds flip orders to the order book.
      * @param prices Array of prices for the flip orders.
      * @param flipPrices Array of prices for the flip orders.
@@ -1133,7 +1137,14 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             _orderUpdate = _creditMaker(
                 !s_orders[_orderId].isBuy,
                 s_orders[_orderId].ownerAddress,
-                (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : s_orders[_orderId].size,
+                (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : _preExistingOrderSize,
+                s_orders[_orderId].price
+            );
+        } else {
+            _orderUpdate = _creditMakerRebate(
+                !s_orders[_orderId].isBuy,
+                s_orders[_orderId].ownerAddress,
+                (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : _preExistingOrderSize,
                 s_orders[_orderId].price
             );
         }
@@ -1179,6 +1190,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             }
             if (!nullify) {
                 s_orders[_orderId].flippedId = _flipOrderId;
+            } else {
+                delete s_orders[_orderId];
             }
             _addFlippedOrder(
                 _filledOrder.flippedPrice,
@@ -1202,6 +1215,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             emit FlipOrderUpdated(_flipOrderId, _updatedSize);
             if (nullify) {
                 s_orders[_flipOrderId].flippedId = OrderLinkedList.NULL;
+                delete s_orders[_orderId];
             }
         }
     }
@@ -1243,9 +1257,19 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         address creditAsset = _isMarketBuy ? quoteAsset : baseAsset;
         uint256 amount =
             _isMarketBuy ? _quoteAmountRoundedDown(_size, _price) : ((_size * baseDecimalMultiplier) / sizePrecision);
+
+        bytes memory feeRebateData = _creditMakerRebate(_isMarketBuy, _ownerAddress, _size, _price);
+
+        return bytes.concat(feeRebateData, abi.encode(_ownerAddress, creditAsset, amount, true));
+    }
+
+    function _creditMakerRebate(bool _isMarketBuy, address _ownerAddress, uint96 _size, uint32 _price)
+        internal
+        view
+        returns (bytes memory)
+    {
         uint256 feeRebate;
         address feeAsset;
-        bytes memory returnData;
         if (_isMarketBuy) {
             feeAsset = baseAsset;
             feeRebate = (((_size * baseDecimalMultiplier) / sizePrecision) * makerFeeBps) / BPS_MULTIPLIER;
@@ -1255,10 +1279,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
         //feeRebate only exists if makerFeeBps > 0
         if (feeRebate > 0) {
-            returnData = abi.encode(_ownerAddress, feeAsset, feeRebate, true);
+            return abi.encode(_ownerAddress, feeAsset, feeRebate, true);
         }
-
-        return bytes.concat(returnData, abi.encode(_ownerAddress, creditAsset, amount, true));
+        return "";
     }
 
     /**
@@ -1334,7 +1357,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return (_bestBid, _bestAsk);
     }
 
-    function _getOBAsk() internal view returns (uint256) {
+    function _getOBAsk() internal view override returns (uint256) {
         uint32 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0);
         if (firstLeft != 0) {
             return firstLeft * vaultPricePrecision / pricePrecision;
@@ -1342,7 +1365,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return type(uint256).max;
     }
 
-    function _getOBBid() internal view returns (uint256) {
+    function _getOBBid() internal view override returns (uint256) {
         uint32 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max);
         if (firstRight != type(uint32).max) {
             return firstRight * vaultPricePrecision / pricePrecision;
@@ -1350,36 +1373,41 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return 0;
     }
 
+
     function bestAsk() internal view returns (bool, uint256) {
         uint256 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0) * vaultPricePrecision / pricePrecision;
+        uint96 _vaultAskSize = _getVaultAskSize();
         if (firstLeft != 0) {
             if (vaultBestAsk != type(uint256).max) {
-                if (firstLeft == vaultBestAsk) {
+                if (_vaultAskSize == 0 || firstLeft == vaultBestAsk) {
                     return (false, firstLeft);
                 }
-                return (FixedPointMathLib.min(firstLeft, vaultBestAsk)) == vaultBestAsk
-                    ? (true, vaultBestAsk)
-                    : (false, firstLeft);
+                if (FixedPointMathLib.min(firstLeft, vaultBestAsk) == vaultBestAsk) {
+                    return (true, vaultBestAsk);
+                }
+                return (false, firstLeft);
             }
             return (false, firstLeft);
         }
-        return (vaultBestAsk != type(uint256).max) ? (true, vaultBestAsk) : (false, 0);
+        return (vaultBestAsk != type(uint256).max && _vaultAskSize != 0) ? (true, vaultBestAsk) : (false, 0);
     }
 
     function bestBid() internal view returns (bool, uint256) {
         uint256 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max) * vaultPricePrecision / pricePrecision;
+        uint96 _vaultBidSize = _getVaultBidSize();
         if (firstRight != type(uint32).max * vaultPricePrecision / pricePrecision) {
             if (vaultBestBid != 0) {
-                if (firstRight == vaultBestBid) {
+                if (_vaultBidSize == 0 || firstRight == vaultBestBid) {
                     return (false, firstRight);
                 }
-                return (FixedPointMathLib.max(firstRight, vaultBestBid)) == vaultBestBid
-                    ? (true, vaultBestBid)
-                    : (false, firstRight);
+                if (FixedPointMathLib.max(firstRight, vaultBestBid) == vaultBestBid) {
+                    return (true, vaultBestBid);
+                }
+                return (false, firstRight);
             }
             return (false, firstRight);
         }
-        return vaultBestBid != 0 ? (true, vaultBestBid) : (false, type(uint256).max);
+        return (vaultBestBid != 0 && _vaultBidSize != 0) ? (true, vaultBestBid) : (false, type(uint256).max);
     }
 
     /**

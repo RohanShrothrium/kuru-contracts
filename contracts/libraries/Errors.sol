@@ -19,6 +19,10 @@ library OrderBookErrors {
      */
     error MarketSizeError();
     /**
+     * @dev Thrown when available size is rounded down to zero
+     */
+    error VaultSizeZero();
+    /**
      * @dev Thrown when Kuru AMM Vault spread passed to initializer is too high or too low or is not a multiple of 10
      */
     error InvalidSpread();
@@ -26,6 +30,10 @@ library OrderBookErrors {
      * @dev Thrown when the inputted price while adding an order is invalid
      */
     error PriceError();
+    /**
+     * @dev Thrown when vault initialization price crosses the book
+     */
+    error VaultInitializationPriceCrossesBook();
     /**
      * @dev Thrown when the size inputted is invalid, i.e, < minSize or > maxSize
      */
@@ -146,6 +154,10 @@ library MarginAccountErrors {
 
 library RouterErrors {
     /**
+     * @dev Thrown when zero address is passed as a parameter
+     */
+    error ZeroAddressNotAllowed();
+    /**
      * @dev Thrown when base and quote asset addresses are the same
      */
     error BaseAndQuoteAssetSame();
@@ -189,6 +201,10 @@ library RouterErrors {
      * @dev Thrown when safe cast to uint96 fails
      */
     error Uint96Overflow();
+    /**
+     * @dev Thrown when there is no change in the implementation
+     */
+    error ImplementationNotChanged();
 }
 
 library KuruAMMVaultErrors {
@@ -200,6 +216,14 @@ library KuruAMMVaultErrors {
      * @dev Thrown when native token passed as argument and msg.value does not match
      */
     error NativeAssetMismatch();
+    /**
+     * @dev Thrown when first deposit ask price is 0
+     */
+    error AskPriceZero();
+    /**
+     * @dev Thrown when vault sizes are 0
+     */
+    error InvalidVaultSize();
     /**
      * @dev Thrown when amount of quote tokens passed is insufficient
      */
@@ -213,6 +237,10 @@ library KuruAMMVaultErrors {
      */
     error InsufficientBalance();
     /**
+     * @dev Thrown when quote used in a deposit is too low
+     */
+    error InsufficientQuoteUsed();
+    /**
      * @dev Thrown when native asset transfer fails
      */
     error NativeAssetTransferFail();
@@ -220,10 +248,6 @@ library KuruAMMVaultErrors {
      * @dev Thrown when new size exceeds partially filled size
      */
     error NewSizeExceedsPartiallyFilledSize();
-    /**
-     * @dev Thrown when vault initialization price crosses the book
-     */
-    error VaultInitializationPriceCrossesBook();
     /**
      * @dev Thrown when the amounts withdrawn are negative
      */
@@ -235,6 +259,10 @@ library KuruAMMVaultErrors {
 }
 
 library KuruForwarderErrors {
+    /**
+     * @dev Thrown when zero address is passed as a parameter
+     */
+    error ZeroAddressNotAllowed();
     /**
      * @dev Thrown when the signature does not match the request
      */

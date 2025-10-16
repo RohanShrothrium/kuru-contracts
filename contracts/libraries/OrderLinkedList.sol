@@ -45,7 +45,6 @@ library OrderLinkedList {
      */
     function updateHead(PricePoint storage point, uint40 orderId) internal {
         if (orderId == NULL) {
-            point.head = NULL;
             point.tail = NULL;
         }
 

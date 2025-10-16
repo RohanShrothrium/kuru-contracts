@@ -1,4 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
+
+//   ░█████░     ░█████▓    ███                                                       
+//   ███████    ▓███████▒   ███▒                                                      
+//   ███████   █████████▒   ███▒                                                      
+//   ███████  ██████████░   ███▒    ████  ████     ████  ▓████████ ░███░    ░███▓     
+//     ░████▒██████▒░       ███▒   ████   ████     ████  ▓████████ ▒███▒    ░███▓     
+//                          ███▒ ▒████    ████     ████  ▓████     ▒███░    ░███▓     
+//     ▓████▒███████▓       █████████     ████     ████  ▓███░     ▒███░    ░███▓     
+//   ███████  ██████████▒   █████████▒    ████     ████  ▓███      ░███▒    ░███▒     
+//   ███████   █████████▒   ███▒  ████▓   ▓███▒   ░████  ▓███       ████    ████░     
+//   ███████    ▓███████▒   ███▒   ▒████   ███████████   ▓███       ░██████████▒      
+//    ▒▓▓▓▓       ▒▓▓▓▓▒    ▓██      ███▒    ░█████░      ██▓          ▒████▒           
+
 pragma solidity ^0.8.20;
 
 // ============ Library Imports ============
@@ -313,9 +326,13 @@ abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
         }
 
         if (vaultBestAsk == type(uint256).max) {
+            uint256 _currentOBBid = _getOBBid();
+            require(_currentOBBid < _askPrice, OrderBookErrors.VaultInitializationPriceCrossesBook());
             vaultBestAsk = _askPrice;
         }
         if (vaultBestBid == 0) {
+            uint256 _currentOBAsk = _getOBAsk();
+            require(_currentOBAsk > _bidPrice, OrderBookErrors.VaultInitializationPriceCrossesBook());
             vaultBestBid = _bidPrice;
         }
         emit VaultParamsUpdated(
@@ -326,6 +343,14 @@ abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
             vaultBestAsk,
             vaultBestBid
         );
+    }
+
+    function _getVaultAskSize() internal view returns (uint96) {
+        return vaultAskOrderSize;
+    }
+
+    function _getVaultBidSize() internal view returns (uint96) {
+        return vaultBidOrderSize;
     }
 
     function toU32(uint256 _from) internal pure returns (uint32 _to) {
@@ -351,4 +376,8 @@ abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
     function _getBaseAsset() internal view virtual returns (address);
 
     function _getQuoteAsset() internal view virtual returns (address);
+
+    function _getOBBid() internal view virtual returns (uint256);
+
+    function _getOBAsk() internal view virtual returns (uint256);
 }
