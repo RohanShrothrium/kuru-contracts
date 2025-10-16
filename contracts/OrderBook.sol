@@ -209,7 +209,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Adds a flip buy order to the order book. This function will just return if it matches against the book.
      * @param _price Price of the buy order.
      * @param _flippedPrice Price of the sell order to which this order will flip on a fill
@@ -279,7 +278,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Adds a flip sell order to the order book. This function will just return if it matches against the book.
      * @param _price Price of the sell order.
      * @param _flippedPrice Price of the buy order to which this order will flip on a fill
@@ -315,7 +313,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Adds a paired liquidity order to the order book. This function will revert if the order matches against the book.
      * @param _bidPrice Price of the bid order.
      * @param _askPrice Price of the ask order.
@@ -625,7 +622,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Batch adds paired liquidity to the order book.
      * @param bidPrices Array of prices for the bid orders.
      * @param askPrices Array of prices for the ask orders.
@@ -649,7 +645,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @notice Flip orders are not eligible for maker rebates as takers pay for the flipping.
      * @dev Batch adds flip orders to the order book.
      * @param prices Array of prices for the flip orders.
      * @param flipPrices Array of prices for the flip orders.
