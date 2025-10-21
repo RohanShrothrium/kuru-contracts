@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.20;
 
 interface IKuruAMMVault {
@@ -26,12 +26,13 @@ interface IKuruAMMVault {
         address token2_,
         address _marginAccount,
         address _market,
-        uint96 _spread,
-        string memory _name,
-        string memory _symbol
+        uint96 _spread
     ) external;
 
     function setMarketParams() external;
 
-    function deposit(uint256 amount1, uint256 amount2, address receiver) external payable returns (uint256);
+    function deposit(uint256 baseDeposit, uint256 quoteDeposit, uint256 minQuoteConsumed, address receiver)
+        external
+        payable
+        returns (uint256);
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 import {IOrderBook} from "./IOrderBook.sol";
 
@@ -34,6 +34,10 @@ interface IRouter {
         uint256 makerFeeBps,
         uint96 kuruAmmSpread
     );
+
+    event OBImplementationUpdated(address previousImplementation, address newImplementation);
+
+    event VaultImplementationUpdated(address previousImplementation, address newImplementation);
 
     event KuruRouterSwap(
         address msgSender, address debitToken, address creditToken, uint256 amountIn, uint256 amountOut

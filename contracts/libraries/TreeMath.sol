@@ -19,18 +19,6 @@ library TreeMath {
     }
 
     /**
-     * @dev Returns true if the tree contains the id
-     * @param tree The tree
-     * @param id The id
-     * @return True if the tree contains the id
-     */
-    function contains(TreeUint32 storage tree, uint32 id) internal view returns (bool) {
-        bytes32 key3 = bytes32(uint256(id) >> 8);
-
-        return tree.level3[key3] & bytes32(1 << (id & type(uint8).max)) != 0;
-    }
-
-    /**
      * @dev Adds the id to the tree and returns true if the id was not already in the tree
      * It will also propagate the change to the parent levels.
      * @param tree The tree
@@ -111,11 +99,11 @@ library TreeMath {
     }
 
     /**
-     * @dev Returns the first id in the tree that is lower than or equal to the given id.
+     * @dev Returns the first id in the tree that is strictly lower than the given id.
      * It will return type(uint32).max if there is no such id.
      * @param tree The tree
      * @param id The id
-     * @return The first id in the tree that is lower than or equal to the given id
+     * @return The first id in the tree that is strictly lower than the given id
      */
     function findFirstRight(TreeUint32 storage tree, uint32 id) internal view returns (uint32) {
         bytes32 leaves;
@@ -187,11 +175,11 @@ library TreeMath {
     }
 
     /**
-     * @dev Returns the first id in the tree that is higher than or equal to the given id.
+     * @dev Returns the first id in the tree that is strictly higher than the given id.
      * It will return 0 if there is no such id.
      * @param tree The tree
      * @param id The id
-     * @return The first id in the tree that is higher than or equal to the given id
+     * @return The first id in the tree that is strictly higher than the given id
      */
     function findFirstLeft(TreeUint32 storage tree, uint32 id) internal view returns (uint32) {
         bytes32 leaves;

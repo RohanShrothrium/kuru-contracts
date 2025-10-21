@@ -1,4 +1,17 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
+
+//   ░█████░     ░█████▓    ███                                                       
+//   ███████    ▓███████▒   ███▒                                                      
+//   ███████   █████████▒   ███▒                                                      
+//   ███████  ██████████░   ███▒    ████  ████     ████  ▓████████ ░███░    ░███▓     
+//     ░████▒██████▒░       ███▒   ████   ████     ████  ▓████████ ▒███▒    ░███▓     
+//                          ███▒ ▒████    ████     ████  ▓████     ▒███░    ░███▓     
+//     ▓████▒███████▓       █████████     ████     ████  ▓███░     ▒███░    ░███▓     
+//   ███████  ██████████▒   █████████▒    ████     ████  ▓███      ░███▒    ░███▒     
+//   ███████   █████████▒   ███▒  ████▓   ▓███▒   ░████  ▓███       ████    ████░     
+//   ███████    ▓███████▒   ███▒   ▒████   ███████████   ▓███       ░██████████▒      
+//    ▒▓▓▓▓       ▒▓▓▓▓▒    ▓██      ███▒    ░█████░      ██▓          ▒████▒           
+
 pragma solidity ^0.8.20;
 
 // ============ Library Imports ============
@@ -9,26 +22,33 @@ import {OrderBookErrors} from "./libraries/Errors.sol";
 
 // ============ Internal Interfaces Imports ============
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
-
-// ============ Internal Contracts Imports ============
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
-abstract contract AbstractAMM is IOrderBook {
+// ============ External Imports ============
+import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+
+abstract contract AbstractAMM is IOrderBook, ReentrancyGuardTransient {
     uint256 constant vaultPricePrecision = 10 ** 18;
-    address kuruAmmVault;
-    uint256 vaultBestBid;
-    uint96 bidPartiallyFilledSize;
-    uint256 public vaultBestAsk;
-    uint96 askPartiallyFilledSize;
-    uint96 vaultBidOrderSize;
-    uint96 public vaultAskOrderSize;
+    uint256 constant DOUBLE_BPS_MULTIPLIER = 20000;
     uint256 constant BPS_MULTIPLIER = 10000;
-    uint96 SPREAD_CONSTANT;
+    uint256 internal vaultBestBid;
+    address public kuruAmmVault;
+    uint96 internal bidPartiallyFilledSize;
+    uint256 public vaultBestAsk;
+    uint96 internal askPartiallyFilledSize;
+    uint96 public vaultAskOrderSize;
+    uint96 internal vaultBidOrderSize;
+    uint96 public SPREAD_CONSTANT;
+    uint256[43] private __gap;
 
     modifier onlyVault() {
         if (msg.sender != kuruAmmVault) {
             revert OrderBookErrors.OnlyVaultAllowed();
         }
+        _;
+    }
+
+    modifier marketNotHardPaused() virtual {
         _;
     }
 
@@ -66,7 +86,7 @@ abstract contract AbstractAMM is IOrderBook {
         while (_price < _breakPoint && _quoteInput > 0) {
             uint256 _quoteNeededForFill = FixedPointMathLib.mulDivUp(_price, _availableSize, _getSizePrecision());
             if (_quoteNeededForFill > _quoteInput) {
-                uint96 _sizeFilledAtPrice = uint96(_quoteInput * _getSizePrecision() / _price);
+                uint96 _sizeFilledAtPrice = toU96(_quoteInput * _getSizePrecision() / _price);
                 sizeFilled += _sizeFilledAtPrice;
                 askPartiallyFilledSize += _sizeFilledAtPrice;
                 _emitTrade(0, kuruAmmVault, true, _price, _availableSize - _sizeFilledAtPrice, _sizeFilledAtPrice);
@@ -75,21 +95,33 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeFilled += _availableSize;
                 _quoteInput -= _quoteNeededForFill;
-                _cachedLastVaultSize =
-                    uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
+                _cachedLastVaultSize = toU96(
+                    FixedPointMathLib.mulDiv(
+                        _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
+                    )
+                );
                 _emitTrade(0, kuruAmmVault, true, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
-                _price = FixedPointMathLib.mulDivRound(_price, 1000 + SPREAD_CONSTANT, 1000);
-                _cachedPartiallyFilledBid =
-                    uint96(FixedPointMathLib.mulDiv(_cachedPartiallyFilledBid, 1000, 1000 + SPREAD_CONSTANT));
+                _price = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER + SPREAD_CONSTANT, BPS_MULTIPLIER);
+                _cachedPartiallyFilledBid = toU96(
+                    FixedPointMathLib.mulDiv(
+                        _cachedPartiallyFilledBid, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT
+                    )
+                );
             }
         }
-        vaultBestAsk = _price;
-        vaultBestBid = FixedPointMathLib.mulDivRound(_price, 1000, 1000 + SPREAD_CONSTANT);
+        if (_price != vaultBestAsk) {
+            vaultBestAsk = _price;
+            vaultBestBid = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
+            vaultAskOrderSize = _cachedLastVaultSize;
+            vaultBidOrderSize = toU96(
+                FixedPointMathLib.mulDiv(
+                    _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
+                )
+            );
+        }
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
-        vaultAskOrderSize = _cachedLastVaultSize;
-        vaultBidOrderSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
-        quoteLeft = uint96(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
+        quoteLeft = toU96(FixedPointMathLib.mulDiv(_quoteInput, _getPricePrecision(), vaultPricePrecision));
         makerCredits =
             _creditVaultOnMarketBuy(sizeFilled, (_quoteSize * vaultPricePrecision / _getPricePrecision() - _quoteInput));
     }
@@ -127,21 +159,33 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeLeft -= _availableSize;
                 _consumedQuote += FixedPointMathLib.mulDivUp(_availableSize, _price, _getSizePrecision());
-                _cachedLastVaultSize =
-                    uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
+                _cachedLastVaultSize = toU96(
+                    FixedPointMathLib.mulDiv(
+                        _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
+                    )
+                );
                 _emitTrade(0, kuruAmmVault, true, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
-                _price = FixedPointMathLib.mulDivRound(_price, 1000 + SPREAD_CONSTANT, 1000);
-                _cachedPartiallyFilledBid =
-                    uint96(FixedPointMathLib.mulDiv(_cachedPartiallyFilledBid, 1000, 1000 + SPREAD_CONSTANT));
+                _price = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER + SPREAD_CONSTANT, BPS_MULTIPLIER);
+                _cachedPartiallyFilledBid = toU96(
+                    FixedPointMathLib.mulDiv(
+                        _cachedPartiallyFilledBid, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT
+                    )
+                );
             }
         }
-        vaultBestAsk = _price;
-        vaultBestBid = FixedPointMathLib.mulDivRound(_price, 1000, 1000 + SPREAD_CONSTANT);
+        if (_price != vaultBestAsk) {
+            vaultBestAsk = _price;
+            vaultBestBid = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
+            vaultAskOrderSize = _cachedLastVaultSize;
+            vaultBidOrderSize = toU96(
+                FixedPointMathLib.mulDiv(
+                    _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
+                )
+            );
+        }
         bidPartiallyFilledSize = _cachedPartiallyFilledBid;
-        vaultAskOrderSize = _cachedLastVaultSize;
-        vaultBidOrderSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
-        fundsConsumed = uint96(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
+        fundsConsumed = toU96(FixedPointMathLib.mulDivUp(_consumedQuote, _getPricePrecision(), vaultPricePrecision));
         makerCredits = _creditVaultOnMarketBuy(_size - sizeLeft, _consumedQuote);
     }
 
@@ -161,7 +205,7 @@ abstract contract AbstractAMM is IOrderBook {
         uint96 _availableSize = vaultBidOrderSize - bidPartiallyFilledSize;
         uint96 _cachedLastVaultSize = vaultBidOrderSize;
         sizeLeft = _size;
-        if (sizeLeft > _availableSize) {
+        if (sizeLeft >= _availableSize) {
             bidPartiallyFilledSize = 0;
         }
 
@@ -175,17 +219,26 @@ abstract contract AbstractAMM is IOrderBook {
             } else {
                 sizeLeft -= _availableSize;
                 quoteOwedToUser += FixedPointMathLib.mulDiv(_price, _availableSize, _getSizePrecision());
-                _cachedLastVaultSize =
-                    uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000 + SPREAD_CONSTANT, 2000));
+                _cachedLastVaultSize = toU96(
+                    FixedPointMathLib.mulDiv(
+                        _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT, DOUBLE_BPS_MULTIPLIER
+                    )
+                );
                 _emitTrade(0, kuruAmmVault, false, _price, 0, _availableSize);
                 _availableSize = _cachedLastVaultSize;
-                _price = FixedPointMathLib.mulDivRound(_price, 1000, 1000 + SPREAD_CONSTANT);
+                _price = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER, BPS_MULTIPLIER + SPREAD_CONSTANT);
             }
         }
-        vaultBestBid = _price;
-        vaultBestAsk = FixedPointMathLib.mulDivRound(_price, 1000 + SPREAD_CONSTANT, 1000);
-        vaultBidOrderSize = _cachedLastVaultSize;
-        vaultAskOrderSize = uint96(FixedPointMathLib.mulDiv(_cachedLastVaultSize, 2000, 2000 + SPREAD_CONSTANT));
+        if (_price != vaultBestBid) {
+            vaultBestBid = _price;
+            vaultBestAsk = FixedPointMathLib.mulDivRound(_price, BPS_MULTIPLIER + SPREAD_CONSTANT, BPS_MULTIPLIER);
+            vaultBidOrderSize = _cachedLastVaultSize;
+            vaultAskOrderSize = toU96(
+                FixedPointMathLib.mulDiv(
+                    _cachedLastVaultSize, DOUBLE_BPS_MULTIPLIER, DOUBLE_BPS_MULTIPLIER + SPREAD_CONSTANT
+                )
+            );
+        }
         makerCredits = _creditVaultOnMarketSell(_size - sizeLeft, quoteOwedToUser);
     }
 
@@ -206,7 +259,7 @@ abstract contract AbstractAMM is IOrderBook {
         uint256 feeRebate =
             ((_sizeFilled * 10 ** _getBaseAssetDecimals() / _getSizePrecision()) * _getMakerFeeBps()) / BPS_MULTIPLIER;
         if (feeRebate > 0) {
-            bytes.concat(returnData, abi.encode(kuruAmmVault, _getBaseAsset(), feeRebate, true));
+            returnData = bytes.concat(returnData, abi.encode(kuruAmmVault, _getBaseAsset(), feeRebate, true));
         }
     }
 
@@ -228,7 +281,7 @@ abstract contract AbstractAMM is IOrderBook {
             (_fundsOwedToUser * 10 ** _getQuoteAssetDecimals() / vaultPricePrecision) * _getMakerFeeBps()
         ) / BPS_MULTIPLIER;
         if (feeRebate > 0) {
-            bytes.concat(returnData, abi.encode(kuruAmmVault, _getQuoteAsset(), feeRebate, true));
+            returnData = bytes.concat(returnData, abi.encode(kuruAmmVault, _getQuoteAsset(), feeRebate, true));
         }
     }
 
@@ -245,32 +298,67 @@ abstract contract AbstractAMM is IOrderBook {
             askPartiallyFilledSize,
             vaultBidOrderSize,
             vaultAskOrderSize,
-            SPREAD_CONSTANT * 10
+            SPREAD_CONSTANT
         );
     }
+    /**
+     * @notice Updates the vault order sizes and prices when a user deposits or withdraws
+     * @param _vaultAskOrderSize The new ask order size
+     * @param _vaultBidOrderSize The new bid order size
+     * @param _askPrice The new ask price. Note: Only updated on the first deposit
+     * @param _bidPrice The new bid price. Note: Only updated on the first deposit
+     * @param _nullifyPartialFills Whether to nullify partial fills. Only done during specific withdrawals
+     */
 
     function updateVaultOrdSz(
         uint96 _vaultAskOrderSize,
-        uint96 _vaultAskPartiallyFilledSize,
         uint96 _vaultBidOrderSize,
-        uint96 _vaultBidPartiallyFilledSize,
         uint256 _askPrice,
-        uint256 _bidPrice
-    ) external onlyVault {
+        uint256 _bidPrice,
+        bool _nullifyPartialFills
+    ) external onlyVault nonReentrant marketNotHardPaused {
         vaultBidOrderSize = _vaultBidOrderSize;
         vaultAskOrderSize = _vaultAskOrderSize;
-        if (_vaultAskPartiallyFilledSize == 0) {
+
+        if (_nullifyPartialFills) {
             askPartiallyFilledSize = 0;
-        }
-        if (_vaultBidPartiallyFilledSize == 0) {
             bidPartiallyFilledSize = 0;
         }
+
         if (vaultBestAsk == type(uint256).max) {
+            uint256 _currentOBBid = _getOBBid();
+            require(_currentOBBid < _askPrice, OrderBookErrors.VaultInitializationPriceCrossesBook());
             vaultBestAsk = _askPrice;
         }
         if (vaultBestBid == 0) {
+            uint256 _currentOBAsk = _getOBAsk();
+            require(_currentOBAsk > _bidPrice, OrderBookErrors.VaultInitializationPriceCrossesBook());
             vaultBestBid = _bidPrice;
         }
+        emit VaultParamsUpdated(
+            _vaultAskOrderSize,
+            askPartiallyFilledSize,
+            _vaultBidOrderSize,
+            bidPartiallyFilledSize,
+            vaultBestAsk,
+            vaultBestBid
+        );
+    }
+
+    function _getVaultAskSize() internal view returns (uint96) {
+        return vaultAskOrderSize;
+    }
+
+    function _getVaultBidSize() internal view returns (uint96) {
+        return vaultBidOrderSize;
+    }
+
+    function toU32(uint256 _from) internal pure returns (uint32 _to) {
+        require((_to = uint32(_from)) == _from, OrderBookErrors.Uint32Overflow());
+    }
+
+    function toU96(uint256 _from) internal pure returns (uint96 _to) {
+        require((_to = uint96(_from)) == _from, OrderBookErrors.Uint96Overflow());
     }
 
     function _getPricePrecision() internal view virtual returns (uint32);
@@ -288,4 +376,8 @@ abstract contract AbstractAMM is IOrderBook {
     function _getBaseAsset() internal view virtual returns (address);
 
     function _getQuoteAsset() internal view virtual returns (address);
+
+    function _getOBBid() internal view virtual returns (uint256);
+
+    function _getOBAsk() internal view virtual returns (uint256);
 }

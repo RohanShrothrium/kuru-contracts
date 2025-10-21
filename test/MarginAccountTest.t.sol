@@ -38,7 +38,7 @@ contract OrderBookTest is Test {
 
         marginAccount = new MarginAccount();
         marginAccount = MarginAccount(payable(address(new ERC1967Proxy(address(marginAccount), ""))));
-        marginAccount.initialize(address(this), address(this), address(0), address(0));
+        marginAccount.initialize(address(this), address(this), address(this), address(this));
 
         eth.mint(user1, initEth);
         usdc.mint(user2, initUsdc);
@@ -88,7 +88,7 @@ contract OrderBookTest is Test {
             vm.stopPrank();
         }
         vm.prank(derived);
-        marginAccount.batchClaimMaxTokens(_tokens);
+        marginAccount.batchWithdrawMaxTokens(_tokens);
         for (uint256 i = 0; i < _amounts.length; i++) {
             assert(ERC20(_tokens[i]).balanceOf(derived) == _amounts[i]);
             assert(marginAccount.getBalance(derived, _tokens[i]) == 0);

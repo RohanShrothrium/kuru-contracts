@@ -1,8 +1,21 @@
-//SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: BUSL-1.1
+
+//   ░█████░     ░█████▓    ███                                                       
+//   ███████    ▓███████▒   ███▒                                                      
+//   ███████   █████████▒   ███▒                                                      
+//   ███████  ██████████░   ███▒    ████  ████     ████  ▓████████ ░███░    ░███▓     
+//     ░████▒██████▒░       ███▒   ████   ████     ████  ▓████████ ▒███▒    ░███▓     
+//                          ███▒ ▒████    ████     ████  ▓████     ▒███░    ░███▓     
+//     ▓████▒███████▓       █████████     ████     ████  ▓███░     ▒███░    ░███▓     
+//   ███████  ██████████▒   █████████▒    ████     ████  ▓███      ░███▒    ░███▒     
+//   ███████   █████████▒   ███▒  ████▓   ▓███▒   ░████  ▓███       ████    ████░     
+//   ███████    ▓███████▒   ███▒   ▒████   ███████████   ▓███       ░██████████▒      
+//    ▒▓▓▓▓       ▒▓▓▓▓▒    ▓██      ███▒    ░█████░      ██▓          ▒████▒           
+                                                                                       
 pragma solidity ^0.8.20;
 
 import {IOrderBook} from "../interfaces/IOrderBook.sol";
-import {IReadERC20} from "../interfaces/IReadERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IMarginAccount} from "../interfaces/IMarginAccount.sol";
 
 /// @title A periphery contract for Kuru
@@ -15,7 +28,7 @@ contract KuruUtils {
         uint256 totalSupply;
     }
 
-    function calculatePriceOverRoute(address[] memory route, bool[] memory isBuy) public view returns (uint256) {
+    function calculatePriceOverRoute(address[] memory route, bool[] memory isBuy) external view returns (uint256) {
         uint256 price = 10 ** 18;
         for (uint256 i = 0; i < route.length; i++) {
             if (isBuy[i]) {
@@ -45,15 +58,15 @@ contract KuruUtils {
     function getTokensInfo(address[] memory tokens, address holder) public view returns (TokenInfo[] memory) {
         TokenInfo[] memory info = new TokenInfo[](tokens.length);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            IReadERC20 token = IReadERC20(tokens[i]);
+        for (uint256 i; i < tokens.length; i++) {
+            IERC20Metadata token = IERC20Metadata(tokens[i]);
 
             // Default empty values
             string memory name = "";
             string memory symbol = "";
-            uint256 balance = 0;
-            uint8 decimals = 0;
-            uint256 totalSupply = 0;
+            uint256 balance;
+            uint8 decimals;
+            uint256 totalSupply;
 
             // Try to get name
             try token.name() returns (string memory _name) {

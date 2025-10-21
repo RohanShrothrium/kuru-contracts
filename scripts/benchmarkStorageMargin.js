@@ -5,7 +5,7 @@ const fs = require("fs");
 async function main() {
     const [user, taker] = await hre.ethers.getSigners();
 
-    const usdcContract = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", config.usdcAddress);
+    const usdcContract = await hre.ethers.getContractAt("IERC20Metadata", config.usdcAddress);
     var tx = await usdcContract.approve(
         config.marginAccountAddress,
         hre.ethers.utils.parseEther("10000"),
@@ -20,7 +20,7 @@ async function main() {
     );
     await tx.wait();
 
-    const wbtcContract = await hre.ethers.getContractAt("contracts/libraries/IERC20.sol:IERC20", config.wbtcAddress, taker);
+    const wbtcContract = await hre.ethers.getContractAt("IERC20Metadata", config.wbtcAddress, taker);
 
     var tx = await wbtcContract.approve(
         config.cranklessOrderBookAddress,

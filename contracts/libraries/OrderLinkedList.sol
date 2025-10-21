@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.10;
 
 /**
@@ -39,38 +39,15 @@ library OrderLinkedList {
     }
 
     /**
-     * @notice Deletes one or multiple orders from the tail.
-     * @param point The price point.
-     * @param orderId The new orderId that has to be set as the tail.
-     */
-    function updateTail(PricePoint storage point, uint40 orderId) internal returns (bool) {
-        if (orderId == NULL) {
-            point.head = NULL;
-            point.tail = NULL;
-
-            return true;
-        }
-
-        point.tail = orderId;
-
-        return false;
-    }
-
-    /**
      * @notice Deletes one or multiple orders from the head.
      * @param point The price point.
      * @param orderId The new orderId that has to be set as the head.
      */
-    function updateHead(PricePoint storage point, uint40 orderId) internal returns (bool) {
+    function updateHead(PricePoint storage point, uint40 orderId) internal {
         if (orderId == NULL) {
-            point.head = NULL;
             point.tail = NULL;
-
-            return true;
         }
 
         point.head = orderId;
-
-        return false;
     }
 }

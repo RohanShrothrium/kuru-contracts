@@ -1,7 +1,18 @@
-//SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: BUSL-1.1
 
+//   ░█████░     ░█████▓    ███                                                       
+//   ███████    ▓███████▒   ███▒                                                      
+//   ███████   █████████▒   ███▒                                                      
+//   ███████  ██████████░   ███▒    ████  ████     ████  ▓████████ ░███░    ░███▓     
+//     ░████▒██████▒░       ███▒   ████   ████     ████  ▓████████ ▒███▒    ░███▓     
+//                          ███▒ ▒████    ████     ████  ▓████     ▒███░    ░███▓     
+//     ▓████▒███████▓       █████████     ████     ████  ▓███░     ▒███░    ░███▓     
+//   ███████  ██████████▒   █████████▒    ████     ████  ▓███      ░███▒    ░███▒     
+//   ███████   █████████▒   ███▒  ████▓   ▓███▒   ░████  ▓███       ████    ████░     
+//   ███████    ▓███████▒   ███▒   ▒████   ███████████   ▓███       ░██████████▒      
+//    ▒▓▓▓▓       ▒▓▓▓▓▒    ▓██      ███▒    ░█████░      ██▓          ▒████▒           
+                                                                                       
 pragma solidity ^0.8.20;
-
 
 // ============ External Imports ============
 import {ECDSA} from "solady/src/utils/ECDSA.sol";
@@ -18,7 +29,8 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     using ECDSA for bytes32;
 
     error ExecutionFailed(bytes);
-    error Price(uint256, uint256);
+    error PriceDependentRequestFailed(uint256 _currentPrice, uint256 _breakpointPrice);
+    error DeadlineExpired();
 
     mapping(bytes4 => bool) public allowedInterface;
     mapping(bytes32 => bool) public executedPriceDependentRequest;
@@ -28,6 +40,8 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         address market;
         uint256 value;
         uint256 nonce;
+        uint256 deadline;
+        bytes4 selector;
         bytes data;
     }
 
@@ -37,13 +51,16 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         uint256 price;
         uint256 value;
         uint256 nonce;
+        uint256 deadline;
         bool isBelowPrice;
+        bytes4 selector;
         bytes data;
     }
 
     struct CancelPriceDependentRequest {
         address from;
         uint256 nonce;
+        uint256 deadline;
     }
 
     struct MarginAccountRequest {
@@ -51,21 +68,25 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         address marginAccount;
         uint256 value;
         uint256 nonce;
+        uint256 deadline;
+        bytes4 selector;
         bytes data;
     }
 
-    bytes32 private constant _TYPEHASH =
-        keccak256("ForwardRequest(address from,address market,uint256 value,uint256 nonce,bytes data)");
+    bytes32 private constant _FORWARD_TYPEHASH = keccak256(
+        "ForwardRequest(address from,address market,uint256 value,uint256 nonce,uint256 deadline,bytes4 selector,bytes data)"
+    );
 
     bytes32 private constant _PRICE_DEPENDENT_TYPEHASH = keccak256(
-        "PriceDependentRequest(address from,address market,uint256 price,uint256 value,uint256 nonce,bool isBelowPrice,bytes data)"
+        "PriceDependentRequest(address from,address market,uint256 price,uint256 value,uint256 nonce,uint256 deadline,bool isBelowPrice,bytes4 selector,bytes data)"
     );
 
     bytes32 private constant _CANCEL_PRICE_DEPENDENT_TYPEHASH =
-        keccak256("CancelPriceDependentRequest(address from,uint256 nonce)");
+        keccak256("CancelPriceDependentRequest(address from,uint256 nonce,uint256 deadline)");
 
-    bytes32 private constant _MARGIN_ACCOUNT_REQUEST_TYPEHASH =
-        keccak256("MarginAccountRequest(address from,address marginAccount,uint256 value,uint256 nonce,bytes data)");
+    bytes32 private constant _MARGIN_ACCOUNT_REQUEST_TYPEHASH = keccak256(
+        "MarginAccountRequest(address from,address marginAccount,uint256 value,uint256 nonce,uint256 deadline,bytes4 selector,bytes data)"
+    );
 
     mapping(address => uint256) private _nonces;
 
@@ -85,10 +106,29 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     // ============ initializer =================
 
     function initialize(address _owner, bytes4[] memory _allowedInterfaces) public initializer {
+        require(_owner != address(0), KuruForwarderErrors.ZeroAddressNotAllowed());
         _initializeOwner(_owner);
         for (uint256 i = 0; i < _allowedInterfaces.length; i++) {
             allowedInterface[_allowedInterfaces[i]] = true;
         }
+    }
+
+    // ============ owner functions =============
+
+    function setAllowedInterfaces(bytes4[] memory _allowedInterfaces) external onlyOwner {
+        for (uint256 i = 0; i < _allowedInterfaces.length; i++) {
+            allowedInterface[_allowedInterfaces[i]] = true;
+        }
+    }
+
+    function removeAllowedInterfaces(bytes4[] memory _allowedInterfaces) external onlyOwner {
+        for (uint256 i = 0; i < _allowedInterfaces.length; i++) {
+            allowedInterface[_allowedInterfaces[i]] = false;
+        }
+    }
+
+    function _domainNameAndVersionMayChange() internal pure override returns (bool result) {
+        return true;
     }
 
     function _domainNameAndVersion() internal pure override returns (string memory name, string memory version) {
@@ -101,9 +141,21 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     }
 
     function verify(ForwardRequest calldata req, bytes calldata signature) public view returns (bool) {
+        require(block.timestamp <= req.deadline, DeadlineExpired());
         address signer = _hashTypedData(
-            keccak256(abi.encode(_TYPEHASH, req.from, req.market, req.value, req.nonce, keccak256(req.data)))
-        ).recover(signature);
+            keccak256(
+                abi.encode(
+                    _FORWARD_TYPEHASH,
+                    req.from,
+                    req.market,
+                    req.value,
+                    req.nonce,
+                    req.deadline,
+                    req.selector,
+                    keccak256(req.data)
+                )
+            )
+        ).recoverCalldata(signature);
         return req.nonce >= _nonces[req.from] && signer == req.from;
     }
 
@@ -114,6 +166,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         view
         returns (bool)
     {
+        require(block.timestamp <= req.deadline, DeadlineExpired());
         address signer = _hashTypedData(
             keccak256(
                 abi.encode(
@@ -123,11 +176,13 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
                     req.price,
                     req.value,
                     req.nonce,
+                    req.deadline,
                     req.isBelowPrice,
+                    req.selector,
                     keccak256(req.data)
                 )
             )
-        ).recover(signature);
+        ).recoverCalldata(signature);
         require(
             !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))],
             KuruForwarderErrors.NonceAlreadyUsed()
@@ -140,8 +195,10 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         view
         returns (bool)
     {
-        address signer = _hashTypedData(keccak256(abi.encode(_CANCEL_PRICE_DEPENDENT_TYPEHASH, req.from, req.nonce)))
-            .recover(signature);
+        require(block.timestamp <= req.deadline, DeadlineExpired());
+        address signer = _hashTypedData(
+            keccak256(abi.encode(_CANCEL_PRICE_DEPENDENT_TYPEHASH, req.from, req.nonce, req.deadline))
+        ).recoverCalldata(signature);
         require(
             !executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))],
             KuruForwarderErrors.NonceAlreadyUsed()
@@ -154,6 +211,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         view
         returns (bool)
     {
+        require(block.timestamp <= req.deadline, DeadlineExpired());
         address signer = _hashTypedData(
             keccak256(
                 abi.encode(
@@ -162,81 +220,76 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
                     req.marginAccount,
                     req.value,
                     req.nonce,
+                    req.deadline,
+                    req.selector,
                     keccak256(req.data)
                 )
             )
-        ).recover(signature);
+        ).recoverCalldata(signature);
         return req.nonce >= _nonces[req.from] && signer == req.from;
     }
 
     function executeMarginAccountRequest(MarginAccountRequest calldata req, bytes calldata signature)
         public
         payable
-        returns (bool, bytes memory)
+        returns (bytes memory)
     {
         require(verifyMarginAccountRequest(req, signature), KuruForwarderErrors.SignatureMismatch());
-
-        bytes4 selector = bytes4(req.data[:4]);
-        require(allowedInterface[selector], KuruForwarderErrors.InterfaceNotAllowed());
+        require(msg.value >= req.value, KuruForwarderErrors.InsufficientValue());
+        require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
 
         _nonces[req.from] = req.nonce + 1;
 
         (bool success, bytes memory returndata) =
-            req.marginAccount.call{gas: 63 * gasleft() / 64, value: req.value}(abi.encodePacked(req.data, req.from));
+            req.marginAccount.call{value: req.value}(abi.encodePacked(req.selector, req.data, req.from));
 
         if (!success) {
             revert ExecutionFailed(returndata);
         }
 
-        return (success, returndata);
+        return returndata;
     }
 
-    function execute(ForwardRequest calldata req, bytes calldata signature)
-        public
-        payable
-        returns (bool, bytes memory)
-    {
+    function execute(ForwardRequest calldata req, bytes calldata signature) public payable returns (bytes memory) {
         require(verify(req, signature), KuruForwarderErrors.SignatureMismatch());
-
-        bytes4 selector = bytes4(req.data[:4]);
-        require(allowedInterface[selector], KuruForwarderErrors.InterfaceNotAllowed());
+        require(msg.value >= req.value, KuruForwarderErrors.InsufficientValue());
+        require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
 
         _nonces[req.from] = req.nonce + 1;
 
         (bool success, bytes memory returndata) =
-            req.market.call{gas: 63 * gasleft() / 64, value: req.value}(abi.encodePacked(req.data, req.from));
+            req.market.call{value: req.value}(abi.encodePacked(req.selector, req.data, req.from));
 
         if (!success) {
             revert ExecutionFailed(returndata);
         }
 
-        return (success, returndata);
+        return returndata;
     }
 
     function executePriceDependent(PriceDependentRequest calldata req, bytes calldata signature)
         public
         payable
-        returns (bool, bytes memory)
+        returns (bytes memory)
     {
         require(verifyPriceDependent(req, signature), KuruForwarderErrors.SignatureMismatch());
-
-        bytes4 selector = bytes4(req.data[:4]);
-        require(allowedInterface[selector], KuruForwarderErrors.InterfaceNotAllowed());
+        require(msg.value >= req.value, KuruForwarderErrors.InsufficientValue());
+        require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
         executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))] = true;
 
         (uint256 _currentBidPrice,) = IOrderBook(req.market).bestBidAsk();
         require(
-            (req.isBelowPrice && req.price < _currentBidPrice) || (!req.isBelowPrice && req.price > _currentBidPrice),
-            Price(_currentBidPrice, req.price)
+            (req.isBelowPrice && req.price <= _currentBidPrice) || (!req.isBelowPrice && req.price >= _currentBidPrice),
+            PriceDependentRequestFailed(_currentBidPrice, req.price)
         );
         (bool success, bytes memory returndata) =
-            req.market.call{gas: 63 * gasleft() / 64, value: req.value}(abi.encodePacked(req.data, req.from));
+            req.market.call{value: req.value}(abi.encodePacked(req.selector, req.data, req.from));
 
         if (!success) {
             revert ExecutionFailed(returndata);
         }
 
-        return (success, returndata);
+        return returndata;
     }
 
     function cancelPriceDependent(CancelPriceDependentRequest calldata req, bytes calldata signature) public {

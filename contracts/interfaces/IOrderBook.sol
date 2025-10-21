@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 pragma solidity ^0.8.20;
 
@@ -7,6 +7,18 @@ interface IOrderBook {
         NO_NATIVE,
         NATIVE_IN_BASE,
         NATIVE_IN_QUOTE
+    }
+
+    enum OrderStatus {
+        ACTIVE,
+        FILLED,
+        CANCELED
+    }
+
+    enum MarketState {
+        ACTIVE,
+        SOFT_PAUSED,
+        HARD_PAUSED
     }
 
     struct Order {
@@ -19,6 +31,8 @@ interface IOrderBook {
         uint32 flippedPrice;
         bool isBuy;
     }
+
+    event MarketStateUpdated(MarketState previousState, MarketState newState);
 
     /**
      * @dev Emitted when a new order is created.
@@ -84,6 +98,24 @@ interface IOrderBook {
     event OrderCanceled(uint40 orderId, address owner, uint32 price, uint96 size, bool isBuy);
 
     /**
+     * @dev Emitted when the vault params are updated
+     * @param _vaultAskOrderSize Size of the vault ask order
+     * @param _vaultAskPartiallyFilledSize Size of the vault ask partially filled order
+     * @param _vaultBidOrderSize Size of the vault bid order
+     * @param _vaultBidPartiallyFilledSize Size of the vault bid partially filled order
+     * @param _askPrice The vault best ask price
+     * @param _bidPrice The vault best bid price
+     */
+    event VaultParamsUpdated(
+        uint96 _vaultAskOrderSize,
+        uint96 _vaultAskPartiallyFilledSize,
+        uint96 _vaultBidOrderSize,
+        uint96 _vaultBidPartiallyFilledSize,
+        uint256 _askPrice,
+        uint256 _bidPrice
+    );
+
+    /**
      *
      * @dev Emitted when a trade goes through.
      * @param orderId Order Id of the order that was filled.
@@ -123,7 +155,7 @@ interface IOrderBook {
         address __trustedForwarder
     ) external;
 
-    function toggleMarkets(bool _state) external;
+    function toggleMarket(MarketState _state) external;
 
     function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) external;
 
@@ -146,10 +178,6 @@ interface IOrderBook {
         bool postOnly
     ) external;
 
-    function placeMultipleBuyOrders(uint32[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
-
-    function placeMultipleSellOrders(uint32[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
-
     function placeAndExecuteMarketBuy(uint96 _quoteAmount, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         external
         payable
@@ -163,12 +191,11 @@ interface IOrderBook {
     function bestBidAsk() external view returns (uint256, uint256);
 
     function updateVaultOrdSz(
-        uint96 _askSize,
-        uint96 _askSizePartiallyFilled,
-        uint96 _bidSize,
-        uint96 _bidSizePartiallyFilled,
+        uint96 _vaultAskOrderSize,
+        uint96 _vaultBidOrderSize,
         uint256 _askPrice,
-        uint256 _bidPrice
+        uint256 _bidPrice,
+        bool _nullifyPartialFills
     ) external;
 
     function getMarketParams()

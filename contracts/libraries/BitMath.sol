@@ -9,7 +9,7 @@ pragma solidity ^0.8.10;
  */
 library BitMath {
     /**
-     * @dev Returns the index of the closest bit on the right of x that is non null
+     * @dev Returns the index of the closest bit on the right of x that is non null inclusive of the bit
      * @param x The value as a uint256
      * @param bit The index of the bit to start searching at
      * @return id The index of the closest non null bit on the right of x.
@@ -20,13 +20,13 @@ library BitMath {
             uint256 shift = 255 - bit;
             x <<= shift;
 
-            // can't overflow as it's non-zero and we shifted it by `_shift`
+            // can't underflow as it's non-zero and we shifted it by `_shift`
             return (x == 0) ? type(uint256).max : mostSignificantBit(x) - shift;
         }
     }
 
     /**
-     * @dev Returns the index of the closest bit on the left of x that is non null
+     * @dev Returns the index of the closest bit on the left of x that is non null inclusive of the bit
      * @param x The value as a uint256
      * @param bit The index of the bit to start searching at
      * @return id The index of the closest non null bit on the left of x.

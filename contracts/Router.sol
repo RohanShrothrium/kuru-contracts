@@ -1,37 +1,48 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
+
+//   ░█████░     ░█████▓    ███                                                       
+//   ███████    ▓███████▒   ███▒                                                      
+//   ███████   █████████▒   ███▒                                                      
+//   ███████  ██████████░   ███▒    ████  ████     ████  ▓████████ ░███░    ░███▓     
+//     ░████▒██████▒░       ███▒   ████   ████     ████  ▓████████ ▒███▒    ░███▓     
+//                          ███▒ ▒████    ████     ████  ▓████     ▒███░    ░███▓     
+//     ▓████▒███████▓       █████████     ████     ████  ▓███░     ▒███░    ░███▓     
+//   ███████  ██████████▒   █████████▒    ████     ████  ▓███      ░███▒    ░███▒     
+//   ███████   █████████▒   ███▒  ████▓   ▓███▒   ░████  ▓███       ████    ████░     
+//   ███████    ▓███████▒   ███▒   ▒████   ███████████   ▓███       ░██████████▒      
+//    ▒▓▓▓▓       ▒▓▓▓▓▒    ▓██      ███▒    ░█████░      ██▓          ▒████▒           
+                                                                                       
 pragma solidity ^0.8.20;
 
 // ============ Internal Interface Imports ============
 import {IOrderBook} from "./interfaces/IOrderBook.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
-import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
-
-// ============ Internal Library Imports ============
-import {IERC20} from "./libraries/IERC20.sol";
-import {RouterErrors} from "./libraries/Errors.sol";
 import {IKuruAMMVault} from "./interfaces/IKuruAMMVault.sol";
 
+// ============ Internal Library Imports ============
+import {RouterErrors} from "./libraries/Errors.sol";
+
 // ============ External Imports ============
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {Ownable} from "solady/src/auth/Ownable.sol";
 import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
 contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     using SafeTransferLib for address;
-    // Mapping of hash of token pairs to their market contract addresses
 
     mapping(address => MarketParams) public verifiedMarket;
 
-    // used to create base/native and native/quote markets
     address private constant NATIVE = 0x0000000000000000000000000000000000000000;
-    address private TRUSTED_FORWARDER;
-    address orderBookImplementation;
-    address marginAccountAddress;
-    address kuruAmmVaultImplementation;
+    address public TRUSTED_FORWARDER;
+    address public orderBookImplementation;
+    address public marginAccountAddress;
+    address public kuruAmmVaultImplementation;
 
     constructor() {
         _disableInitializers();
@@ -39,14 +50,26 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
 
     /**
      * @param _owner The owner of the contract.
+     * @param _marginAccount The address of the margin account
+     * @param _orderbookImplementation The address of the orderbook implementation
+     * @param _kuruAmmVaultImplementation The address of the kuru amm vault implementation
+     * @param _trustedForwarder The address of the trusted forwarder
      */
-    function initialize(address _owner, address _marginAccount, address _implementation, address _kuruAmmVaultImplementation, address _trustedForwarder)
-        public
-        initializer
-    {
+    function initialize(
+        address _owner,
+        address _marginAccount,
+        address _orderbookImplementation,
+        address _kuruAmmVaultImplementation,
+        address _trustedForwarder
+    ) public initializer {
+        require(
+            _owner != address(0) && _marginAccount != address(0) && _orderbookImplementation != address(0)
+                && _kuruAmmVaultImplementation != address(0) && _trustedForwarder != address(0),
+            RouterErrors.ZeroAddressNotAllowed()
+        );
         _initializeOwner(_owner);
         marginAccountAddress = _marginAccount;
-        orderBookImplementation = _implementation;
+        orderBookImplementation = _orderbookImplementation;
         kuruAmmVaultImplementation = _kuruAmmVaultImplementation;
         TRUSTED_FORWARDER = _trustedForwarder;
     }
@@ -61,8 +84,10 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param _tickSize The tick size of the price
      * @param _minSize The minimum size an order must have to be placed
      * @param _maxSize The maximum size an order can have to be placed
-     * @param _takerFeeBps The taker fee in bips per second.
-     * @param _makerFeeBps The maker fee in bips per second. The maker fee must be lower than the taker fee.
+     * @param _takerFeeBps The taker fee in basis points
+     * @param _makerFeeBps The maker fee in basis points. The maker fee must be lower than the taker fee.
+     * @param _kuruAmmSpread The spread in basis points for the kuru amm vault
+     * @return proxy The address of the deployed proxy
      */
     function deployProxy(
         IOrderBook.OrderBookType _type,
@@ -77,40 +102,28 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint256 _makerFeeBps,
         uint96 _kuruAmmSpread
     ) public returns (address proxy) {
-        require(_baseAssetAddress != _quoteAssetAddress, RouterErrors.BaseAndQuoteAssetSame());
+        if (_type == IOrderBook.OrderBookType.NATIVE_IN_BASE) {
+            require(_baseAssetAddress == address(0), RouterErrors.MarketTypeMismatch());
+            require(_quoteAssetAddress != address(0), RouterErrors.MarketTypeMismatch());
+        } else if (_type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE) {
+            require(_baseAssetAddress != address(0), RouterErrors.MarketTypeMismatch());
+            require(_quoteAssetAddress == address(0), RouterErrors.MarketTypeMismatch());
+        } else {
+            require(_baseAssetAddress != address(0), RouterErrors.MarketTypeMismatch());
+            require(_quoteAssetAddress != address(0), RouterErrors.MarketTypeMismatch());
+            require(_baseAssetAddress != _quoteAssetAddress, RouterErrors.BaseAndQuoteAssetSame());
+        }
+        require(_tickSize > 0, RouterErrors.InvalidTickSize());
+        require(10 ** Math.log10(_sizePrecision) == _sizePrecision, RouterErrors.InvalidSizePrecision());
+        require(10 ** Math.log10(_pricePrecision) == _pricePrecision, RouterErrors.InvalidPricePrecision());
+        uint256 _baseAssetDecimals =
+            _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20Metadata(_baseAssetAddress).decimals();
+        uint256 _quoteAssetDecimals =
+            _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20Metadata(_quoteAssetAddress).decimals();
         {
             bytes32 _salt = _getSalt(
-                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? NATIVE : _baseAssetAddress,
-                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? NATIVE : _quoteAssetAddress,
-                _sizePrecision,
-                _pricePrecision,
-                _tickSize,
-                _minSize,
-                _maxSize,
-                _takerFeeBps,
-                _makerFeeBps
-            );
-            proxy = Create2.deploy(
-                0,
-                _salt,
-                abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(orderBookImplementation, bytes("")))
-            );
-        }
-        IKuruAMMVault _kuruAmmVault = _deployKuruAMMVault(_baseAssetAddress, _quoteAssetAddress, proxy, _kuruAmmSpread);
-        uint256 _baseAssetDecimals =
-            _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? 18 : IERC20(_baseAssetAddress).decimals();
-        uint256 _quoteAssetDecimals =
-            _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? 18 : IERC20(_quoteAssetAddress).decimals();
-        // @note native decimals hardcoded to 18
-        {
-            IOrderBook(proxy).initialize(
-                address(this),
-                _type,
-                _type == IOrderBook.OrderBookType.NATIVE_IN_BASE ? NATIVE : _baseAssetAddress,
-                _baseAssetDecimals,
-                _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE ? NATIVE : _quoteAssetAddress,
-                _quoteAssetDecimals,
-                marginAccountAddress,
+                _baseAssetAddress,
+                _quoteAssetAddress,
                 _sizePrecision,
                 _pricePrecision,
                 _tickSize,
@@ -118,11 +131,21 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 _maxSize,
                 _takerFeeBps,
                 _makerFeeBps,
-                address(_kuruAmmVault),
-                _kuruAmmSpread,
-                address(TRUSTED_FORWARDER)
+                _kuruAmmSpread
+            );
+            proxy = Create2.deploy(
+                0,
+                _salt,
+                abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(orderBookImplementation, bytes("")))
             );
         }
+        IKuruAMMVault _kuruAmmVault = IKuruAMMVault(
+            Create2.deploy(
+                0,
+                keccak256(abi.encode(proxy)),
+                abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(kuruAmmVaultImplementation, bytes("")))
+            )
+        );
 
         verifiedMarket[proxy] = MarketParams(
             _pricePrecision,
@@ -137,10 +160,34 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _takerFeeBps,
             _makerFeeBps
         );
+        IMarginAccount(marginAccountAddress).updateMarkets(proxy);
+        {
+            IOrderBook(proxy).initialize(
+                address(this),
+                _type,
+                _baseAssetAddress,
+                _baseAssetDecimals,
+                _quoteAssetAddress,
+                _quoteAssetDecimals,
+                marginAccountAddress,
+                _sizePrecision,
+                _pricePrecision,
+                _tickSize,
+                _minSize,
+                _maxSize,
+                _takerFeeBps,
+                _makerFeeBps,
+                address(_kuruAmmVault),
+                _kuruAmmSpread,
+                TRUSTED_FORWARDER
+            );
+        }
 
-        _kuruAmmVault.setMarketParams();
+        _kuruAmmVault.initialize(
+            address(this), _baseAssetAddress, _quoteAssetAddress, marginAccountAddress, proxy, _kuruAmmSpread
+        );
 
-        _registerMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
+        _setApprovalsForMarket(_baseAssetAddress, _quoteAssetAddress, proxy, _type);
 
         emit MarketRegistered(
             _baseAssetAddress,
@@ -170,6 +217,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint96 _maxSize,
         uint256 _takerFeeBps,
         uint256 _makerFeeBps,
+        uint96 _kuruAmmSpread,
         address oldImplementation,
         bool old
     ) public view returns (address proxy) {
@@ -182,7 +230,8 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _minSize,
             _maxSize,
             _takerFeeBps,
-            _makerFeeBps
+            _makerFeeBps,
+            _kuruAmmSpread
         );
         proxy = Create2.computeAddress(
             _salt,
@@ -195,13 +244,21 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         );
     }
 
-    function computeVaultAddress(
-        address _marketAddress,
-        address oldImplementation,
-        bool old
-    ) public view returns (address) {
+    function computeVaultAddress(address _marketAddress, address oldImplementation, bool old)
+        public
+        view
+        returns (address)
+    {
         bytes32 _salt = keccak256(abi.encode(_marketAddress));
-        return Create2.computeAddress(_salt, keccak256(abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(old ? oldImplementation : kuruAmmVaultImplementation, bytes("")))));
+        return Create2.computeAddress(
+            _salt,
+            keccak256(
+                abi.encodePacked(
+                    type(ERC1967Proxy).creationCode,
+                    abi.encode(old ? oldImplementation : kuruAmmVaultImplementation, bytes(""))
+                )
+            )
+        );
     }
 
     /**
@@ -209,7 +266,9 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param newImplementation The new deployed orderbook implementation
      */
     function upgradeOrderBookImplementation(address newImplementation) external onlyOwner {
-        require(newImplementation != orderBookImplementation);
+        require(newImplementation != orderBookImplementation, RouterErrors.ImplementationNotChanged());
+        require(newImplementation != address(0), RouterErrors.ZeroAddressNotAllowed());
+        emit OBImplementationUpdated(orderBookImplementation, newImplementation);
         orderBookImplementation = newImplementation;
     }
 
@@ -218,7 +277,9 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param newImplementation The new deployed kuru amm vault implementation
      */
     function upgradeVaultImplementation(address newImplementation) external onlyOwner {
-        require(newImplementation != kuruAmmVaultImplementation);
+        require(newImplementation != kuruAmmVaultImplementation, RouterErrors.ImplementationNotChanged());
+        require(newImplementation != address(0), RouterErrors.ZeroAddressNotAllowed());
+        emit VaultImplementationUpdated(kuruAmmVaultImplementation, newImplementation);
         kuruAmmVaultImplementation = newImplementation;
     }
 
@@ -227,47 +288,66 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
      * @param markets The markets to toggle the state of
      * @param state The state to set the market to
      */
-    function toggleMarket(address[] memory markets, bool state) external onlyOwner {
+    function toggleMarkets(address[] memory markets, IOrderBook.MarketState state) external onlyOwner {
         for (uint256 i = 0; i < markets.length; i++) {
-            IOrderBook(markets[i]).toggleMarkets(state);
+            IOrderBook(markets[i]).toggleMarket(state);
         }
     }
 
     /**
-     * @dev This function lets anyone batch upgrade orderbooks if a new implementation is available
+     * @dev This function lets the owner batch upgrade orderbooks if a new implementation is available
      * @param proxies The proxies which are to be upgraded to the latest orderbook implementation
      */
-    function upgradeMultipleOrderBookProxies(address[] memory proxies) public onlyOwner {
+    function upgradeMultipleOrderBookProxies(address[] memory proxies, bytes[] memory data) public onlyOwner {
         for (uint256 i = 0; i < proxies.length; i++) {
-            UUPSUpgradeable(proxies[i]).upgradeToAndCall(orderBookImplementation, bytes(""));
+            UUPSUpgradeable(proxies[i]).upgradeToAndCall(orderBookImplementation, data[i]);
         }
     }
 
-    function upgradeMultipleVaultProxies(address[] memory proxies) public onlyOwner {
+    function upgradeMultipleVaultProxies(address[] memory proxies, bytes[] memory data) public onlyOwner {
         for (uint256 i = 0; i < proxies.length; i++) {
-            UUPSUpgradeable(proxies[i]).upgradeToAndCall(kuruAmmVaultImplementation, bytes(""));
+            UUPSUpgradeable(proxies[i]).upgradeToAndCall(kuruAmmVaultImplementation, data[i]);
         }
     }
 
-    // Register a market for a token pair
-    function _registerMarket(
+    /**
+     * @dev This function lets the owner batch transfer ownership of contracts to a new owner
+     * @param contracts The contracts which are to be transferred to the new owner
+     * @param _newOwner The new owner of the contracts
+     */
+    function transferOwnershipForContracts(address[] memory contracts, address _newOwner) external onlyOwner {
+        for (uint256 i = 0; i < contracts.length; i++) {
+            Ownable(contracts[i]).transferOwnership(_newOwner);
+        }
+    }
+
+    function _setApprovalsForMarket(
         address _baseAsset,
         address _quoteAsset,
         address _marketAddress,
         IOrderBook.OrderBookType _type
     ) internal {
-        _type == IOrderBook.OrderBookType.NATIVE_IN_BASE
-            ? true
-            : IERC20(_baseAsset).approve(_marketAddress, type(uint256).max);
-        _type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE
-            ? true
-            : IERC20(_quoteAsset).approve(_marketAddress, type(uint256).max);
-
-        IMarginAccount(marginAccountAddress).updateMarkets(_marketAddress);
+        if (_type == IOrderBook.OrderBookType.NATIVE_IN_BASE) {
+            _quoteAsset.safeApprove(_marketAddress, type(uint256).max);
+        } else if (_type == IOrderBook.OrderBookType.NATIVE_IN_QUOTE) {
+            _baseAsset.safeApprove(_marketAddress, type(uint256).max);
+        } else {
+            _baseAsset.safeApprove(_marketAddress, type(uint256).max);
+            _quoteAsset.safeApprove(_marketAddress, type(uint256).max);
+        }
     }
 
-    //@note should change this to accomodate native
-    // Perform an any-to-any swap
+    /**
+     * @dev This function lets the user swap any token to any token across multiple markets
+     * @param _marketAddresses The markets to swap through
+     * @param _isBuy Whether the user wants to buy from or sell to the i-th market
+     * @param _nativeSend Whether the user is sending native tokens or not to the i-th market
+     * @param _debitToken The token the user wants to send
+     * @param _creditToken The token the user wants to receive
+     * @param _amount The amount of the debit token the user wants to send
+     * @param _minAmountOut The minimum amount of the credit token the user wants to receive
+     * @return _amountOut The amount of the credit token the user received
+     */
     function anyToAnySwap(
         address[] calldata _marketAddresses,
         bool[] calldata _isBuy,
@@ -284,11 +364,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _debitToken.safeTransferFrom(msg.sender, address(this), _amount);
         }
         uint256 _cachedAmountIn = _amount;
-        // @note: We don't validate msg.value cause we do it in the market contract and we assume no funds ever stay on the router.
 
-        // @audit: Do we check if we debit token against token from first market params? Do we check if we credit token against token from last market params?
-        // If router has any balance, it can be drained.
-        // Will the router ever have non zero balances? Idts.
         for (uint256 i = 0; i < _marketAddresses.length; i++) {
             address _currentMarket = _marketAddresses[i];
             MarketParams memory _marketParams = verifiedMarket[_currentMarket];
@@ -298,33 +374,14 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
             _amountOut = _isBuy[i]
                 ? (
                     market.placeAndExecuteMarketBuy{value: _value}(
-                        uint96(
-                            _amountToSize(
-                                _amount,
-                                true,
-                                _marketParams.pricePrecision,
-                                _marketParams.sizePrecision,
-                                _marketParams.baseAssetDecimals,
-                                _marketParams.quoteAssetDecimals
-                            )
-                        ),
+                        toU96(_amount * _marketParams.pricePrecision / 10 ** _marketParams.quoteAssetDecimals),
                         0,
                         false,
                         true
                     )
                 )
                 : market.placeAndExecuteMarketSell{value: _value}(
-                    _amountToSize(
-                        _amount,
-                        false,
-                        _marketParams.pricePrecision,
-                        _marketParams.sizePrecision,
-                        _marketParams.baseAssetDecimals,
-                        _marketParams.quoteAssetDecimals
-                    ),
-                    0,
-                    false,
-                    true
+                    toU96(_amount * _marketParams.sizePrecision / 10 ** _marketParams.baseAssetDecimals), 0, false, true
                 );
 
             _amount = _amountOut;
@@ -334,8 +391,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         if (_creditToken != address(0)) {
             _creditToken.safeTransfer(msg.sender, _amountOut);
         } else {
-            (bool _success,) = (msg.sender).call{value: _amountOut}("");
-            require(_success, RouterErrors.NativeAssetTransferFail());
+            msg.sender.safeTransferETH(_amountOut);
         }
     }
 
@@ -353,19 +409,6 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         _checkOwner();
     }
 
-    function _amountToSize(
-        uint256 _amount,
-        bool _isBuy,
-        uint32 pricePrecision,
-        uint96 sizePrecision,
-        uint256 baseAssetDecimals,
-        uint256 quoteAssetDecimals
-    ) internal pure returns (uint96) {
-        return _isBuy
-            ? uint96((_amount * pricePrecision) / 10 ** quoteAssetDecimals)
-            : uint96((_amount * sizePrecision) / 10 ** baseAssetDecimals);
-    }
-
     function _getSalt(
         address _baseAssetAddress,
         address _quoteAssetAddress,
@@ -375,11 +418,9 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint96 _minSize,
         uint96 _maxSize,
         uint256 _takerFeeBps,
-        uint256 _makerFeeBps
+        uint256 _makerFeeBps,
+        uint96 _kuruAmmSpread
     ) internal pure returns (bytes32) {
-        {
-            (_baseAssetAddress, _quoteAssetAddress) = _reOrder(_baseAssetAddress, _quoteAssetAddress);
-        }
         return keccak256(
             abi.encodePacked(
                 _baseAssetAddress,
@@ -390,40 +431,14 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
                 _minSize,
                 _maxSize,
                 _takerFeeBps,
-                _makerFeeBps
+                _makerFeeBps,
+                _kuruAmmSpread
             )
         );
     }
 
-    function _reOrder(address _tokenA, address _tokenB)
-        internal
-        pure
-        returns (address _baseAsset, address _quoteAsset)
-    {
-        (_baseAsset, _quoteAsset) = (_tokenA > _tokenB) ? (_tokenB, _tokenA) : (_tokenA, _tokenB);
-    }
-
-    function _deployKuruAMMVault(address _token1Address, address _token2Address, address _marketAddress, uint96 _spread)
-        internal
-        returns (IKuruAMMVault)
-    {
-        address _vault = Create2.deploy(
-            0,
-            keccak256(abi.encode(_marketAddress)),
-            abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(kuruAmmVaultImplementation, bytes("")))
-        );
-        IKuruAMMVault(_vault).initialize(
-            address(this),
-            _token1Address,
-            _token2Address,
-            marginAccountAddress,
-            _marketAddress,
-            _spread / 10,
-            "",
-            ""
-        );
-
-        return IKuruAMMVault(_vault);
+    function toU96(uint256 _from) internal pure returns (uint96 _to) {
+        require((_to = uint96(_from)) == _from, RouterErrors.Uint96Overflow());
     }
 
     receive() external payable {}

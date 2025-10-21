@@ -1,4 +1,17 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
+
+//   ░█████░     ░█████▓    ███                                                       
+//   ███████    ▓███████▒   ███▒                                                      
+//   ███████   █████████▒   ███▒                                                      
+//   ███████  ██████████░   ███▒    ████  ████     ████  ▓████████ ░███░    ░███▓     
+//     ░████▒██████▒░       ███▒   ████   ████     ████  ▓████████ ▒███▒    ░███▓     
+//                          ███▒ ▒████    ████     ████  ▓████     ▒███░    ░███▓     
+//     ▓████▒███████▓       █████████     ████     ████  ▓███░     ▒███░    ░███▓     
+//   ███████  ██████████▒   █████████▒    ████     ████  ▓███      ░███▒    ░███▒     
+//   ███████   █████████▒   ███▒  ████▓   ▓███▒   ░████  ▓███       ████    ████░     
+//   ███████    ▓███████▒   ███▒   ▒████   ███████████   ▓███       ░██████████▒      
+//    ▒▓▓▓▓       ▒▓▓▓▓▒    ▓██      ███▒    ░█████░      ██▓          ▒████▒           
+                                                                                       
 pragma solidity ^0.8.20;
 
 // ============ External Imports ============
@@ -8,7 +21,6 @@ import {Initializable} from "solady/src/utils/Initializable.sol";
 import {UUPSUpgradeable} from "solady/src/utils/UUPSUpgradeable.sol";
 
 // ============ Internal Library Imports ============
-import {IERC20} from "./libraries/IERC20.sol";
 import {ERC2771Context} from "./libraries/ERC2771Context.sol";
 import {MarginAccountErrors} from "./libraries/Errors.sol";
 
@@ -17,21 +29,35 @@ import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 
 contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable, UUPSUpgradeable {
     using SafeTransferLib for address;
-    // Mapping from user addresses to their NATIVE balance
 
     address trustedForwarder;
+
+    bool protocolPaused;
+
     mapping(bytes32 => uint256) public balances;
 
-    // Mapping of hash of token pairs to their market contract addresses
     mapping(address => bool) public verifiedMarket;
 
     address routerContractAddress;
     address feeCollector;
-    // Native token
+
     address private constant NATIVE = 0x0000000000000000000000000000000000000000;
 
     constructor() {
         _disableInitializers();
+    }
+
+    // ============ admin ================
+    function toggleProtocolState(bool _state) external onlyOwner {
+        require(protocolPaused != _state, MarginAccountErrors.ProtocolStateNotChanged());
+        protocolPaused = _state;
+        emit ProtocolStateUpdated(_state);
+    }
+
+    function setFeeCollector(address _feeCollector) external onlyOwner {
+        require(feeCollector != _feeCollector, MarginAccountErrors.FeeCollectorNotChanged());
+        feeCollector = _feeCollector;
+        emit FeeCollectorUpdated(_feeCollector);
     }
 
     // ============ auth =================
@@ -49,18 +75,13 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         _;
     }
 
-    function isTrustedForwarder(address forwarder) public view override returns (bool) {
-        return forwarder == trustedForwarder;
+    modifier protocolActive() {
+        require(!protocolPaused, MarginAccountErrors.ProtocolPaused());
+        _;
     }
 
-    function _msgSender() internal view virtual override returns (address) {
-        uint256 calldataLength = msg.data.length;
-        uint256 contextSuffixLength = _contextSuffixLength();
-        if (isTrustedForwarder(msg.sender) && calldataLength >= contextSuffixLength) {
-            return address(bytes20(msg.data[calldataLength - contextSuffixLength:]));
-        } else {
-            return msg.sender;
-        }
+    function isTrustedForwarder(address forwarder) public view override returns (bool) {
+        return forwarder == trustedForwarder;
     }
 
     // ============ initializer =================
@@ -69,6 +90,11 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         public
         initializer
     {
+        require(
+            _owner != address(0) && _router != address(0) && _feeCollector != address(0)
+                && _trustedForwarder != address(0),
+            MarginAccountErrors.ZeroAddressNotAllowed()
+        );
         _initializeOwner(_owner);
         routerContractAddress = _router;
         feeCollector = _feeCollector;
@@ -81,7 +107,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @dev This function allows the router to register an official verified market.
      * @param _marketAddress Address of the orderbook of the market.
      */
-    function updateMarkets(address _marketAddress) external onlyRouter {
+    function updateMarkets(address _marketAddress) external onlyRouter protocolActive {
         verifiedMarket[_marketAddress] = true;
     }
 
@@ -89,11 +115,11 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
 
     /**
      * @dev This function is only callable by a verified market. Verified markets consume user balances.
-     * @param _user Address of the user whose account should be debited.
+     * @param _user address of the user whose account should be debited.
      * @param _token address of token to be debited.
      * @param _amount amount to debit.
      */
-    function debitUser(address _user, address _token, uint256 _amount) external {
+    function debitUser(address _user, address _token, uint256 _amount) external protocolActive {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
         require(balances[_accountKey(_user, _token)] >= _amount, MarginAccountErrors.InsufficientBalance());
 
@@ -102,32 +128,30 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
 
     /**
      * @dev This function is only callable by a verified market. Verified markets credit user balances.
-     * @param _user Address of the user whose account should be credited.
+     * @param _user address of the user whose account should be credited.
      * @param _token address of token to be credit.
      * @param _amount amount to credit.
+     * @param _useMargin whether to use margin or not - if not, user will receive token through an erc20 transfer
      */
-    function creditUser(address _user, address _token, uint256 _amount, bool _useMargin) external returns (bool) {
+    function creditUser(address _user, address _token, uint256 _amount, bool _useMargin) external protocolActive {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         if (_useMargin) {
             balances[_accountKey(_user, _token)] += _amount;
         } else {
-            if (_token == NATIVE) {
-                (bool success,) = _user.call{value: _amount}("");
-                require(success, MarginAccountErrors.NativeAssetTransferFail());
-            } else {
+            if (_token != NATIVE) {
                 _token.safeTransfer(_user, _amount);
+            } else {
+                _user.safeTransferETH(_amount);
             }
         }
-
-        return true;
     }
 
     /**
      * @dev This function is only callable by a verified market. Verified markets credit a bunch of users the tokens.
      * @param _encodedData Address of the user whose account should be credited.
      */
-    function creditUsersEncoded(bytes calldata _encodedData) external returns (bool) {
+    function creditUsersEncoded(bytes calldata _encodedData) external protocolActive {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         uint256 offset = 0;
@@ -142,13 +166,10 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
                 if (_token != NATIVE) {
                     _token.safeTransfer(_user, _amount);
                 } else {
-                    (bool success,) = _user.call{value: _amount}("");
-                    require(success, MarginAccountErrors.NativeAssetTransferFail());
+                    _user.safeTransferETH(_amount);
                 }
             }
         }
-
-        return true;
     }
 
     /**
@@ -158,13 +179,11 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _assetB Address of second asset
      * @param _feeB Fee amount of _assetB to be credited
      */
-    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external returns (bool) {
+    function creditFee(address _assetA, uint256 _feeA, address _assetB, uint256 _feeB) external protocolActive {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
 
         balances[_accountKey(feeCollector, _assetA)] += _feeA;
         balances[_accountKey(feeCollector, _assetB)] += _feeB;
-
-        return true;
     }
 
     // ============ user functions=================
@@ -173,14 +192,19 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @dev This function allows a user to claim all of their tokens from the margin account.
      * @param _tokens Array of tokens to claim.
      */
-    function batchClaimMaxTokens(address[] calldata _tokens) external {
+    function batchWithdrawMaxTokens(address[] calldata _tokens) external protocolActive {
         uint256 _balance;
         for (uint256 i = 0; i < _tokens.length; i++) {
             _balance = balances[_accountKey(_msgSender(), _tokens[i])];
+            balances[_accountKey(_msgSender(), _tokens[i])] = 0;
             if (_balance > 0) {
-                balances[_accountKey(_msgSender(), _tokens[i])] = 0;
-                _tokens[i].safeTransfer(_msgSender(), _balance);
+                if (_tokens[i] == NATIVE) {
+                    _msgSender().safeTransferETH(_balance);
+                } else {
+                    _tokens[i].safeTransfer(_msgSender(), _balance);
+                }
             }
+            emit Withdrawal(_msgSender(), _tokens[i], _balance);
         }
     }
 
@@ -190,15 +214,15 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _token address of token to be credit.
      * @param _amount amount to credit.
      */
-    function deposit(address _user, address _token, uint256 _amount) external payable {
+    function deposit(address _user, address _token, uint256 _amount) external payable protocolActive {
         require(_user != address(0), MarginAccountErrors.ZeroAddressNotAllowed());
         if (_token == NATIVE) {
             require(msg.value == _amount, MarginAccountErrors.NativeAssetMismatch());
             balances[_accountKey(_user, NATIVE)] += _amount;
         } else {
             require(msg.value == 0, MarginAccountErrors.NativeAssetMismatch());
-            _token.safeTransferFrom(_msgSender(), address(this), _amount);
             balances[_accountKey(_user, _token)] += _amount;
+            _token.safeTransferFrom(_msgSender(), address(this), _amount);
         }
 
         emit Deposit(_user, _token, _amount);
@@ -209,12 +233,11 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _amount amount to withdraw.
      * @param _token address of token to be withdrawn.
      */
-    function withdraw(uint256 _amount, address _token) external {
+    function withdraw(uint256 _amount, address _token) external protocolActive {
         require(_amount <= balances[_accountKey(_msgSender(), _token)], MarginAccountErrors.InsufficientBalance());
         balances[_accountKey(_msgSender(), _token)] -= _amount;
         if (_token == NATIVE) {
-            (bool _success,) = (_msgSender()).call{value: _amount}("");
-            require(_success, MarginAccountErrors.NativeAssetTransferFail());
+            _msgSender().safeTransferETH(_amount);
         } else {
             _token.safeTransfer(_msgSender(), _amount);
         }
