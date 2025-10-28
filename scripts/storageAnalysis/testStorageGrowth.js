@@ -354,7 +354,7 @@ async function main() {
     console.log(`✅ Initial storage saved to ${storageBeforeFile}`);
     
     // Place orders from all makers
-    const ordersPerMaker = 100; // 25k orders per maker = 100k total
+    const ordersPerMaker = 25000; // 25k orders per maker = 100k total
     const batchSize = 50; // 10 buy + 10 sell = 20 orders per batch
     const batchesPerMaker = Math.ceil(ordersPerMaker / (batchSize * 2));
     const midPrice = 200000;
