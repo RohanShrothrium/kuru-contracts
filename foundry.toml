@@ -1,8 +1,9 @@
 [profile.default]
 via_ir = true
-evm_version = "cancun"
-fs_permissions = [{ access = "read", path = "script/" }]
+evm_version = "prague"
+fs_permissions = [{ access = "read-write", path = "./" }]
 optimizer = true
+solc_version = "0.8.30"
 
 [fuzz]
 runs = 100
