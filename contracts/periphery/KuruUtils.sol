@@ -15,16 +15,16 @@
 pragma solidity ^0.8.20;
 
 import {IOrderBook} from "../interfaces/IOrderBook.sol";
-import {IKuruRouter} from "../interfaces/IKuruRouter.sol";
-import {IKuruOrderBook} from "../interfaces/IKuruOrderBook.sol";
-import {IReadERC20} from "../interfaces/IReadERC20.sol";
+import {IKuruRouter} from "../interfaces/supplemental/IKuruRouter.sol";
+import {IKuruOrderBook} from "../interfaces/supplemental/IKuruOrderBook.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IMarginAccount} from "../interfaces/IMarginAccount.sol";
-import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pool.sol";
-import {IUniswapV2Factory} from "../interfaces/IUniswapV2Factory.sol";
-import {IUniswapV3Factory} from "../interfaces/IUniswapV3Factory.sol";
-import {IUniswapV3Pool} from "../interfaces/IUniswapV3Pool.sol";
-import {ILBPair} from "../interfaces/ILBPair.sol";
-import {ILBFactory} from "../interfaces/ILBFactory.sol";
+import {IUniswapV2Pair} from "../interfaces/supplemental/IUniswapV2Pool.sol";
+import {IUniswapV2Factory} from "../interfaces/supplemental/IUniswapV2Factory.sol";
+import {IUniswapV3Factory} from "../interfaces/supplemental/IUniswapV3Factory.sol";
+import {IUniswapV3Pool} from "../interfaces/supplemental/IUniswapV3Pool.sol";
+import {ILBPair} from "../interfaces/supplemental/ILBPair.sol";
+import {ILBFactory} from "../interfaces/supplemental/ILBFactory.sol";
 
 /// @title A periphery contract for Kuru
 contract KuruUtils {
@@ -97,7 +97,7 @@ contract KuruUtils {
                 info[i] = TokenInfo("Monad", "MON", 0, 18, 0);
                 continue;
             }
-            IReadERC20 token = IReadERC20(tokens[i]);
+            IERC20Metadata token = IERC20Metadata(tokens[i]);
 
             // Default empty values
             string memory name = "";
