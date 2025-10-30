@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 pragma solidity ^0.8.20;
 
@@ -7,6 +7,12 @@ interface IOrderBook {
         NO_NATIVE,
         NATIVE_IN_BASE,
         NATIVE_IN_QUOTE
+    }
+
+    enum OrderStatus {
+        ACTIVE,
+        FILLED,
+        CANCELED
     }
 
     enum MarketState {
@@ -172,10 +178,6 @@ interface IOrderBook {
         bool postOnly
     ) external;
 
-    function placeMultipleBuyOrders(uint32[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
-
-    function placeMultipleSellOrders(uint32[] memory _prices, uint96[] memory _sizes, bool _postOnly) external;
-
     function placeAndExecuteMarketBuy(uint96 _quoteAmount, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         external
         payable
@@ -188,8 +190,13 @@ interface IOrderBook {
 
     function bestBidAsk() external view returns (uint256, uint256);
 
-    function updateVaultOrdSz(uint96 _askSize, uint96 _bidSize, uint256 _askPrice, uint256 _bidPrice, bool _isDeposit)
-        external;
+    function updateVaultOrdSz(
+        uint96 _vaultAskOrderSize,
+        uint96 _vaultBidOrderSize,
+        uint256 _askPrice,
+        uint256 _bidPrice,
+        bool _nullifyPartialFills
+    ) external;
 
     function getMarketParams()
         external

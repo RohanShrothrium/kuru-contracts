@@ -1,5 +1,17 @@
-//SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: BUSL-1.1
 
+//   ░█████░     ░█████▓    ███                                                       
+//   ███████    ▓███████▒   ███▒                                                      
+//   ███████   █████████▒   ███▒                                                      
+//   ███████  ██████████░   ███▒    ████  ████     ████  ▓████████ ░███░    ░███▓     
+//     ░████▒██████▒░       ███▒   ████   ████     ████  ▓████████ ▒███▒    ░███▓     
+//                          ███▒ ▒████    ████     ████  ▓████     ▒███░    ░███▓     
+//     ▓████▒███████▓       █████████     ████     ████  ▓███░     ▒███░    ░███▓     
+//   ███████  ██████████▒   █████████▒    ████     ████  ▓███      ░███▒    ░███▒     
+//   ███████   █████████▒   ███▒  ████▓   ▓███▒   ░████  ▓███       ████    ████░     
+//   ███████    ▓███████▒   ███▒   ▒████   ███████████   ▓███       ░██████████▒      
+//    ▒▓▓▓▓       ▒▓▓▓▓▒    ▓██      ███▒    ░█████░      ██▓          ▒████▒           
+                                                                                       
 pragma solidity ^0.8.20;
 
 // ============ External Imports ============
@@ -94,6 +106,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
     // ============ initializer =================
 
     function initialize(address _owner, bytes4[] memory _allowedInterfaces) public initializer {
+        require(_owner != address(0), KuruForwarderErrors.ZeroAddressNotAllowed());
         _initializeOwner(_owner);
         for (uint256 i = 0; i < _allowedInterfaces.length; i++) {
             allowedInterface[_allowedInterfaces[i]] = true;
@@ -222,7 +235,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         returns (bytes memory)
     {
         require(verifyMarginAccountRequest(req, signature), KuruForwarderErrors.SignatureMismatch());
-
+        require(msg.value >= req.value, KuruForwarderErrors.InsufficientValue());
         require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
 
         _nonces[req.from] = req.nonce + 1;
@@ -239,7 +252,7 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
 
     function execute(ForwardRequest calldata req, bytes calldata signature) public payable returns (bytes memory) {
         require(verify(req, signature), KuruForwarderErrors.SignatureMismatch());
-
+        require(msg.value >= req.value, KuruForwarderErrors.InsufficientValue());
         require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
 
         _nonces[req.from] = req.nonce + 1;
@@ -260,13 +273,13 @@ contract KuruForwarder is EIP712, Initializable, Ownable, UUPSUpgradeable {
         returns (bytes memory)
     {
         require(verifyPriceDependent(req, signature), KuruForwarderErrors.SignatureMismatch());
-
+        require(msg.value >= req.value, KuruForwarderErrors.InsufficientValue());
         require(allowedInterface[req.selector], KuruForwarderErrors.InterfaceNotAllowed());
         executedPriceDependentRequest[keccak256(abi.encodePacked(req.from, req.nonce))] = true;
 
         (uint256 _currentBidPrice,) = IOrderBook(req.market).bestBidAsk();
         require(
-            (req.isBelowPrice && req.price < _currentBidPrice) || (!req.isBelowPrice && req.price > _currentBidPrice),
+            (req.isBelowPrice && req.price <= _currentBidPrice) || (!req.isBelowPrice && req.price >= _currentBidPrice),
             PriceDependentRequestFailed(_currentBidPrice, req.price)
         );
         (bool success, bytes memory returndata) =

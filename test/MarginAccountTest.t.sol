@@ -38,7 +38,7 @@ contract OrderBookTest is Test {
 
         marginAccount = new MarginAccount();
         marginAccount = MarginAccount(payable(address(new ERC1967Proxy(address(marginAccount), ""))));
-        marginAccount.initialize(address(this), address(this), address(0), address(0));
+        marginAccount.initialize(address(this), address(this), address(this), address(this));
 
         eth.mint(user1, initEth);
         usdc.mint(user2, initUsdc);

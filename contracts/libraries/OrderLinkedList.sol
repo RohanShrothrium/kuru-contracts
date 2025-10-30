@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.10;
 
 /**
@@ -45,7 +45,6 @@ library OrderLinkedList {
      */
     function updateHead(PricePoint storage point, uint40 orderId) internal {
         if (orderId == NULL) {
-            point.head = NULL;
             point.tail = NULL;
         }
 

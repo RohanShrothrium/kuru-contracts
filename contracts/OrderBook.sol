@@ -1,4 +1,17 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
+
+//   ░█████░     ░█████▓    ███                                                       
+//   ███████    ▓███████▒   ███▒                                                      
+//   ███████   █████████▒   ███▒                                                      
+//   ███████  ██████████░   ███▒    ████  ████     ████  ▓████████ ░███░    ░███▓     
+//     ░████▒██████▒░       ███▒   ████   ████     ████  ▓████████ ▒███▒    ░███▓     
+//                          ███▒ ▒████    ████     ████  ▓████     ▒███░    ░███▓     
+//     ▓████▒███████▓       █████████     ████     ████  ▓███░     ▒███░    ░███▓     
+//   ███████  ██████████▒   █████████▒    ████     ████  ▓███      ░███▒    ░███▒     
+//   ███████   █████████▒   ███▒  ████▓   ▓███▒   ░████  ▓███       ████    ████░     
+//   ███████    ▓███████▒   ███▒   ▒████   ███████████   ▓███       ░██████████▒      
+//    ▒▓▓▓▓       ▒▓▓▓▓▒    ▓██      ███▒    ░█████░      ██▓          ▒████▒           
+                                                                                       
 pragma solidity ^0.8.20;
 
 // ============ Library Imports ============
@@ -75,16 +88,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return forwarder == _trustedForwarder;
     }
 
-    function _msgSender() internal view virtual override returns (address) {
-        uint256 calldataLength = msg.data.length;
-        uint256 contextSuffixLength = _contextSuffixLength();
-        if (isTrustedForwarder(msg.sender) && calldataLength >= contextSuffixLength) {
-            return address(bytes20(msg.data[calldataLength - contextSuffixLength:]));
-        } else {
-            return msg.sender;
-        }
-    }
-
     /**
      * @param _owner The owner of the contract.
      * @param _baseAssetAddress Address of the first token used for trading.
@@ -157,8 +160,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     function toggleMarket(MarketState _state) external {
         _checkOwner();
         require(_state != marketState, OrderBookErrors.MarketStateError());
-        emit MarketStateUpdated(marketState, _state);
+        MarketState _cachedState = marketState;
         marketState = _state;
+        emit MarketStateUpdated(_cachedState, _state);
     }
 
     /**
@@ -174,11 +178,12 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Adds a buy order to the order book.
      * @param _price Price of the buy order.
      * @param size Size of the buy order.
+     * @param _postOnly Whether the order is post-only. The transaction reverts if the order is matched while placing.
      */
-    function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) public marketActive {
-        require(_price > 0, OrderBookErrors.PriceError());
-        require(size > minSize, OrderBookErrors.SizeError());
-        require(size < maxSize, OrderBookErrors.SizeError());
+    function addBuyOrder(uint32 _price, uint96 size, bool _postOnly) public marketActive nonReentrant {
+        require(_price > 0 && _price < type(uint32).max, OrderBookErrors.PriceError());
+        require(size >= minSize, OrderBookErrors.SizeError());
+        require(size <= maxSize, OrderBookErrors.SizeError());
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
 
         //The buy order is filled aggressively and the leftover size is added as a limit buy order
@@ -204,20 +209,21 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @dev Adds a flip buy order to the order book
+     * @dev Adds a flip buy order to the order book. This function will just return if it matches against the book.
      * @param _price Price of the buy order.
      * @param _flippedPrice Price of the sell order to which this order will flip on a fill
      * @param _size Size of the buy order.
-     * @param _provisionOrRevert Whether to provision or revert the order.
+     * @param _provisionOrRevert The transaction reverts if this is set to true and the flip order matches on placement.
      */
     function addFlipBuyOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
         public
         marketActive
+        nonReentrant
     {
-        require(_price > 0 && _flippedPrice > 0, OrderBookErrors.PriceError());
+        require(_price > 0 && _flippedPrice > 0 && _flippedPrice < type(uint32).max, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price < _flippedPrice, OrderBookErrors.PriceError());
-        require(_size > minSize && _size < maxSize, OrderBookErrors.SizeError());
+        require(_size >= minSize && _size <= maxSize, OrderBookErrors.SizeError());
 
         {
             (, uint256 _bestAsk) = bestAsk();
@@ -243,12 +249,13 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Adds a sell order to the order book.
      * @param _price Price of the sell order.
      * @param _size Size of the sell order.
+     * @param _postOnly Whether the order is post-only. The transaction reverts if the order is matched while placing.
      */
-    function addSellOrder(uint32 _price, uint96 _size, bool _postOnly) public marketActive {
-        require(_size > minSize, OrderBookErrors.SizeError());
-        require(_size < maxSize, OrderBookErrors.SizeError());
+    function addSellOrder(uint32 _price, uint96 _size, bool _postOnly) public marketActive nonReentrant {
+        require(_size >= minSize, OrderBookErrors.SizeError());
+        require(_size <= maxSize, OrderBookErrors.SizeError());
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
-        require(_price > 0, OrderBookErrors.PriceError());
+        require(_price > 0 && _price < type(uint32).max, OrderBookErrors.PriceError());
 
         _consumeFunds(baseAsset, ((_size * baseDecimalMultiplier) / sizePrecision), _msgSender());
 
@@ -271,20 +278,21 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @dev Adds a flip sell order to the order book
+     * @dev Adds a flip sell order to the order book. This function will just return if it matches against the book.
      * @param _price Price of the sell order.
      * @param _flippedPrice Price of the buy order to which this order will flip on a fill
      * @param _size Size of the sell order.
-     * @param _provisionOrRevert Whether to provision or revert the order.
+     * @param _provisionOrRevert The transaction reverts if this is set to true and the flip order matches on placement.
      */
     function addFlipSellOrder(uint32 _price, uint32 _flippedPrice, uint96 _size, bool _provisionOrRevert)
         public
         marketActive
+        nonReentrant
     {
-        require(_price > 0 && _flippedPrice > 0, OrderBookErrors.PriceError());
+        require(_price > 0 && _flippedPrice > 0 && _price < type(uint32).max, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price > _flippedPrice, OrderBookErrors.PriceError());
-        require(_size > minSize && _size < maxSize, OrderBookErrors.SizeError());
+        require(_size >= minSize && _size <= maxSize, OrderBookErrors.SizeError());
 
         {
             (, uint256 _bestBid) = bestBid();
@@ -304,14 +312,22 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         _addFlipOrder(_price, _flippedPrice, _size, _msgSender(), _orderId, OrderLinkedList.NULL, false, _prevOrderId);
     }
 
+    /**
+     * @dev Adds a paired liquidity order to the order book. This function will revert if the order matches against the book.
+     * @param _bidPrice Price of the bid order.
+     * @param _askPrice Price of the ask order.
+     * @param _bidSize Size of the bid order.
+     * @param _askSize Size of the ask order.
+     */
     function addPairedLiquidity(uint32 _bidPrice, uint32 _askPrice, uint96 _bidSize, uint96 _askSize)
         public
         marketActive
+        nonReentrant
     {
-        require(_bidPrice > 0 && _askPrice > _bidPrice, OrderBookErrors.PriceError());
+        require(_bidPrice > 0 && _askPrice > _bidPrice && _askPrice < type(uint32).max, OrderBookErrors.PriceError());
         require(_bidPrice % tickSize == 0 && _askPrice % tickSize == 0, OrderBookErrors.TickSizeError());
-        require(_bidSize > minSize && _bidSize < maxSize, OrderBookErrors.SizeError());
-        require(_askSize > minSize && _askSize < maxSize, OrderBookErrors.SizeError());
+        require(_bidSize >= minSize && _bidSize <= maxSize, OrderBookErrors.SizeError());
+        require(_askSize >= minSize && _askSize <= maxSize, OrderBookErrors.SizeError());
         {
             (, uint256 _bestBid) = bestBid();
             (, uint256 _bestAsk) = bestAsk();
@@ -347,6 +363,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Internal function to add an order to the order book.
      * @param _price Price of the order.
      * @param _size Size of the order.
+     * @param _orderId ID of the order.
+     * @param _isBuy Whether the order is a buy order.
+     * @param _prevOrderId ID of the previous order in the linked list.
      */
     function _addOrder(uint32 _price, uint96 _size, uint40 _orderId, bool _isBuy, uint40 _prevOrderId) internal {
         if (_isBuy) {
@@ -362,6 +381,17 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrderCreated(_orderId, _msgSender(), _size, _price, _isBuy);
     }
 
+    /**
+     * @dev Internal function to add a flip order to the order book.
+     * @param _price Price of the order.
+     * @param _flippedPrice Price which the order will flip to on a fill.
+     * @param _size Size of the order.
+     * @param _owner Address of the owner of the order.
+     * @param _orderId ID of the order.
+     * @param _flippedId ID of the flipped order on the other side, in case of a paired liquidity order.
+     * @param _isBuy Whether the order is a buy order.
+     * @param _prevOrderId ID of the previous order in the linked list.
+     */
     function _addFlipOrder(
         uint32 _price,
         uint32 _flippedPrice,
@@ -379,10 +409,23 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
         s_orders[_orderId] =
             Order(_owner, _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, _flippedPrice, _isBuy);
-        s_orders[_prevOrderId].next = _orderId;
+        if (_prevOrderId != OrderLinkedList.NULL) {
+            s_orders[_prevOrderId].next = _orderId;
+        }
         emit FlipOrderCreated(_orderId, _flippedId, _owner, _size, _price, _flippedPrice, _isBuy);
     }
 
+    /**
+     * @dev Internal function to add a flipped order to the order book. This function is called when a flip order is filled for the first time
+     * @param _price Price of the order.
+     * @param _flippedPrice Price which the order will flip to on a fill.
+     * @param _size Size of the order.
+     * @param _owner Address of the owner of the order.
+     * @param _orderId ID of the order.
+     * @param _flippedId ID of the flipped order on the other side, which is the flip order that was filled.
+     * @param _isBuy Whether the order is a buy order.
+     * @param _prevOrderId ID of the previous order in the linked list.
+     */
     function _addFlippedOrder(
         uint32 _price,
         uint32 _flippedPrice,
@@ -400,7 +443,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
         s_orders[_orderId] =
             Order(_owner, _size, _prevOrderId, OrderLinkedList.NULL, _flippedId, _price, _flippedPrice, _isBuy);
-        s_orders[_prevOrderId].next = _orderId;
+        if (_prevOrderId != OrderLinkedList.NULL) {
+            s_orders[_prevOrderId].next = _orderId;
+        }
         emit FlippedOrderCreated(_orderId, _flippedId, _owner, _size, _price, _flippedPrice, _isBuy);
     }
 
@@ -414,6 +459,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         marginAccount.debitUser(_userAddress, _consumableAsset, _amount);
     }
 
+    /**
+     * @notice If you cancel a flip order, both sides of the order pair will be cancelled. You cannot cancel one side of the order pair alone.
+     * @dev Cancels multiple flip orders in a batch. For a flip order pair, you only need to input ID of one of the orders.
+     * @param _orderIds Array of order IDs to cancel.
+     */
     function batchCancelFlipOrders(uint40[] calldata _orderIds) external marketNotHardPaused {
         for (uint256 i = 0; i < _orderIds.length; i++) {
             _cancelFlipOrder(_orderIds[i]);
@@ -424,6 +474,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
 
     /**
      * @dev Cancels multiple orders in a batch.
+     * @dev Reverts if you pass an order ID which is filled or cancelled already.
      * @param _orderIds Array of order IDs to cancel.
      */
     function batchCancelOrders(uint40[] calldata _orderIds) external marketNotHardPaused {
@@ -434,6 +485,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrdersCanceled(_orderIds, _msgSender());
     }
 
+    /**
+     * @dev Cancels multiple orders in a batch.
+     * @dev Does not revert if you pass an order ID which is filled already.
+     * @param _orderIds Array of order IDs to cancel.
+     */
     function batchCancelOrdersNoRevert(uint40[] calldata _orderIds) external marketNotHardPaused {
         uint40[] memory _orderIdsCanceled = new uint40[](_orderIds.length);
         for (uint256 i = 0; i < _orderIds.length; i++) {
@@ -448,11 +504,18 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         emit OrdersCanceled(_orderIdsCanceled, _msgSender());
     }
 
-    function _cancelFlipOrder(uint40 _orderId) internal {
+    /**
+     * @dev Internal function to cancel both sides of a flip order pair.
+     * @param _orderId ID of the order to cancel.
+     */
+    function _cancelFlipOrder(uint40 _orderId) internal nonReentrant {
         Order memory _order = s_orders[_orderId];
-        require(!_checkIfCancelledOrFilled(_orderId, _order), OrderBookErrors.OrderAlreadyFilledOrCancelled());
-        require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
+        OrderStatus _orderStatus = _checkIfCancelledOrFilled(_orderId, _order);
+        if (_orderStatus == OrderStatus.FILLED || _orderStatus == OrderStatus.CANCELED) {
+            revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
+        }
         require(_order.flippedPrice != 0, OrderBookErrors.WrongOrderTypeCancel());
+        require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
         if (_order.flippedId != OrderLinkedList.NULL) {
             _executeCancel(_order.flippedId, s_orders[_order.flippedId]);
         }
@@ -463,21 +526,26 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @dev Internal helper function to cancel a single order.
      * @param _orderId ID of the order to cancel.
      */
-    function _cancelOrder(uint40 _orderId, bool _revertIfInvalid) internal returns (bool) {
+    function _cancelOrder(uint40 _orderId, bool _revertIfInvalid) internal nonReentrant returns (bool) {
         Order memory _order = s_orders[_orderId];
         require(_msgSender() == _order.ownerAddress, OrderBookErrors.OnlyOwnerAllowedError());
         require(_order.flippedPrice == 0, OrderBookErrors.WrongOrderTypeCancel());
-        if (_checkIfCancelledOrFilled(_orderId, _order)) {
-            if (_revertIfInvalid) {
-                revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
-            } else {
-                return false;
-            }
+        OrderStatus _orderStatus = _checkIfCancelledOrFilled(_orderId, _order);
+        if ((_orderStatus == OrderStatus.FILLED || _orderStatus == OrderStatus.CANCELED) && _revertIfInvalid) {
+            revert OrderBookErrors.OrderAlreadyFilledOrCancelled();
+        } else if (_orderStatus == OrderStatus.FILLED) {
+            delete s_orders[_orderId];
+            return false;
         }
         _executeCancel(_orderId, _order);
         return true;
     }
 
+    /**
+     * @dev Internal function to cancel an order. This does all necessary state changes and credits the user.
+     * @param _orderId ID of the order to cancel.
+     * @param _order Order details in memory.
+     */
     function _executeCancel(uint40 _orderId, Order memory _order) internal {
         // update neighbouring orders
         if (_order.prev != OrderLinkedList.NULL) {
@@ -520,7 +588,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 _order.ownerAddress, baseAsset, ((_order.size * baseDecimalMultiplier) / sizePrecision), true
             );
         }
-
+        delete s_orders[_orderId];
         emit OrderCanceled(_orderId, _order.ownerAddress, _order.price, _order.size, _order.isBuy);
     }
 
@@ -533,40 +601,33 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _orderId ID of the order.
      * @param _order Order details in memory.
      */
-    function _checkIfCancelledOrFilled(uint40 _orderId, Order memory _order) internal view returns (bool) {
-        if (_order.prev != OrderLinkedList.NULL) {
-            if (s_orders[_order.prev].next != _orderId) {
-                return true;
+    function _checkIfCancelledOrFilled(uint40 _orderId, Order memory _order) internal view returns (OrderStatus) {
+        if (_order.price == 0) {
+            return OrderStatus.CANCELED;
+        }
+        if (_order.isBuy) {
+            //Since all orders are filled FCFS in each price point, if head > order id, it means order id was already filled
+            uint40 _head = s_buyPricePoints[_order.price].head;
+            if (_head > _orderId || _head == OrderLinkedList.NULL) {
+                return OrderStatus.FILLED;
             }
-            if (_order.isBuy) {
-                //Since all orders are filled FCFS in each price point, if head > order id, it means order id was already filled
-                uint40 _head = s_buyPricePoints[_order.price].head;
-                if (_head > _orderId || _head == OrderLinkedList.NULL) {
-                    return true;
-                }
-                return false;
-            } else {
-                uint40 _head = s_sellPricePoints[_order.price].head;
-                if (_head > _orderId || _head == OrderLinkedList.NULL) {
-                    return true;
-                }
-                return false;
-            }
+            return OrderStatus.ACTIVE;
         } else {
-            if (_order.isBuy) {
-                if (s_buyPricePoints[_order.price].head != _orderId) {
-                    return true;
-                }
-                return false;
-            } else {
-                if (s_sellPricePoints[_order.price].head != _orderId) {
-                    return true;
-                }
-                return false;
+            uint40 _head = s_sellPricePoints[_order.price].head;
+            if (_head > _orderId || _head == OrderLinkedList.NULL) {
+                return OrderStatus.FILLED;
             }
+            return OrderStatus.ACTIVE;
         }
     }
 
+    /**
+     * @dev Batch adds paired liquidity to the order book.
+     * @param bidPrices Array of prices for the bid orders.
+     * @param askPrices Array of prices for the ask orders.
+     * @param bidSizes Array of sizes for the bid orders.
+     * @param askSizes Array of sizes for the ask orders.
+     */
     function batchAddPairedLiquidity(
         uint32[] calldata bidPrices,
         uint32[] calldata askPrices,
@@ -574,13 +635,23 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         uint96[] calldata askSizes
     ) external {
         require(
-            bidPrices.length == bidSizes.length && askPrices.length == askSizes.length, OrderBookErrors.LengthMismatch()
+            bidPrices.length == bidSizes.length && askPrices.length == askSizes.length
+                && bidPrices.length == askPrices.length,
+            OrderBookErrors.LengthMismatch()
         );
         for (uint256 i = 0; i < bidPrices.length; i++) {
             addPairedLiquidity(bidPrices[i], askPrices[i], bidSizes[i], askSizes[i]);
         }
     }
 
+    /**
+     * @dev Batch adds flip orders to the order book.
+     * @param prices Array of prices for the flip orders.
+     * @param flipPrices Array of prices for the flip orders.
+     * @param sizes Array of sizes for the flip orders.
+     * @param isBuy Array of booleans indicating if the i'th order is a buy order
+     * @param _provisionOrRevert If set to true, if a flip order matches against the book, the transaction reverts.
+     */
     function batchProvisionLiquidity(
         uint32[] calldata prices,
         uint32[] calldata flipPrices,
@@ -616,7 +687,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         uint96[] calldata sellSizes,
         uint40[] calldata orderIdsToCancel,
         bool postOnly
-    ) external marketActive {
+    ) external marketNotHardPaused {
         // Ensure that the lengths of the buy prices and sizes match
         require(buyPrices.length == buySizes.length, OrderBookErrors.LengthMismatch());
 
@@ -651,41 +722,19 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     }
 
     /**
-     * @dev Places multiple limit buy orders in a single function call.
-     * @param _prices Array of prices for the buy orders.
-     * @param _sizes Array of sizes for the buy orders.
-     */
-    function placeMultipleBuyOrders(uint32[] calldata _prices, uint96[] calldata _sizes, bool _postOnly) external {
-        require(_prices.length == _sizes.length, OrderBookErrors.LengthMismatch());
-
-        for (uint256 i = 0; i < _prices.length; i++) {
-            addBuyOrder(_prices[i], _sizes[i], _postOnly);
-        }
-    }
-
-    /**
-     * @dev Places multiple limit sell orders in a single function call.
-     * @param _prices Array of prices for the sell orders.
-     * @param _sizes Array of sizes for the sell orders.
-     */
-    function placeMultipleSellOrders(uint32[] calldata _prices, uint96[] calldata _sizes, bool _postOnly) external {
-        require(_prices.length == _sizes.length, OrderBookErrors.LengthMismatch());
-
-        for (uint256 i = 0; i < _prices.length; i++) {
-            addSellOrder(_prices[i], _sizes[i], _postOnly);
-        }
-    }
-
-    /**
      * @dev Places and executes a market buy order.
      * @param _quoteSize amount of quote asset user is ready to pay.
+     * @param _minAmountOut minimum amount of base asset user is willing to receive in base asset decimals.
+     * @param _isMargin bool representing if the market order is to be debited from the margin account of the user.
      * @param _isFillOrKill bool representing if function should revert if full qty is not received.
+     * @return _baseTokensCredited amount of base asset user received in base asset decimals.
      */
     function placeAndExecuteMarketBuy(uint96 _quoteSize, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         public
         payable
         override
         marketActive
+        nonReentrant
         returns (uint256)
     {
         OrderBookType _type = orderBookType;
@@ -723,8 +772,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 );
             }
         } else if (_type == OrderBookType.NATIVE_IN_QUOTE) {
-            (bool _success,) = address(marginAccount).call{value: msg.value}("");
-            require(_success, OrderBookErrors.NativeAssetTransferFail());
+            address(marginAccount).safeTransferETH(msg.value);
         }
         require(_baseTokensCredited >= _minAmountOut, OrderBookErrors.SlippageExceeded());
 
@@ -734,12 +782,16 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     /**
      * @dev Places and executes a market sell order.
      * @param _size Size of the market sell order.
+     * @param _minAmountOut minimum amount of quote asset user is willing to receive in quote asset decimals.
+     * @param _isMargin bool representing if the market order is to be debited from the margin account of the user.
      * @param _isFillOrKill bool representing if function should revert if full qty is not received.
+     * @return _quoteCredited amount of quote asset user received in quote asset decimals.
      */
     function placeAndExecuteMarketSell(uint96 _size, uint256 _minAmountOut, bool _isMargin, bool _isFillOrKill)
         public
         payable
         marketActive
+        nonReentrant
         returns (uint256)
     {
         OrderBookType _type = orderBookType;
@@ -769,8 +821,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 marginAccount.creditUser(_msgSender(), baseAsset, _sizePrecisionToBaseAssetPrecision(_size), _isMargin);
             }
         } else if (_type == OrderBookType.NATIVE_IN_BASE) {
-            (bool _success,) = address(marginAccount).call{value: msg.value}("");
-            require(_success, OrderBookErrors.NativeAssetTransferFail());
+            address(marginAccount).safeTransferETH(msg.value);
         }
         require(_quoteCredited >= _minAmountOut, OrderBookErrors.SlippageExceeded());
         return _quoteCredited;
@@ -781,12 +832,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _refund The native token refund to be credited to the taker
      */
     function _handleNativeMarketRefundTransfer(uint256 _refund) internal {
-        (bool _success,) = address(marginAccount).call{value: msg.value - _refund}("");
-        require(_success, OrderBookErrors.NativeAssetTransferFail());
-
-        // @audit: Does this lead to bugs?
-        (_success,) = address(_msgSender()).call{value: _refund}("");
-        require(_success, OrderBookErrors.NativeAssetTransferFail());
+        address(marginAccount).safeTransferETH(msg.value - _refund);
+        _msgSender().safeTransferETH(_refund);
     }
 
     function _pricePrecisionToQuoteAssetPrecision(uint96 _quote) internal view returns (uint256) {
@@ -802,9 +849,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @notice Anyone can call this function
      */
     function collectFees() external {
-        marginAccount.creditFee(baseAsset, baseFeeCollected, quoteAsset, quoteFeeCollected);
+        uint256 _baseFeeCollected = baseFeeCollected;
+        uint256 _quoteFeeCollected = quoteFeeCollected;
         baseFeeCollected = 0;
         quoteFeeCollected = 0;
+        marginAccount.creditFee(baseAsset, _baseFeeCollected, quoteAsset, _quoteFeeCollected);
     }
 
     function _matchAggressiveBuyWithCap(uint256 _limitPrice, uint96 _sizeToBeFilled)
@@ -826,7 +875,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             if (_isVaultFill) {
                 uint96 _vaultFundsConsumed;
                 (_sizeToBeFilled, _vaultFundsConsumed, priceUpdate) =
-                    _fillVaultForBuy(_getOBAsk() > _limitPrice ? _limitPrice : _getOBAsk(), _sizeToBeFilled);
+                    _fillVaultForBuy(_getOBAsk() > _limitPrice ? _limitPrice + 1 : _getOBAsk(), _sizeToBeFilled);
                 fundsConsumed += _vaultFundsConsumed;
             } else {
                 (_sizeToBeFilled, priceUpdate) = _fillSizeForPrice(
@@ -901,7 +950,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             } else {
                 // Calculate base size fillable by current unconsumed quote size for a particular price
                 uint96 _sizeFillableAtPriceLeft =
-                    toU96(_quoteSize * sizePrecision * vaultPricePrecision / (_bestAsk * _pricePrecision));
+                    toU96(_quoteSize * _sizePrecision * vaultPricePrecision / (_bestAsk * _pricePrecision));
                 uint96 _sizeFillableAtPriceBefore = _sizeFillableAtPriceLeft; // Save old size to be filled
                 (_sizeFillableAtPriceLeft, priceUpdate) = _fillSizeForPrice(
                     s_sellTree,
@@ -912,7 +961,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 sizeToCreditTaker += (_sizeFillableAtPriceBefore - _sizeFillableAtPriceLeft);
                 _quoteSize = toU96(
                     FixedPointMathLib.mulDiv(
-                        _bestAsk * _pricePrecision, _sizeFillableAtPriceLeft, sizePrecision * vaultPricePrecision
+                        _bestAsk * _pricePrecision, _sizeFillableAtPriceLeft, _sizePrecision * vaultPricePrecision
                     )
                 );
             }
@@ -974,7 +1023,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             if (_isVaultFill) {
                 uint256 _quoteToTaker;
                 (_sizeToBeFilledLeft, _quoteToTaker, priceUpdate) =
-                    _fillVaultForSell(_getOBBid() >= _limitPrice ? _getOBBid() : _limitPrice, _sizeToBeFilledLeft);
+                    _fillVaultForSell(_getOBBid() >= _limitPrice ? _getOBBid() : _limitPrice - 1, _sizeToBeFilledLeft);
                 quoteCreditVaultTaker += _quoteToTaker;
             } else {
                 (_sizeToBeFilledLeft, priceUpdate) = _fillSizeForPrice(
@@ -1088,7 +1137,14 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             _orderUpdate = _creditMaker(
                 !s_orders[_orderId].isBuy,
                 s_orders[_orderId].ownerAddress,
-                (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : s_orders[_orderId].size,
+                (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : _preExistingOrderSize,
+                s_orders[_orderId].price
+            );
+        } else {
+            _orderUpdate = _creditMakerRebate(
+                !s_orders[_orderId].isBuy,
+                s_orders[_orderId].ownerAddress,
+                (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : _preExistingOrderSize,
                 s_orders[_orderId].price
             );
         }
@@ -1134,6 +1190,8 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             }
             if (!nullify) {
                 s_orders[_orderId].flippedId = _flipOrderId;
+            } else {
+                delete s_orders[_orderId];
             }
             _addFlippedOrder(
                 _filledOrder.flippedPrice,
@@ -1157,6 +1215,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             emit FlipOrderUpdated(_flipOrderId, _updatedSize);
             if (nullify) {
                 s_orders[_flipOrderId].flippedId = OrderLinkedList.NULL;
+                delete s_orders[_orderId];
             }
         }
     }
@@ -1179,7 +1238,6 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      */
     function _quoteAmountRoundedUp(uint32 _price, uint96 _size) internal view returns (uint96) {
         uint256 _result = FixedPointMathLib.mulDivUp(_price, _size, sizePrecision);
-        require(_result < type(uint96).max, OrderBookErrors.TooMuchSizeFilled());
         return toU96(_result);
     }
 
@@ -1199,9 +1257,19 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         address creditAsset = _isMarketBuy ? quoteAsset : baseAsset;
         uint256 amount =
             _isMarketBuy ? _quoteAmountRoundedDown(_size, _price) : ((_size * baseDecimalMultiplier) / sizePrecision);
+
+        bytes memory feeRebateData = _creditMakerRebate(_isMarketBuy, _ownerAddress, _size, _price);
+
+        return bytes.concat(feeRebateData, abi.encode(_ownerAddress, creditAsset, amount, true));
+    }
+
+    function _creditMakerRebate(bool _isMarketBuy, address _ownerAddress, uint96 _size, uint32 _price)
+        internal
+        view
+        returns (bytes memory)
+    {
         uint256 feeRebate;
         address feeAsset;
-        bytes memory returnData;
         if (_isMarketBuy) {
             feeAsset = baseAsset;
             feeRebate = (((_size * baseDecimalMultiplier) / sizePrecision) * makerFeeBps) / BPS_MULTIPLIER;
@@ -1211,19 +1279,18 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
         //feeRebate only exists if makerFeeBps > 0
         if (feeRebate > 0) {
-            returnData = abi.encode(_ownerAddress, feeAsset, feeRebate, true);
+            return abi.encode(_ownerAddress, feeAsset, feeRebate, true);
         }
-
-        return bytes.concat(returnData, abi.encode(_ownerAddress, creditAsset, amount, true));
+        return "";
     }
 
     /**
      * internal helper function to get payable amount
-     * @param _size size of token
-     * @param _price conversion price from A to B
+     * @param _size filled size
+     * @param _price price at which the size is filled
      */
-    function _quoteAmountRoundedDown(uint96 _size, uint32 _price) internal view returns (uint256) {
-        return (uint256(((_price * _size) / sizePrecision)) * quoteDecimalMultiplier) / pricePrecision;
+    function _quoteAmountRoundedDown(uint256 _size, uint32 _price) internal view returns (uint256) {
+        return ((_price * _size) / sizePrecision) * quoteDecimalMultiplier / pricePrecision;
     }
 
     function _getPricePrecision() internal view override returns (uint32) {
@@ -1290,7 +1357,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return (_bestBid, _bestAsk);
     }
 
-    function _getOBAsk() internal view returns (uint256) {
+    function _getOBAsk() internal view override returns (uint256) {
         uint32 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0);
         if (firstLeft != 0) {
             return firstLeft * vaultPricePrecision / pricePrecision;
@@ -1298,7 +1365,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return type(uint256).max;
     }
 
-    function _getOBBid() internal view returns (uint256) {
+    function _getOBBid() internal view override returns (uint256) {
         uint32 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max);
         if (firstRight != type(uint32).max) {
             return firstRight * vaultPricePrecision / pricePrecision;
@@ -1306,73 +1373,147 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return 0;
     }
 
+
     function bestAsk() internal view returns (bool, uint256) {
         uint256 firstLeft = TreeMath.findFirstLeft(s_sellTree, 0) * vaultPricePrecision / pricePrecision;
+        uint96 _vaultAskSize = _getVaultAskSize();
         if (firstLeft != 0) {
             if (vaultBestAsk != type(uint256).max) {
-                if (firstLeft == vaultBestAsk) {
+                if (_vaultAskSize == 0 || firstLeft == vaultBestAsk) {
                     return (false, firstLeft);
                 }
-                return (FixedPointMathLib.min(firstLeft, vaultBestAsk)) == vaultBestAsk
-                    ? (true, vaultBestAsk)
-                    : (false, firstLeft);
+                if (FixedPointMathLib.min(firstLeft, vaultBestAsk) == vaultBestAsk) {
+                    return (true, vaultBestAsk);
+                }
+                return (false, firstLeft);
             }
             return (false, firstLeft);
         }
-        return (vaultBestAsk != type(uint256).max) ? (true, vaultBestAsk) : (false, 0);
+        return (vaultBestAsk != type(uint256).max && _vaultAskSize != 0) ? (true, vaultBestAsk) : (false, 0);
     }
 
     function bestBid() internal view returns (bool, uint256) {
         uint256 firstRight = TreeMath.findFirstRight(s_buyTree, type(uint32).max) * vaultPricePrecision / pricePrecision;
+        uint96 _vaultBidSize = _getVaultBidSize();
         if (firstRight != type(uint32).max * vaultPricePrecision / pricePrecision) {
             if (vaultBestBid != 0) {
-                if (firstRight == vaultBestBid) {
+                if (_vaultBidSize == 0 || firstRight == vaultBestBid) {
                     return (false, firstRight);
                 }
-                return (FixedPointMathLib.max(firstRight, vaultBestBid)) == vaultBestBid
-                    ? (true, vaultBestBid)
-                    : (false, firstRight);
+                if (FixedPointMathLib.max(firstRight, vaultBestBid) == vaultBestBid) {
+                    return (true, vaultBestBid);
+                }
+                return (false, firstRight);
             }
             return (false, firstRight);
         }
-        return vaultBestBid != 0 ? (true, vaultBestBid) : (false, type(uint256).max);
+        return (vaultBestBid != 0 && _vaultBidSize != 0) ? (true, vaultBestBid) : (false, type(uint256).max);
+    }
+
+    /**
+     * @notice Wrapper around getL2Book that returns all bid and ask price points
+     * @dev This is useful if you want the complete order book, but may fail if the number of price points is a lot
+     * @return data Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.
+     */
+    function getL2Book() external view returns (bytes memory) {
+        return getL2Book(type(uint32).max, type(uint32).max);
     }
 
     /**
      * @notice Returns the Level 2 order book data.
-     * @dev Encodes the block number, buy orders, and sell orders.
-     * @return Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.
+     * @dev Encodes the block number, buy orders, and sell orders. Pass the number of bid and ask price points you need
+     * @return data Encoded bytes containing the block number, prices, and sizes of the buy and sell orders.
      */
-    function getL2Book() external view returns (bytes memory) {
-        bytes memory data = abi.encode(block.number);
+    function getL2Book(uint32 _bidPricePoints, uint32 _askPricePoints) public view returns (bytes memory data) {
+        uint256 dataStart;
+        uint256 lastFree;
 
-        // Encode buy orders
-        uint32 price = TreeMath.findFirstLeft(s_buyTree, 0);
-        while (price != type(uint32).max && price != 0) {
+        assembly ("memory-safe") {
+            dataStart := mload(0x40)
+            lastFree := add(dataStart, 32)
+            mstore(lastFree, number()) // block number
+            lastFree := add(lastFree, 32)
+            mstore(0x40, lastFree)
+        }
+
+        // -------------------- BID SIDE --------------------
+        uint32 price = TreeMath.findFirstRight(s_buyTree, type(uint32).max);
+        while (price != type(uint32).max && price != 0 && _bidPricePoints != 0) {
             uint40 orderId = s_buyPricePoints[price].head;
             uint96 size = 0;
             while (orderId != 0) {
                 size += s_orders[orderId].size;
                 orderId = s_orders[orderId].next;
             }
-            data = bytes.concat(data, abi.encode(price, size));
-            price = TreeMath.findFirstLeft(s_buyTree, price);
+            assembly ("memory-safe") {
+                let curFree := mload(0x40)
+                if iszero(eq(curFree, lastFree)) {
+                    // free pointer has moved, so we will copy data to a new memory region
+                    let producedLen := sub(lastFree, dataStart)
+                    for { let offset := 0 } lt(offset, producedLen) { offset := add(offset, 32) } {
+                        mstore(add(curFree, offset), mload(add(dataStart, offset)))
+                    }
+                    dataStart := curFree
+                    lastFree := add(curFree, producedLen)
+                }
+
+                mstore(lastFree, price)
+                mstore(add(lastFree, 32), size)
+                lastFree := add(lastFree, 64)
+                mstore(0x40, lastFree)
+            }
+            price = TreeMath.findFirstRight(s_buyTree, price);
+            --_bidPricePoints;
         }
 
-        data = bytes.concat(data, abi.encode(0)); // Separator between buy and sell orders
-        // Encode sell orders
+        assembly ("memory-safe") {
+            let curFree := mload(0x40)
+            if iszero(eq(curFree, lastFree)) {
+                let producedLen := sub(lastFree, dataStart)
+                for { let offset := 0 } lt(offset, producedLen) { offset := add(offset, 32) } {
+                    mstore(add(curFree, offset), mload(add(dataStart, offset)))
+                }
+                dataStart := curFree
+                lastFree := add(curFree, producedLen)
+            }
+
+            mstore(lastFree, 0)
+            lastFree := add(lastFree, 32)
+            mstore(0x40, lastFree)
+        }
+
         price = TreeMath.findFirstLeft(s_sellTree, 0);
-        while (price != type(uint32).max && price != 0) {
+        while (price != type(uint32).max && price != 0 && _askPricePoints != 0) {
             uint40 orderId = s_sellPricePoints[price].head;
             uint96 size = 0;
             while (orderId != 0) {
                 size += s_orders[orderId].size;
                 orderId = s_orders[orderId].next;
             }
-            data = bytes.concat(data, abi.encode(price, size));
+            assembly ("memory-safe") {
+                let curFree := mload(0x40)
+                if iszero(eq(curFree, lastFree)) {
+                    // free memory pointer has moved
+                    let producedLen := sub(lastFree, dataStart)
+                    for { let offset := 0 } lt(offset, producedLen) { offset := add(offset, 32) } {
+                        mstore(add(curFree, offset), mload(add(dataStart, offset)))
+                    }
+                    dataStart := curFree
+                    lastFree := add(curFree, producedLen)
+                }
+
+                mstore(lastFree, price)
+                mstore(add(lastFree, 32), size)
+                lastFree := add(lastFree, 64)
+                mstore(0x40, lastFree)
+            }
             price = TreeMath.findFirstLeft(s_sellTree, price);
+            --_askPricePoints;
         }
 
-        return data;
+        assembly ("memory-safe") {
+            mstore(dataStart, sub(lastFree, add(dataStart, 32)))
+            data := dataStart
+        }
     }
 }

@@ -1,0 +1,25 @@
+{
+  "testConfig": {
+    "totalMakers": 4,
+    "ordersPerMaker": 1000,
+    "totalOrdersPlaced": 4000,
+    "batchSize": 100,
+    "cancelBatchSize": 100
+  },
+  "blocks": {
+    "before": 2164,
+    "afterPlacement": 2204,
+    "afterCancellation": 2244
+  },
+  "storageComparison": {
+    "beforeCount": 16,
+    "afterCount": 16,
+    "netChange": 0,
+    "newSlots": 0,
+    "removedSlots": 0,
+    "changedSlots": 1,
+    "newSlotsDetails": [],
+    "removedSlotsDetails": []
+  },
+  "timestamp": "2025-10-29T08:22:22.372Z"
+}

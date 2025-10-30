@@ -35,8 +35,9 @@ contract MonadDeployerTest is Test {
         marginAccount = new MarginAccount();
         marginAccount = MarginAccount(payable(address(new ERC1967Proxy(address(marginAccount), ""))));
         marginAccount.initialize(address(this), address(router), address(router), address(0x123));
-        monadDeployer =
-            new MonadDeployer(IRouter(address(router)), address(this), address(marginAccount), address(0x123), 100, 10 * 10 ** 18);
+        monadDeployer = new MonadDeployer(
+            IRouter(address(router)), address(this), address(marginAccount), address(0x123), 100, 10 * 10 ** 18
+        );
         router.initialize(
             address(this),
             address(marginAccount),

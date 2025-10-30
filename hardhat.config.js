@@ -1,17 +1,24 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("@nomicfoundation/hardhat-foundry");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
-    version: "0.8.26",
+    version: "0.8.30",
     settings: {
-      evmVersion: "shanghai",
+      evmVersion: "prague",
       optimizer: {
         enabled: true,
         runs: 1000,
       },
       viaIR: true,
     },
+  },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts"
   },
   defaultNetwork: "localhost",
   networks: {

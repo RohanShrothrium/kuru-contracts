@@ -1,0 +1,150 @@
+📝 Setting up makers with token approvals and deposits...
+
+Maker 1 (0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266):
+  - Approving USDC...
+  - Depositing USDC...
+  - Approving WETH...
+  - Depositing WETH...
+  ✅ Maker setup complete
+
+Maker 2 (0x70997970C51812dc3A010C7d01b50e0d17dc79C8):
+  - Approving USDC...
+  - Depositing USDC...
+  - Approving WETH...
+  - Depositing WETH...
+  ✅ Maker setup complete
+
+Maker 3 (0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC):
+  - Approving USDC...
+  - Depositing USDC...
+  - Approving WETH...
+  - Depositing WETH...
+  ✅ Maker setup complete
+
+Maker 4 (0x90F79bf6EB2c4f870365E785982E1f101E93b906):
+  - Approving USDC...
+  - Depositing USDC...
+  - Approving WETH...
+  - Depositing WETH...
+  ✅ Maker setup complete
+
+📸 Capturing storage state BEFORE placing orders...
+  Calling anvil_dumpState...
+  Decompressing state...
+  Writing decompressed state to /Users/devblixt/Documents/GitHub/kuru-contracts/scripts/storageAnalysis/dump/dumpStateBefore.json...
+  Decompressed size: 589.36 MB
+  ✅ Decompressed dump state saved
+Extracting storage for 0x278Fc83812bFd6FA9e006820DAFE3918cf0456b9...
+  Reading from dump file...
+  Loading dump file: /Users/devblixt/Documents/GitHub/kuru-contracts/scripts/storageAnalysis/dump/dumpStateBefore.json
+  File size: 589.36 MB
+  Parsing large decompressed JSON file in chunks...
+  Found contract at position 363433
+  Found 16 non-zero storage slots
+
+✅ Initial storage saved to /Users/devblixt/Documents/GitHub/kuru-contracts/scripts/storageAnalysis/dump/storage_before.json
+
+============================================================
+PLACING ORDERS
+============================================================
+
+🔨 Maker 1 placing 1000 orders in 10 batches...
+  Progress: 100.0% (1000 orders placed)
+  ✅ Maker 1 complete: 1000 orders placed
+
+🔨 Maker 2 placing 1000 orders in 10 batches...
+  Progress: 100.0% (1000 orders placed)
+  ✅ Maker 2 complete: 1000 orders placed
+
+🔨 Maker 3 placing 1000 orders in 10 batches...
+  Progress: 100.0% (1000 orders placed)
+  ✅ Maker 3 complete: 1000 orders placed
+
+🔨 Maker 4 placing 1000 orders in 10 batches...
+  Progress: 100.0% (1000 orders placed)
+  ✅ Maker 4 complete: 1000 orders placed
+
+============================================================
+✅ TOTAL ORDERS PLACED: 4000
+============================================================
+
+📸 Capturing storage state AFTER placing orders...
+Extracting storage for 0x278Fc83812bFd6FA9e006820DAFE3918cf0456b9...
+  Calling anvil_dumpState RPC...
+  Found contract at position 363433
+  Found 9195 non-zero storage slots
+
+✅ Post-placement storage saved to /Users/devblixt/Documents/GitHub/kuru-contracts/scripts/storageAnalysis/dump/storage_after_placement.json
+
+============================================================
+CANCELLING ALL ORDERS
+============================================================
+
+🧹 Maker 1 cancelling 1000 orders in 10 batches...
+  Progress: 100.0% (1000 orders cancelled)
+  ✅ Maker 1 cancellations complete
+
+🧹 Maker 2 cancelling 1000 orders in 10 batches...
+  Progress: 100.0% (1000 orders cancelled)
+  ✅ Maker 2 cancellations complete
+
+🧹 Maker 3 cancelling 1000 orders in 10 batches...
+  Progress: 100.0% (1000 orders cancelled)
+  ✅ Maker 3 cancellations complete
+
+🧹 Maker 4 cancelling 1000 orders in 10 batches...
+  Progress: 100.0% (1000 orders cancelled)
+  ✅ Maker 4 cancellations complete
+
+============================================================
+✅ ALL ORDERS CANCELLED
+============================================================
+
+📸 Capturing storage state AFTER cancelling all orders...
+  Calling anvil_dumpState...
+  Decompressing state...
+  Writing decompressed state to /Users/devblixt/Documents/GitHub/kuru-contracts/scripts/storageAnalysis/dump/dumpStateAfter.json...
+  Decompressed size: 612.57 MB
+  ✅ Decompressed dump state saved
+Extracting storage for 0x278Fc83812bFd6FA9e006820DAFE3918cf0456b9...
+  Reading from dump file...
+  Loading dump file: /Users/devblixt/Documents/GitHub/kuru-contracts/scripts/storageAnalysis/dump/dumpStateAfter.json
+  File size: 612.57 MB
+  Parsing large decompressed JSON file in chunks...
+  Found contract at position 363433
+  Found 16 non-zero storage slots
+
+✅ Final storage saved to /Users/devblixt/Documents/GitHub/kuru-contracts/scripts/storageAnalysis/dump/storage_after.json
+
+============================================================
+STORAGE COMPARISON RESULTS
+============================================================
+Storage slots BEFORE: 16
+Storage slots AFTER:  16
+Net change:           0
+New slots added:      0
+Slots removed:        0
+Slots changed:        1
+============================================================
+
+
+✅ All results saved to scripts/storageAnalysis/dump/
+   - dumpStateBefore.json (full decompressed Anvil state)
+   - dumpStateAfter.json (full decompressed Anvil state)
+   - storage_before.json (contract storage only)
+   - storage_after_placement.json (contract storage only)
+   - storage_after.json (contract storage only)
+   - storage_growth_test_results.json
+
+============================================================
+TEST SUMMARY
+============================================================
+Total orders placed and cancelled: 4000
+Storage slots before:              16
+Storage slots after:               16
+Net storage growth:                0
+Storage growth per order:          0.000000
+============================================================
+
+✅ SUCCESS: Negligible storage growth demonstrated!
+   The contract shows minimal state growth after placing and cancelling orders.

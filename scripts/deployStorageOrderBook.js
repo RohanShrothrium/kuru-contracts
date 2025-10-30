@@ -23,23 +23,22 @@ async function main() {
     const userAddress = deployer.address;
     const takerAddress = taker.address;
 
-    const ERC20 = await hre.ethers.getContractFactory("MintableERC20");
-    const wbtc = await ERC20.deploy("Wrapped Bitcoin", "WBTC");
+    const ERC20 = await hre.ethers.getContractFactory("KuruERC20");
+    const wbtc = await ERC20.deploy("Wrapped Bitcoin", "WBTC", hre.ethers.utils.parseEther("20000000"), userAddress);
     await wbtc.deployed();
     console.log("WBTC deployed to:", wbtc.address);
 
-    const usdc = await ERC20.deploy("USD Coin", "USDC");
+    const usdc = await ERC20.deploy("USD Coin", "USDC", hre.ethers.utils.parseEther("20000000"), userAddress);
     await usdc.deployed();
     console.log("USDC deployed to:", usdc.address);
 
-    // Fund the shark account with a substantial amount of tokens
-    await wbtc.mint(takerAddress, hre.ethers.utils.parseEther("10000000"));
-    await wbtc.mint(userAddress, hre.ethers.utils.parseEther("10000000"));
-    console.log("Shark WBTC balance:", (await wbtc.balanceOf(takerAddress)).toString());
-
-    await usdc.mint(userAddress, hre.ethers.utils.parseEther("10000000"));
-    await usdc.mint(takerAddress, hre.ethers.utils.parseEther("10000000"));
-    console.log("Shark USDC balance:", (await usdc.balanceOf(userAddress)).toString());
+    // Transfer tokens to fund the taker account
+    await wbtc.transfer(takerAddress, hre.ethers.utils.parseEther("10000000"));
+    await usdc.transfer(takerAddress, hre.ethers.utils.parseEther("10000000"));
+    console.log("Taker WBTC balance:", (await wbtc.balanceOf(takerAddress)).toString());
+    console.log("Taker USDC balance:", (await usdc.balanceOf(takerAddress)).toString());
+    console.log("User WBTC balance:", (await wbtc.balanceOf(userAddress)).toString());
+    console.log("User USDC balance:", (await usdc.balanceOf(userAddress)).toString());
 
     // Your existing deployment logic here, modified to use the deployed token addresses
     // Replace wbtcAddress and usdcAddress with the addresses of the deployed contracts
