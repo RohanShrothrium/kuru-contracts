@@ -43,7 +43,7 @@ jobs:
         echo "@openzeppelin/=lib/openzeppelin-contracts/" >> remappings.txt
 
     - name: Run Forge Tests
-      run: forge test --ffi
+      run: RPC_URL=https://monad-testnet.drpc.org forge test --ffi
 
     - name: Compile contracts
       run: npx hardhat compile
