@@ -1125,6 +1125,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     {
         _nextHead = s_orders[_orderId].next;
         uint96 _preExistingOrderSize = s_orders[_orderId].size;
+        address _cachedOwnerAddress = s_orders[_orderId].ownerAddress;
+        bool _cachedIsBuy = s_orders[_orderId].isBuy;
+        uint32 _cachedPrice = s_orders[_orderId].price;
         //remaining size is 0 if current order can fully fill required size
         incomingOrderRemainingSize =
             (_incomingSizeToBeFilled > _preExistingOrderSize) ? (_incomingSizeToBeFilled - _preExistingOrderSize) : 0;
@@ -1135,17 +1138,17 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         }
         if (s_orders[_orderId].flippedPrice == 0) {
             _orderUpdate = _creditMaker(
-                !s_orders[_orderId].isBuy,
-                s_orders[_orderId].ownerAddress,
+                !_cachedIsBuy,
+                _cachedOwnerAddress,
                 (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : _preExistingOrderSize,
-                s_orders[_orderId].price
+                _cachedPrice
             );
         } else {
             _orderUpdate = _creditMakerRebate(
-                !s_orders[_orderId].isBuy,
-                s_orders[_orderId].ownerAddress,
+                !_cachedIsBuy,
+                _cachedOwnerAddress,
                 (incomingOrderRemainingSize == 0) ? _incomingSizeToBeFilled : _preExistingOrderSize,
-                s_orders[_orderId].price
+                _cachedPrice
             );
         }
 
@@ -1166,9 +1169,9 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         // What if the whole book gets filled or the whole price point gets filled up?
         _emitTrade(
             _orderId,
-            s_orders[_orderId].ownerAddress,
-            !s_orders[_orderId].isBuy,
-            (s_orders[_orderId].price * vaultPricePrecision) / pricePrecision,
+            _cachedOwnerAddress,
+            !_cachedIsBuy,
+            (_cachedPrice * vaultPricePrecision) / pricePrecision,
             _preExistingOrderUpdatedSize,
             _incomingSizeToBeFilled - incomingOrderRemainingSize
         );
