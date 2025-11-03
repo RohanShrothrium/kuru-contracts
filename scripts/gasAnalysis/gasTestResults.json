@@ -1,0 +1,98 @@
+{
+    "metadata": {
+      "description": "Gas cost benchmark for batch order operations",
+      "timestamp": "2025-11-03T09:59:04.569Z",
+      "test_scenarios": {
+        "initial_placement": "Cost to place N buy orders + N sell orders on empty orderbook",
+        "replace_at_new_prices": "Cost to cancel N+N orders and place N+N orders at different price levels",
+        "replace_at_existing_prices": "Cost to cancel N+N orders and place N+N orders at price levels that already have orders",
+        "cancel_all_orders": "Cost to cancel all N+N orders (cleanup)"
+      }
+    },
+    "results": {
+      "n_3": {
+        "order_count": 6,
+        "buy_orders": 3,
+        "sell_orders": 3,
+        "initial_placement": {
+          "gas_used": "936364",
+          "description": "Place 6 orders (3 buy + 3 sell) on empty orderbook"
+        },
+        "replace_at_new_prices": {
+          "gas_used": "910241",
+          "description": "Cancel 6 orders and place 6 new orders at different price levels"
+        },
+        "replace_at_existing_prices": {
+          "gas_used": "727753",
+          "description": "Cancel 6 orders and place 6 new orders at price levels that already have existing orders"
+        },
+        "cancel_all_orders": {
+          "gas_used": "469386",
+          "description": "Cancel all 12 orders (cleanup)"
+        }
+      },
+      "n_5": {
+        "order_count": 10,
+        "buy_orders": 5,
+        "sell_orders": 5,
+        "initial_placement": {
+          "gas_used": "1310070",
+          "description": "Place 10 orders (5 buy + 5 sell) on empty orderbook"
+        },
+        "replace_at_new_prices": {
+          "gas_used": "1388787",
+          "description": "Cancel 10 orders and place 10 new orders at different price levels"
+        },
+        "replace_at_existing_prices": {
+          "gas_used": "1111546",
+          "description": "Cancel 10 orders and place 10 new orders at price levels that already have existing orders"
+        },
+        "cancel_all_orders": {
+          "gas_used": "655715",
+          "description": "Cancel all 20 orders (cleanup)"
+        }
+      },
+      "n_10": {
+        "order_count": 20,
+        "buy_orders": 10,
+        "sell_orders": 10,
+        "initial_placement": {
+          "gas_used": "2221565",
+          "description": "Place 20 orders (10 buy + 10 sell) on empty orderbook"
+        },
+        "replace_at_new_prices": {
+          "gas_used": "2557520",
+          "description": "Cancel 20 orders and place 20 new orders at different price levels"
+        },
+        "replace_at_existing_prices": {
+          "gas_used": "2069253",
+          "description": "Cancel 20 orders and place 20 new orders at price levels that already have existing orders"
+        },
+        "cancel_all_orders": {
+          "gas_used": "1116456",
+          "description": "Cancel all 40 orders (cleanup)"
+        }
+      },
+      "n_20": {
+        "order_count": 40,
+        "buy_orders": 20,
+        "sell_orders": 20,
+        "initial_placement": {
+          "gas_used": "4044587",
+          "description": "Place 40 orders (20 buy + 20 sell) on empty orderbook"
+        },
+        "replace_at_new_prices": {
+          "gas_used": "4895349",
+          "description": "Cancel 40 orders and place 40 new orders at different price levels"
+        },
+        "replace_at_existing_prices": {
+          "gas_used": "3985128",
+          "description": "Cancel 40 orders and place 40 new orders at price levels that already have existing orders"
+        },
+        "cancel_all_orders": {
+          "gas_used": "2038915",
+          "description": "Cancel all 80 orders (cleanup)"
+        }
+      }
+    }
+  }
