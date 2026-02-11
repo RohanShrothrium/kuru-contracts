@@ -738,7 +738,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         returns (uint256)
     {
         OrderBookType _type = orderBookType;
-
+        _quoteSize = _marketBuyNormalizeQuoteSize(_quoteSize);
         if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin && (msg.sender != address(0))) {
             require(
                 msg.value >= _pricePrecisionToQuoteAssetPrecision(_quoteSize), OrderBookErrors.NativeAssetInsufficient()
@@ -842,6 +842,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
 
     function _sizePrecisionToBaseAssetPrecision(uint96 _size) internal view returns (uint256) {
         return (uint256(_size) * baseDecimalMultiplier) / sizePrecision;
+    }
+
+    function _marketBuyNormalizeQuoteSize(uint96 _quoteSize) internal view returns (uint96) {
+        uint256 _quoteAssetAmount = _pricePrecisionToQuoteAssetPrecision(_quoteSize);
+        return uint96(_quoteAssetAmount * pricePrecision / quoteDecimalMultiplier);
     }
 
     /**
