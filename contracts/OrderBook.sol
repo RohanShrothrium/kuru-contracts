@@ -252,6 +252,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
      * @param _postOnly Whether the order is post-only. The transaction reverts if the order is matched while placing.
      */
     function addSellOrder(uint32 _price, uint96 _size, bool _postOnly) public marketActive nonReentrant {
+        _size = _normalizeSizeToBaseAssetPrecision(_size);
         require(_size >= minSize, OrderBookErrors.SizeError());
         require(_size <= maxSize, OrderBookErrors.SizeError());
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
@@ -289,6 +290,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         marketActive
         nonReentrant
     {
+        _size = _normalizeSizeToBaseAssetPrecision(_size);
         require(_price > 0 && _flippedPrice > 0 && _price < type(uint32).max, OrderBookErrors.PriceError());
         require(_price % tickSize == 0 && _flippedPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price > _flippedPrice, OrderBookErrors.PriceError());
@@ -324,6 +326,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         marketActive
         nonReentrant
     {
+        _askSize = _normalizeSizeToBaseAssetPrecision(_askSize);
         require(_bidPrice > 0 && _askPrice > _bidPrice && _askPrice < type(uint32).max, OrderBookErrors.PriceError());
         require(_bidPrice % tickSize == 0 && _askPrice % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_bidSize >= minSize && _bidSize <= maxSize, OrderBookErrors.SizeError());
@@ -794,6 +797,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         nonReentrant
         returns (uint256)
     {
+        _size = _normalizeSizeToBaseAssetPrecision(_size);
         OrderBookType _type = orderBookType;
         if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin && (msg.sender != address(0))) {
             require(msg.value >= _sizePrecisionToBaseAssetPrecision(_size), OrderBookErrors.NativeAssetInsufficient());
@@ -847,6 +851,11 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     function _marketBuyNormalizeQuoteSize(uint96 _quoteSize) internal view returns (uint96) {
         uint256 _quoteAssetAmount = _pricePrecisionToQuoteAssetPrecision(_quoteSize);
         return uint96(_quoteAssetAmount * pricePrecision / quoteDecimalMultiplier);
+    }
+
+    function _normalizeSizeToBaseAssetPrecision(uint96 _size) internal view returns (uint96) {
+        uint256 _baseAssetAmount = _sizePrecisionToBaseAssetPrecision(_size);
+        return toU96(_baseAssetAmount * sizePrecision / baseDecimalMultiplier);
     }
 
     /**
