@@ -41,6 +41,8 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
     address routerContractAddress;
     address feeCollector;
 
+    mapping(address => bool) public blacklistedAddresses;
+
     address private constant NATIVE = 0x0000000000000000000000000000000000000000;
 
     constructor() {
@@ -60,6 +62,17 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         emit FeeCollectorUpdated(_feeCollector);
     }
 
+    /**
+     * @dev Updates whether an address can deposit or receive assets from the margin account.
+     * @param _address Address whose blacklist status is updated.
+     * @param _isBlacklisted Whether the address should be blacklisted.
+     */
+    function blacklistAddress(address _address, bool _isBlacklisted) external onlyOwner {
+        require(_address != address(0), MarginAccountErrors.ZeroAddressNotAllowed());
+        blacklistedAddresses[_address] = _isBlacklisted;
+        emit AddressBlacklistUpdated(_address, _isBlacklisted);
+    }
+
     // ============ auth =================
 
     function _guardInitializeOwner() internal pure override returns (bool guard) {
@@ -77,6 +90,11 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
 
     modifier protocolActive() {
         require(!protocolPaused, MarginAccountErrors.ProtocolPaused());
+        _;
+    }
+
+    modifier notBlacklisted(address _user) {
+        _requireNotBlacklisted(_user);
         _;
     }
 
@@ -139,6 +157,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         if (_useMargin) {
             balances[_accountKey(_user, _token)] += _amount;
         } else {
+            _requireNotBlacklisted(_user);
             if (_token != NATIVE) {
                 _token.safeTransfer(_user, _amount);
             } else {
@@ -163,6 +182,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
             if (_useMargin) {
                 balances[_accountKey(_user, _token)] += _amount;
             } else {
+                _requireNotBlacklisted(_user);
                 if (_token != NATIVE) {
                     _token.safeTransfer(_user, _amount);
                 } else {
@@ -192,7 +212,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @dev This function allows a user to claim all of their tokens from the margin account.
      * @param _tokens Array of tokens to claim.
      */
-    function batchWithdrawMaxTokens(address[] calldata _tokens) external protocolActive {
+    function batchWithdrawMaxTokens(address[] calldata _tokens) external protocolActive notBlacklisted(_msgSender()) {
         uint256 _balance;
         for (uint256 i = 0; i < _tokens.length; i++) {
             _balance = balances[_accountKey(_msgSender(), _tokens[i])];
@@ -214,7 +234,12 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _token address of token to be credit.
      * @param _amount amount to credit.
      */
-    function deposit(address _user, address _token, uint256 _amount) external payable protocolActive {
+    function deposit(address _user, address _token, uint256 _amount)
+        external
+        payable
+        protocolActive
+        notBlacklisted(_user)
+    {
         require(_user != address(0), MarginAccountErrors.ZeroAddressNotAllowed());
         if (_token == NATIVE) {
             require(msg.value == _amount, MarginAccountErrors.NativeAssetMismatch());
@@ -233,7 +258,7 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _amount amount to withdraw.
      * @param _token address of token to be withdrawn.
      */
-    function withdraw(uint256 _amount, address _token) external protocolActive {
+    function withdraw(uint256 _amount, address _token) external protocolActive notBlacklisted(_msgSender()) {
         require(_amount <= balances[_accountKey(_msgSender(), _token)], MarginAccountErrors.InsufficientBalance());
         balances[_accountKey(_msgSender(), _token)] -= _amount;
         if (_token == NATIVE) {
@@ -261,6 +286,10 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      */
     function _accountKey(address _user, address _token) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(_user, _token));
+    }
+
+    function _requireNotBlacklisted(address _user) internal view {
+        require(!blacklistedAddresses[_user], MarginAccountErrors.AddressBlacklisted());
     }
 
     receive() external payable {}

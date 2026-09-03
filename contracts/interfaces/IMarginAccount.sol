@@ -7,9 +7,13 @@ interface IMarginAccount {
 
     event FeeCollectorUpdated(address newFeeCollector);
 
+    event AddressBlacklistUpdated(address indexed account, bool isBlacklisted);
+
     event Deposit(address owner, address token, uint256 amount);
 
     event Withdrawal(address owner, address token, uint256 amount);
+
+    function blacklistAddress(address _address, bool _isBlacklisted) external;
 
     function updateMarkets(address _marketAddress) external;
 

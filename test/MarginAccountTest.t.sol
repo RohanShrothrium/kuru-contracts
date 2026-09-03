@@ -9,6 +9,7 @@ import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MintableERC20} from "./lib/MintableERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {Ownable} from "solady/src/auth/Ownable.sol";
 
 contract OrderBookTest is Test {
     uint96 constant SIZE_PRECISION = 10 ** 10;
@@ -73,6 +74,90 @@ contract OrderBookTest is Test {
         marginAccount.withdraw(1 ether, _native);
         assert(_userAddress.balance == 100 ether);
         vm.stopPrank();
+    }
+
+    function testBlacklistAddressOnlyOwner() public {
+        vm.prank(user1);
+        vm.expectRevert(Ownable.Unauthorized.selector);
+        marginAccount.blacklistAddress(user2, true);
+    }
+
+    function testBlacklistAddressRejectsZeroAddress() public {
+        vm.expectRevert(MarginAccountErrors.ZeroAddressNotAllowed.selector);
+        marginAccount.blacklistAddress(address(0), true);
+    }
+
+    function testBlacklistAddressBlocksDeposits() public {
+        marginAccount.blacklistAddress(user1, true);
+
+        vm.startPrank(user1);
+        eth.approve(address(marginAccount), initEth);
+        vm.expectRevert(MarginAccountErrors.AddressBlacklisted.selector);
+        marginAccount.deposit(user1, address(eth), initEth);
+        vm.stopPrank();
+
+        assertEq(marginAccount.getBalance(user1, address(eth)), 0);
+        assertEq(eth.balanceOf(user1), initEth);
+    }
+
+    function testBlacklistAddressBlocksWithdrawAndBatchWithdraw() public {
+        vm.startPrank(user1);
+        eth.approve(address(marginAccount), initEth);
+        marginAccount.deposit(user1, address(eth), initEth);
+        vm.stopPrank();
+        marginAccount.blacklistAddress(user1, true);
+
+        vm.prank(user1);
+        vm.expectRevert(MarginAccountErrors.AddressBlacklisted.selector);
+        marginAccount.withdraw(initEth, address(eth));
+
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(eth);
+        vm.prank(user1);
+        vm.expectRevert(MarginAccountErrors.AddressBlacklisted.selector);
+        marginAccount.batchWithdrawMaxTokens(tokens);
+
+        assertEq(marginAccount.getBalance(user1, address(eth)), initEth);
+        assertEq(eth.balanceOf(user1), 0);
+    }
+
+    function testUnblacklistRestoresDepositAndWithdraw() public {
+        marginAccount.blacklistAddress(user1, true);
+        marginAccount.blacklistAddress(user1, false);
+
+        vm.startPrank(user1);
+        eth.approve(address(marginAccount), initEth);
+        marginAccount.deposit(user1, address(eth), initEth);
+        marginAccount.withdraw(initEth, address(eth));
+        vm.stopPrank();
+
+        assertEq(eth.balanceOf(user1), initEth);
+        assertEq(marginAccount.getBalance(user1, address(eth)), 0);
+    }
+
+    function testBlacklistAddressBlocksDirectMarketPayouts() public {
+        marginAccount.updateMarkets(address(this));
+        marginAccount.blacklistAddress(user1, true);
+        eth.mint(address(marginAccount), 2);
+
+        vm.expectRevert(MarginAccountErrors.AddressBlacklisted.selector);
+        marginAccount.creditUser(user1, address(eth), 1, false);
+
+        vm.expectRevert(MarginAccountErrors.AddressBlacklisted.selector);
+        marginAccount.creditUsersEncoded(abi.encode(user1, address(eth), 1, false));
+
+        assertEq(eth.balanceOf(user1), initEth);
+        assertEq(eth.balanceOf(address(marginAccount)), 2);
+    }
+
+    function testBlacklistAddressStillAllowsInternalCredits() public {
+        marginAccount.updateMarkets(address(this));
+        marginAccount.blacklistAddress(user1, true);
+
+        marginAccount.creditUser(user1, address(eth), 1, true);
+        marginAccount.creditUsersEncoded(abi.encode(user1, address(eth), 1, true));
+
+        assertEq(marginAccount.getBalance(user1, address(eth)), 2);
     }
 
     function testMaxWithdraw(uint256[] memory _amounts) public {

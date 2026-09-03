@@ -115,6 +115,10 @@ library OrderBookErrors {
 
 library MarginAccountErrors {
     /**
+     * @dev Thrown when a blacklisted address attempts to deposit or receive assets from the margin account
+     */
+    error AddressBlacklisted();
+    /**
      * @dev Thrown when a non-router tries to update markets
      */
     error OnlyRouterAllowed();
