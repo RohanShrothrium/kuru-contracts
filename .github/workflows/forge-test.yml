@@ -34,9 +34,6 @@ jobs:
     - name: Install Dependencies
       run: npm install
     
-    - name: Install openzeppelin-contracts
-      run: forge install @openzeppelin/openzeppelin-contracts
-
     - name: Create remappings file
       run: |
         echo "forge-std/=lib/forge-std/src/" > remappings.txt
