@@ -12,6 +12,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 import {MintableERC20} from "./lib/MintableERC20.sol";
+import {Ownable} from "solady/src/auth/Ownable.sol";
 
 contract OrderBookTest is Test {
     uint96 constant SIZE_PRECISION = 10 ** 10;
@@ -85,6 +86,42 @@ contract OrderBookTest is Test {
         ++SEED;
         lastGenAddress = derived;
         return derived;
+    }
+
+    function testDeployProxyRevertNotOwner() public {
+        vm.prank(user1);
+        vm.expectRevert(Ownable.Unauthorized.selector);
+        router.deployProxy(
+            IOrderBook.OrderBookType.NO_NATIVE,
+            address(eth),
+            address(usdc),
+            SIZE_PRECISION,
+            PRICE_PRECISION,
+            PRICE_PRECISION / 2,
+            10 ** 5,
+            10 ** 15,
+            0,
+            0,
+            SPREAD
+        );
+    }
+
+    function testDeployProxyOwner() public {
+        address proxy = router.deployProxy(
+            IOrderBook.OrderBookType.NO_NATIVE,
+            address(eth),
+            address(usdc),
+            10 ** 11,
+            10 ** 3,
+            500,
+            10 ** 5,
+            10 ** 15,
+            0,
+            0,
+            SPREAD
+        );
+
+        assertGt(proxy.code.length, 0);
     }
 
     function _addCustomBuyOrderOnlyPriceSize(

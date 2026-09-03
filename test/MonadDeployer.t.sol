@@ -47,7 +47,7 @@ contract MonadDeployerTest is Test {
         );
     }
 
-    function testDeployMarket() public {
+    function testDeployMarketRevertRouterNotOwner() public {
         MonadDeployer.TokenParams memory tokenParams = MonadDeployer.TokenParams(
             "CHOG", "CHOG", "https://chog.com/chog.json", 1000000 * 10 ** 18, address(this), 100
         );
@@ -61,8 +61,8 @@ contract MonadDeployerTest is Test {
             takerFeeBps: 10, // 10 basis points taker fee
             makerFeeBps: 5 // 5 basis points maker fee
         });
-        address market = monadDeployer.deployTokenAndMarket{value: 110 ether}(tokenParams, marketParams, bytes(""));
-        emit MarketCreated(market);
+        vm.expectRevert(Ownable.Unauthorized.selector);
+        monadDeployer.deployTokenAndMarket{value: 110 ether}(tokenParams, marketParams, bytes(""));
     }
 
     function testDeployMarketRevertInsufficientAssets() public {
@@ -71,7 +71,8 @@ contract MonadDeployerTest is Test {
         );
         MonadDeployer.MarketParams memory marketParams =
             MonadDeployer.MarketParams(100 * 10 ** 18, 10 ** 10, 10 ** 2, 10, 10 ** 2, 10 ** 10, 10, 5);
-        vm.expectRevert();
+        router.transferOwnership(address(monadDeployer));
+        vm.expectRevert(abi.encodeWithSelector(MonadDeployer.InsufficientAssets.selector, 110 ether, 10 ether));
         monadDeployer.deployTokenAndMarket{value: 10 ether}(tokenParams, marketParams, bytes(""));
     }
 

@@ -75,7 +75,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
     }
 
     /**
-     * @dev Deploys an OrderBook proxy for a set of given parameters
+     * @dev Deploys an OrderBook proxy for a set of given parameters. Only callable by the Router owner.
      * @param _type The type of OrderBook which can be NO_NATIVE, NATIVE_IN_BASE or NATIVE_IN_QUOTE
      * @param _baseAssetAddress The base asset address. Can be address 0 if _type is NATIVE_IN_BASE
      * @param _quoteAssetAddress The quote asset address. Can be address 0 if _type is NATIVE_IN_QUOTE
@@ -101,7 +101,7 @@ contract Router is IRouter, Ownable, Initializable, UUPSUpgradeable {
         uint256 _takerFeeBps,
         uint256 _makerFeeBps,
         uint96 _kuruAmmSpread
-    ) public returns (address proxy) {
+    ) public onlyOwner returns (address proxy) {
         if (_type == IOrderBook.OrderBookType.NATIVE_IN_BASE) {
             require(_baseAssetAddress == address(0), RouterErrors.MarketTypeMismatch());
             require(_quoteAssetAddress != address(0), RouterErrors.MarketTypeMismatch());
