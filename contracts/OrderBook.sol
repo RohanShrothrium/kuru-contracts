@@ -191,7 +191,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
 
         _consumedFunds += _quoteAmountRoundedUp(_price, _remainingSize);
 
-        _consumeFunds(quoteAsset, (((_consumedFunds) * quoteDecimalMultiplier) / pricePrecision), _msgSender());
+        _consumeFunds(quoteAsset, _pricePrecisionToQuoteAssetPrecisionRoundUp(_consumedFunds), _msgSender());
         if (_postOnly) {
             require(size == _remainingSize, OrderBookErrors.PostOnlyError());
         }
@@ -236,7 +236,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             }
         }
         _consumeFunds(
-            quoteAsset, _quoteAmountRoundedUp(_price, _size) * quoteDecimalMultiplier / pricePrecision, _msgSender()
+            quoteAsset, _pricePrecisionToQuoteAssetPrecisionRoundUp(_quoteAmountRoundedUp(_price, _size)), _msgSender()
         );
 
         uint40 _orderId = s_orderIdCounter + 1;
@@ -257,7 +257,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         require(_price % tickSize == 0, OrderBookErrors.TickSizeError());
         require(_price > 0 && _price < type(uint32).max, OrderBookErrors.PriceError());
 
-        _consumeFunds(baseAsset, ((_size * baseDecimalMultiplier) / sizePrecision), _msgSender());
+        _consumeFunds(baseAsset, _sizePrecisionToBaseAssetPrecisionRoundUp(_size), _msgSender());
 
         // uint256 _tokenCredit;
         //The sell order is matched and filled aggressively and remaining size is added as limit sell order
@@ -305,7 +305,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             }
         }
 
-        _consumeFunds(baseAsset, _size * baseDecimalMultiplier / sizePrecision, _msgSender());
+        _consumeFunds(baseAsset, _sizePrecisionToBaseAssetPrecisionRoundUp(_size), _msgSender());
         uint40 _orderId = s_orderIdCounter + 1;
         s_orderIdCounter = _orderId;
         uint40 _prevOrderId = OrderLinkedList.insertAtTail(s_sellPricePoints[_price], _orderId);
@@ -344,10 +344,10 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
 
         _consumeFunds(
             quoteAsset,
-            _quoteAmountRoundedUp(_bidPrice, _bidSize) * quoteDecimalMultiplier / pricePrecision,
+            _pricePrecisionToQuoteAssetPrecisionRoundUp(_quoteAmountRoundedUp(_bidPrice, _bidSize)),
             _msgSender()
         );
-        _consumeFunds(baseAsset, _askSize * baseDecimalMultiplier / sizePrecision, _msgSender());
+        _consumeFunds(baseAsset, _sizePrecisionToBaseAssetPrecisionRoundUp(_askSize), _msgSender());
 
         uint40 _bidOrderId = s_orderIdCounter + 1;
         uint40 _askOrderId = _bidOrderId + 1;
@@ -741,17 +741,21 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
 
         if (_type == OrderBookType.NATIVE_IN_QUOTE && !_isMargin && (msg.sender != address(0))) {
             require(
-                msg.value >= _pricePrecisionToQuoteAssetPrecision(_quoteSize), OrderBookErrors.NativeAssetInsufficient()
+                msg.value >= _pricePrecisionToQuoteAssetPrecisionRoundUp(_quoteSize),
+                OrderBookErrors.NativeAssetInsufficient()
             );
             require(
-                msg.value < _pricePrecisionToQuoteAssetPrecision(_quoteSize + 1), OrderBookErrors.NativeAssetSurplus()
+                msg.value < _pricePrecisionToQuoteAssetPrecisionRoundUp(_quoteSize + 1),
+                OrderBookErrors.NativeAssetSurplus()
             );
         } else if (msg.sender != address(0)) {
             require(msg.value == 0, OrderBookErrors.NativeAssetNotRequired());
             _isMargin
-                ? marginAccount.debitUser(_msgSender(), quoteAsset, _pricePrecisionToQuoteAssetPrecision(_quoteSize))
+                ? marginAccount.debitUser(
+                    _msgSender(), quoteAsset, _pricePrecisionToQuoteAssetPrecisionRoundUp(_quoteSize)
+                )
                 : quoteAsset.safeTransferFrom(
-                    _msgSender(), address(marginAccount), _pricePrecisionToQuoteAssetPrecision(_quoteSize)
+                    _msgSender(), address(marginAccount), _pricePrecisionToQuoteAssetPrecisionRoundUp(_quoteSize)
                 );
         }
 
@@ -796,14 +800,18 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
     {
         OrderBookType _type = orderBookType;
         if (_type == OrderBookType.NATIVE_IN_BASE && !_isMargin && (msg.sender != address(0))) {
-            require(msg.value >= _sizePrecisionToBaseAssetPrecision(_size), OrderBookErrors.NativeAssetInsufficient());
-            require(msg.value < _sizePrecisionToBaseAssetPrecision(_size + 1), OrderBookErrors.NativeAssetSurplus());
+            require(
+                msg.value >= _sizePrecisionToBaseAssetPrecisionRoundUp(_size), OrderBookErrors.NativeAssetInsufficient()
+            );
+            require(
+                msg.value < _sizePrecisionToBaseAssetPrecisionRoundUp(_size + 1), OrderBookErrors.NativeAssetSurplus()
+            );
         } else if (msg.sender != address(0)) {
             require(msg.value == 0, OrderBookErrors.NativeAssetNotRequired());
             _isMargin
-                ? marginAccount.debitUser(_msgSender(), baseAsset, _sizePrecisionToBaseAssetPrecision(_size))
+                ? marginAccount.debitUser(_msgSender(), baseAsset, _sizePrecisionToBaseAssetPrecisionRoundUp(_size))
                 : baseAsset.safeTransferFrom(
-                    _msgSender(), address(marginAccount), _sizePrecisionToBaseAssetPrecision(_size)
+                    _msgSender(), address(marginAccount), _sizePrecisionToBaseAssetPrecisionRoundUp(_size)
                 );
         }
 
@@ -840,8 +848,20 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
         return (uint256(_quote) * quoteDecimalMultiplier) / pricePrecision;
     }
 
+    function _pricePrecisionToQuoteAssetPrecisionRoundUp(uint256 _quote) internal view returns (uint256) {
+        return FixedPointMathLib.mulDivUp(_quote, quoteDecimalMultiplier, pricePrecision);
+    }
+
+    function _vaultPricePrecisionToQuoteAssetPrecisionRoundUp(uint256 _quote) internal view returns (uint256) {
+        return FixedPointMathLib.mulDivUp(_quote, quoteDecimalMultiplier, vaultPricePrecision);
+    }
+
     function _sizePrecisionToBaseAssetPrecision(uint96 _size) internal view returns (uint256) {
         return (uint256(_size) * baseDecimalMultiplier) / sizePrecision;
+    }
+
+    function _sizePrecisionToBaseAssetPrecisionRoundUp(uint256 _size) internal view returns (uint256) {
+        return FixedPointMathLib.mulDivUp(_size, baseDecimalMultiplier, sizePrecision);
     }
 
     /**
@@ -909,7 +929,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             uint256 _tokenCredit = (sizeToCreditTaker * _baseDecimalMultiplier) / _sizePrecision;
             if (sizeToCreditViaVault > 0) {
                 marginAccount.debitUser(
-                    kuruAmmVault, baseAsset, (sizeToCreditViaVault * _baseDecimalMultiplier) / _sizePrecision
+                    kuruAmmVault, baseAsset, _sizePrecisionToBaseAssetPrecisionRoundUp(sizeToCreditViaVault)
                 );
             }
             uint256 _takerFeeBps = takerFeeBps;
@@ -979,7 +999,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
             uint256 _tokenCredit = (sizeToCreditTaker * _baseDecimalMultiplier) / _sizePrecision;
             if (sizeToCreditViaVault > 0 && msg.sender != address(0)) {
                 marginAccount.debitUser(
-                    kuruAmmVault, baseAsset, (sizeToCreditViaVault * _baseDecimalMultiplier) / _sizePrecision
+                    kuruAmmVault, baseAsset, _sizePrecisionToBaseAssetPrecisionRoundUp(sizeToCreditViaVault)
                 );
             }
             uint256 _takerFeeBps = takerFeeBps;
@@ -1054,7 +1074,7 @@ contract OrderBook is Initializable, UUPSUpgradeable, ERC2771Context, AbstractAM
                 + (quoteCreditVaultTaker * _quoteDecimalMultiplier) / vaultPricePrecision;
             if (quoteCreditVaultTaker > 0 && msg.sender != address(0)) {
                 marginAccount.debitUser(
-                    kuruAmmVault, quoteAsset, (quoteCreditVaultTaker * _quoteDecimalMultiplier) / vaultPricePrecision
+                    kuruAmmVault, quoteAsset, _vaultPricePrecisionToQuoteAssetPrecisionRoundUp(quoteCreditVaultTaker)
                 );
             }
             uint256 _takerFeeBps = takerFeeBps;
