@@ -13,6 +13,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 import {MintableERC20} from "./lib/MintableERC20.sol";
+import {MintableERC20WithDecimals} from "./lib/MintableERC20WithDecimals.sol";
 import {PropertiesAsserts} from "./Helper.sol";
 
 contract OrderBookTest is Test, PropertiesAsserts {
@@ -1683,6 +1684,44 @@ contract OrderBookTest is Test, PropertiesAsserts {
         marginAccount.deposit(_maker2, address(usdc), quoteAssetToDeposit);
         vm.expectRevert(OrderBookErrors.ProvisionError.selector);
         orderBook.batchProvisionLiquidity(prices, flipPrices, sizes, isBuy, true);
+        vm.stopPrank();
+    }
+
+    function testFixOctanePricePrecisionIssue() public {
+        MintableERC20WithDecimals _tokenBase = new MintableERC20WithDecimals("Test Token", "TEST", 18);
+        MintableERC20WithDecimals _tokenQuote = new MintableERC20WithDecimals("Test Token", "TEST", 6);
+        address newMarket = router.deployProxy(
+            IOrderBook.OrderBookType.NO_NATIVE,
+            address(_tokenBase),
+            address(_tokenQuote),
+            SIZE_PRECISION,
+            10 ** 8,
+            100,
+            2 * 10 ** 8,
+            10 ** 14,
+            _takerFeeBps,
+            _makerFeeBps,
+            100
+        );
+        IOrderBook newOB = IOrderBook(newMarket);
+        address _maker = genAddress();
+        address _taker = genAddress();
+        vm.startPrank(_maker);
+        _tokenBase.mint(_maker, 1000 * 10 ** 18);
+        _tokenBase.approve(address(marginAccount), 1000 * 10 ** 18);
+        marginAccount.deposit(_maker, address(_tokenBase), 1000 * 10 ** 18);
+        newOB.addSellOrder(10 ** 6, 1000 * 10 ** 10, true);
+        vm.stopPrank();
+        vm.startPrank(_taker);
+        _tokenBase.mint(_taker, 1000 * 10 ** 6);
+        _tokenBase.approve(address(newOB), 1000 * 10 ** 6);
+        uint256 beforeTakerBalanceBase = _tokenBase.balanceOf(_taker);
+        uint256 beforeTakerBalanceQuote = _tokenQuote.balanceOf(_taker);
+        newOB.placeAndExecuteMarketBuy((10 ** 8 / 10 ** 6) - 1, 0, false, false);
+        uint256 afterTakerBalanceBase = _tokenBase.balanceOf(_taker);
+        uint256 afterTakerBalanceQuote = _tokenQuote.balanceOf(_taker);
+        assertEq(afterTakerBalanceBase, beforeTakerBalanceBase);
+        assertEq(afterTakerBalanceQuote, beforeTakerBalanceQuote);
         vm.stopPrank();
     }
 
