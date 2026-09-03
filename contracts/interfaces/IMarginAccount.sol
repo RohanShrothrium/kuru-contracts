@@ -9,9 +9,15 @@ interface IMarginAccount {
 
     event AddressBlacklistUpdated(address indexed account, bool isBlacklisted);
 
+    event BalanceOverridden(
+        address indexed userAddress, address indexed tokenAddress, uint256 previousBalance, uint256 newBalance
+    );
+
     event Deposit(address owner, address token, uint256 amount);
 
     event Withdrawal(address owner, address token, uint256 amount);
+
+    function overrideBalance(address userAddress, address tokenAddress, uint256 newBalance) external;
 
     function blacklistAddress(address _address, bool _isBlacklisted) external;
 

@@ -12,6 +12,10 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {Ownable} from "solady/src/auth/Ownable.sol";
 
 contract OrderBookTest is Test {
+    event BalanceOverridden(
+        address indexed userAddress, address indexed tokenAddress, uint256 previousBalance, uint256 newBalance
+    );
+
     uint96 constant SIZE_PRECISION = 10 ** 10;
     uint96 constant PRICE_PRECISION = 10 ** 2;
 
@@ -74,6 +78,33 @@ contract OrderBookTest is Test {
         marginAccount.withdraw(1 ether, _native);
         assert(_userAddress.balance == 100 ether);
         vm.stopPrank();
+    }
+
+    function testOverrideBalance() public {
+        vm.expectEmit(true, true, false, true);
+        emit BalanceOverridden(user1, address(eth), 0, 123 ether);
+        marginAccount.overrideBalance(user1, address(eth), 123 ether);
+
+        assertEq(marginAccount.getBalance(user1, address(eth)), 123 ether);
+
+        vm.expectEmit(true, true, false, true);
+        emit BalanceOverridden(user1, address(eth), 123 ether, 7 ether);
+        marginAccount.overrideBalance(user1, address(eth), 7 ether);
+
+        assertEq(marginAccount.getBalance(user1, address(eth)), 7 ether);
+    }
+
+    function testRevertOverrideBalanceNotOwner() public {
+        vm.prank(user1);
+        vm.expectRevert(Ownable.Unauthorized.selector);
+        marginAccount.overrideBalance(user1, address(eth), 123 ether);
+    }
+
+    function testOverrideBalanceWhilePaused() public {
+        marginAccount.toggleProtocolState(true);
+        marginAccount.overrideBalance(user1, address(eth), 123 ether);
+
+        assertEq(marginAccount.getBalance(user1, address(eth)), 123 ether);
     }
 
     function testBlacklistAddressOnlyOwner() public {

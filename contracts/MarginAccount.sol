@@ -62,6 +62,15 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
         emit FeeCollectorUpdated(_feeCollector);
     }
 
+    /// @notice Replaces a user's internal balance without transferring assets.
+    /// @dev Intended for owner-controlled reconciliation and available while the protocol is paused.
+    function overrideBalance(address userAddress, address tokenAddress, uint256 newBalance) external onlyOwner {
+        bytes32 accountKey = _accountKey(userAddress, tokenAddress);
+        uint256 previousBalance = balances[accountKey];
+        balances[accountKey] = newBalance;
+        emit BalanceOverridden(userAddress, tokenAddress, previousBalance, newBalance);
+    }
+
     /**
      * @dev Updates whether an address can deposit or receive assets from the margin account.
      * @param _address Address whose blacklist status is updated.
