@@ -213,6 +213,10 @@ library RouterErrors {
 
 library KuruAMMVaultErrors {
     /**
+     * @dev Thrown because Kuru AMM vault liquidity management is disabled
+     */
+    error VaultDisabled();
+    /**
      * @dev Thrown when a user is not the owner and tries to execute a privileged function
      */
     error Unauthorized();

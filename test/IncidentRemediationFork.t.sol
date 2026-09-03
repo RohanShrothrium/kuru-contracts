@@ -6,7 +6,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "solady/src/auth/Ownable.sol";
 
 import {IOrderBook} from "../contracts/interfaces/IOrderBook.sol";
-import {MarginAccountErrors} from "../contracts/libraries/Errors.sol";
+import {KuruAMMVaultErrors, MarginAccountErrors} from "../contracts/libraries/Errors.sol";
+import {KuruAMMVault} from "../contracts/KuruAMMVault.sol";
 import {MarginAccount} from "../contracts/MarginAccount.sol";
 import {OrderBook} from "../contracts/OrderBook.sol";
 import {Router} from "../contracts/Router.sol";
@@ -78,11 +79,19 @@ contract IncidentRemediationForkTest is Test {
         _assertDeployedExploitCreatesUnbackedXaut();
         assertTrue(vm.revertTo(cleanFork), "failed to restore clean pre-remediation fork");
 
-        (address newRouterImplementation, address newMarginImplementation, address newOrderBookImplementation) =
-            _applyRemediation(protocolOwner);
+        (
+            address newRouterImplementation,
+            address newMarginImplementation,
+            address newOrderBookImplementation,
+            address newVaultImplementation
+        ) = _applyRemediation(protocolOwner);
 
         _assertRemediationState(
-            newRouterImplementation, newMarginImplementation, newOrderBookImplementation, protocolOwner
+            newRouterImplementation,
+            newMarginImplementation,
+            newOrderBookImplementation,
+            newVaultImplementation,
+            protocolOwner
         );
         _assertPermissionlessMarketCreationIsDisabled();
 
@@ -179,7 +188,12 @@ contract IncidentRemediationForkTest is Test {
 
     function _applyRemediation(address protocolOwner)
         internal
-        returns (address newRouterImplementation, address newMarginImplementation, address newOrderBookImplementation)
+        returns (
+            address newRouterImplementation,
+            address newMarginImplementation,
+            address newOrderBookImplementation,
+            address newVaultImplementation
+        )
     {
         // Match the intended operational order: contain first, then upgrade, then blacklist.
         vm.prank(protocolOwner);
@@ -205,6 +219,14 @@ contract IncidentRemediationForkTest is Test {
         bytes[] memory upgradeData = new bytes[](markets.length);
         router.upgradeMultipleOrderBookProxies(markets, upgradeData);
 
+        newVaultImplementation = address(new KuruAMMVault());
+        router.upgradeVaultImplementation(newVaultImplementation);
+        address[] memory vaults = new address[](markets.length);
+        for (uint256 i; i < markets.length; ++i) {
+            vaults[i] = _vaultOf(markets[i]);
+        }
+        router.upgradeMultipleVaultProxies(vaults, upgradeData);
+
         address[6] memory exploiterAddresses =
             [EXPLOIT_ACCOUNT_ONE, EXPLOIT_ACCOUNT_TWO, OPERATOR_ONE, WORKER_ONE, OPERATOR_TWO, WORKER_TWO];
         for (uint256 i; i < exploiterAddresses.length; ++i) {
@@ -217,6 +239,7 @@ contract IncidentRemediationForkTest is Test {
         address newRouterImplementation,
         address newMarginImplementation,
         address newOrderBookImplementation,
+        address newVaultImplementation,
         address protocolOwner
     ) internal {
         assertEq(_implementationOf(ROUTER), newRouterImplementation, "router implementation not upgraded");
@@ -227,6 +250,16 @@ contract IncidentRemediationForkTest is Test {
         assertEq(_implementationOf(MALICIOUS_MARKET_ONE), newOrderBookImplementation, "first market not upgraded");
         assertEq(_implementationOf(MALICIOUS_MARKET_TWO), newOrderBookImplementation, "second market not upgraded");
         assertEq(_implementationOf(XAUT_USDC_MARKET), newOrderBookImplementation, "XAUt0/USDC market not upgraded");
+        assertEq(router.kuruAmmVaultImplementation(), newVaultImplementation, "Router vault pointer not updated");
+        assertEq(
+            _implementationOf(_vaultOf(MALICIOUS_MARKET_ONE)), newVaultImplementation, "first vault not upgraded"
+        );
+        assertEq(
+            _implementationOf(_vaultOf(MALICIOUS_MARKET_TWO)), newVaultImplementation, "second vault not upgraded"
+        );
+        assertEq(_implementationOf(_vaultOf(XAUT_USDC_MARKET)), newVaultImplementation, "XAUt0/USDC vault not upgraded");
+        vm.expectRevert(KuruAMMVaultErrors.VaultDisabled.selector);
+        KuruAMMVault(payable(_vaultOf(XAUT_USDC_MARKET))).deposit(0, 0, 0, address(this));
         assertTrue(_protocolPaused(), "global protocol pause was not preserved");
         _assertMarketsHardPaused();
 
@@ -287,6 +320,10 @@ contract IncidentRemediationForkTest is Test {
 
     function _implementationOf(address proxy) internal view returns (address) {
         return address(uint160(uint256(vm.load(proxy, ERC1967_IMPLEMENTATION_SLOT))));
+    }
+
+    function _vaultOf(address market) internal view returns (address vault) {
+        (vault,,,,,,,) = OrderBook(market).getVaultParams();
     }
 
     function _protocolPaused() internal view returns (bool) {

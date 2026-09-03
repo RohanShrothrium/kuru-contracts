@@ -164,24 +164,10 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     }
 
     /**
-     * @dev Deposits token1 and token2 into the vault and mints shares to the receiver.
+     * @dev Disabled. Kuru AMM vaults no longer accept deposits.
      */
-    function deposit(uint256 baseDeposit, uint256 quoteDeposit, uint256 minQuoteConsumed, address receiver)
-        public
-        payable
-        nonReentrant
-        returns (uint256)
-    {
-        require(
-            (token1 == address(0) || token2 == address(0))
-                ? msg.value >= (token1 == address(0) ? baseDeposit : quoteDeposit)
-                : msg.value == 0,
-            KuruAMMVaultErrors.NativeAssetMismatch()
-        );
-        uint256 _sharesMinted;
-        (_sharesMinted, quoteDeposit) = _mintAndDeposit(baseDeposit, quoteDeposit, receiver);
-        require(quoteDeposit >= minQuoteConsumed, KuruAMMVaultErrors.InsufficientQuoteUsed());
-        return _sharesMinted;
+    function deposit(uint256, uint256, uint256, address) public payable returns (uint256) {
+        revert KuruAMMVaultErrors.VaultDisabled();
     }
 
     /**
@@ -257,20 +243,10 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     }
 
     /**
-     * @dev Withdraws token1 and token2 from the vault by burning the specified amount of shares.
+     * @dev Disabled. Kuru AMM vault withdrawals are unavailable because no vault liquidity exists.
      */
-    function withdraw(uint256 _shares, address _receiver, address _owner)
-        public
-        nonReentrant
-        returns (uint256, uint256)
-    {
-        require(_shares <= balanceOf(_owner), KuruAMMVaultErrors.InsufficientBalance());
-
-        if (msg.sender != _owner) {
-            _spendAllowance(_owner, msg.sender, _shares);
-        }
-
-        return _burnAndWithdraw(_shares, _receiver, _owner);
+    function withdraw(uint256, address, address) public pure returns (uint256, uint256) {
+        revert KuruAMMVaultErrors.VaultDisabled();
     }
 
     /**
@@ -321,14 +297,10 @@ contract KuruAMMVault is IKuruAMMVault, ERC20, Initializable, UUPSUpgradeable, R
     }
 
     /**
-     * @dev Mints shares to the receiver in exchange for depositing token1 and token2.
+     * @dev Disabled. Kuru AMM vaults no longer mint shares.
      */
-    function mint(uint256 shares, address receiver) public payable returns (uint256, uint256) {
-        (uint256 baseDeposit, uint256 quoteDeposit) = previewMint(shares);
-
-        deposit(baseDeposit, quoteDeposit, quoteDeposit, receiver);
-
-        return (baseDeposit, quoteDeposit);
+    function mint(uint256, address) public payable returns (uint256, uint256) {
+        revert KuruAMMVaultErrors.VaultDisabled();
     }
 
     /**

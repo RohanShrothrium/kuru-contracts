@@ -1309,271 +1309,33 @@ contract OrderBookTest is Test, PropertiesAsserts {
         vm.stopPrank();
     }
 
-    function testKuruVaultInitLiquidityAddition(uint32 _price, uint96 _size) public {
-        //TODO: VAULT MAY NOT HAVE ADJUSTED PRICE. TRY NOT CONFORMING TO TICK SIZE
-        (_price, _size) = _adjustPriceAndSize(_price, _size);
-        address _maker = genAddress();
-        uint256 _amountBase = (_size * 10 ** eth.decimals()) / SIZE_PRECISION;
-        eth.mint(_maker, _amountBase);
-        uint256 _amountQuote = (_amountBase * 10 ** usdc.decimals() * PRICE_PRECISION) / (_price * 10 ** eth.decimals());
-        usdc.mint(_maker, _amountQuote);
-        vm.startPrank(_maker);
-        eth.approve(address(vault), _amountBase);
-        usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _amountQuote, _maker);
-        (, uint256 _vaultBestBid,, uint256 _vaultBestAsk,,,,) = orderBook.getVaultParams();
-        console.log((_vaultBestAsk * 10000000 / _vaultBestBid));
+    function testKuruVaultDepositIsDisabled() public {
+        vm.expectRevert(KuruAMMVaultErrors.VaultDisabled.selector);
+        vault.deposit(0, 0, 0, address(this));
+
+        vm.startPrank(vault.owner());
+        vm.expectRevert(KuruAMMVaultErrors.VaultDisabled.selector);
+        vault.deposit(0, 0, 0, address(this));
         vm.stopPrank();
     }
 
-    function testKuruVaultMarketSell(uint32 _price, uint96 _size) public {
-        //TODO: VAULT MAY NOT HAVE ADJUSTED PRICE. TRY NOT CONFORMING TO TICK SIZE
-        (_price, _size) = _adjustPriceAndSize(_price, _size);
-        _price = uint32(clampBetween(_price, 10000, _maxPrice));
-        _size *= 10;
-        address _maker = genAddress();
-        uint256 _amountBase = (_size * 10 ** eth.decimals()) / SIZE_PRECISION;
-        eth.mint(_maker, _amountBase);
-        uint256 _amountQuote = (_amountBase * 10 ** usdc.decimals() * _price) / (PRICE_PRECISION * 10 ** eth.decimals());
-        usdc.mint(_maker, _amountQuote);
-        vm.startPrank(_maker);
-        eth.approve(address(vault), _amountBase);
-        usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _amountQuote, _maker);
-        vm.stopPrank();
-        address _taker = genAddress();
-        eth.mint(_taker, _amountBase);
-        vm.startPrank(_taker);
-        eth.approve(address(orderBook), _amountBase);
-        orderBook.placeAndExecuteMarketSell((_size * 7) / 10, 0, false, false);
-        vm.stopPrank();
-        uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
-        console.log("Vault ETH:", _vaultEthBalance);
-        uint256 _vaultUsdcBalance = marginAccount.getBalance(address(vault), address(usdc));
-        console.log("Vault USDC:", _vaultUsdcBalance);
-        (,,, uint256 _askPrice,,,,) = orderBook.getVaultParams();
-        console.log((_vaultUsdcBalance * PRICE_PRECISION) / _vaultEthBalance);
-        console.log(_askPrice * PRICE_PRECISION / 10 ** 18);
-    }
+    function testKuruVaultMintIsDisabled() public {
+        vm.expectRevert(KuruAMMVaultErrors.VaultDisabled.selector);
+        vault.mint(0, address(this));
 
-    function testKuruVaultMarketBuy(uint32 _price, uint96 _size) public {
-        //TODO: VAULT MAY NOT HAVE ADJUSTED PRICE. TRY NOT CONFORMING TO TICK SIZE
-        (_price, _size) = _adjustPriceAndSize(_price, _size);
-        _price = uint32(clampBetween(_price, 10000, _maxPrice));
-        _size *= 10;
-        address _maker = genAddress();
-        uint256 _amountBase = (_size * 10 ** eth.decimals()) / SIZE_PRECISION;
-        eth.mint(_maker, _amountBase);
-        uint256 _amountQuote = (_amountBase * 10 ** usdc.decimals() * _price) / (PRICE_PRECISION * 10 ** eth.decimals());
-        usdc.mint(_maker, _amountQuote);
-        vm.startPrank(_maker);
-        eth.approve(address(vault), _amountBase);
-        usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _amountQuote, _maker);
-        vm.stopPrank();
-        address _taker = genAddress();
-        usdc.mint(_taker, _amountQuote);
-        vm.startPrank(_taker);
-        usdc.approve(address(orderBook), _amountQuote);
-        orderBook.placeAndExecuteMarketBuy(uint32(((_amountQuote / 10) * PRICE_PRECISION) / 10 ** 18), 0, false, false);
-        vm.stopPrank();
-        uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
-        console.log("Vault ETH:", _vaultEthBalance);
-        uint256 _vaultUsdcBalance = marginAccount.getBalance(address(vault), address(usdc));
-        console.log("Vault USDC:", _vaultUsdcBalance);
-        (,,, uint256 _askPrice,,,,) = orderBook.getVaultParams();
-        console.log((_vaultUsdcBalance * PRICE_PRECISION) / _vaultEthBalance);
-        console.log(_askPrice * PRICE_PRECISION / 10 ** 18);
-    }
-
-    function testKuruVaultMarketBuySpl() public {
-        //TODO: VAULT MAY NOT HAVE ADJUSTED PRICE. TRY NOT CONFORMING TO TICK SIZE
-        address _maker = genAddress();
-        eth.mint(_maker, 1000000000 ether);
-        usdc.mint(_maker, 1 ether);
-        vm.startPrank(_maker);
-        eth.approve(address(vault), 1000000000 ether);
-        usdc.approve(address(vault), 1 ether);
-        vault.deposit(1000000000 ether, 1 ether, 1 ether, _maker);
-        vm.stopPrank();
-        address _taker = genAddress();
-        usdc.mint(_taker, 43 * 10 ** 16);
-        vm.startPrank(_taker);
-        usdc.approve(address(orderBook), 43 * 10 ** 16);
-        orderBook.placeAndExecuteMarketBuy(43, 0, false, true);
-        vm.stopPrank();
-        uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
-        console.log("Vault ETH:", _vaultEthBalance);
-        uint256 _vaultUsdcBalance = marginAccount.getBalance(address(vault), address(usdc));
-        console.log("Vault USDC:", _vaultUsdcBalance);
-        (,,, uint256 _askPrice,,,,) = orderBook.getVaultParams();
-        console.log((_vaultUsdcBalance * PRICE_PRECISION) / _vaultEthBalance);
-        console.log(_askPrice * PRICE_PRECISION / 10 ** 18);
-    }
-
-    function testKuruVaultRepeatedMarketSell(uint256 _targetVaultPrice, uint96 _targetVaultSize) public {
-        (_targetVaultPrice, _targetVaultSize) = _adjustPriceAndSizeForVault(_targetVaultPrice, _targetVaultSize);
-        uint256 _amountBase = (_targetVaultSize * 10 ** eth.decimals()) / SIZE_PRECISION;
-        uint256 _amountQuote =
-            (_targetVaultSize * 10 ** usdc.decimals() * _targetVaultPrice) / (vaultPricePrecision * SIZE_PRECISION);
-        address _vaultMaker = genAddress();
-        eth.mint(_vaultMaker, _amountBase);
-        usdc.mint(_vaultMaker, _amountQuote);
-        vm.startPrank(_vaultMaker);
-        eth.approve(address(vault), _amountBase);
-        usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
-        vm.stopPrank();
-        for (uint256 i; i < 20; i++) {
-            uint96 _takerBaseSize = _targetVaultSize / 10; //fill 1/10th of the vault size
-            uint256 _takerBaseAmount = (_takerBaseSize * 10 ** eth.decimals()) / SIZE_PRECISION;
-            address _takerAddress = genAddress();
-            eth.mint(_takerAddress, _takerBaseAmount);
-            vm.startPrank(_takerAddress);
-            eth.approve(address(orderBook), _takerBaseAmount);
-            orderBook.placeAndExecuteMarketSell(_takerBaseSize, 0, false, true);
-            vm.stopPrank();
-        }
-        uint256 _vaultEthBalance = marginAccount.getBalance(address(vault), address(eth));
-        console.log("Vault ETH:", _vaultEthBalance);
-        uint256 _vaultUsdcBalance = marginAccount.getBalance(address(vault), address(usdc));
-        console.log("Vault USDC:", _vaultUsdcBalance);
-        (,,, uint256 _askPrice,,,,) = orderBook.getVaultParams();
-        uint256 _actualPrice = (_vaultUsdcBalance * 10 ** 18) / _vaultEthBalance;
-        console.log(_actualPrice);
-        console.log(_askPrice);
-    }
-
-    function testKuruVaultPartiallyFilledBidFullyFilledAsk(uint256 _targetVaultPrice, uint96 _targetVaultSize) public {
-        (_targetVaultPrice, _targetVaultSize) = _adjustPriceAndSizeForVault(_targetVaultPrice, _targetVaultSize);
-        uint256 _amountBase = (_targetVaultSize * 10 ** eth.decimals()) / SIZE_PRECISION;
-        uint256 _amountQuote =
-            (_targetVaultSize * 10 ** usdc.decimals() * _targetVaultPrice) / (vaultPricePrecision * SIZE_PRECISION);
-        address _vaultMaker = genAddress();
-        eth.mint(_vaultMaker, _amountBase);
-        usdc.mint(_vaultMaker, _amountQuote);
-        vm.startPrank(_vaultMaker);
-        eth.approve(address(vault), _amountBase);
-        usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
-        vm.stopPrank();
-        (,,, uint256 _vaultBestAsk,, uint96 _vaultBidOrderSize, uint96 _vaultAskOrderSize,) = orderBook.getVaultParams();
-        uint256 _bidTakerBaseAmount = (_vaultBidOrderSize * 10 ** eth.decimals()) / (2 * SIZE_PRECISION); //half of bid order size
-        address _partialBidTaker = genAddress();
-        eth.mint(_partialBidTaker, _bidTakerBaseAmount);
-        vm.startPrank(_partialBidTaker);
-        eth.approve(address(orderBook), _bidTakerBaseAmount);
-        orderBook.placeAndExecuteMarketSell(_vaultBidOrderSize / 2, 0, false, true);
-        vm.stopPrank();
-        address _fullAskTaker = genAddress();
-        uint256 _quoteForFillingAsk = (
-            (((_vaultAskOrderSize * _vaultBestAsk) * 12) / (10 * SIZE_PRECISION)) * 10 ** usdc.decimals()
-        ) / vaultPricePrecision;
-        usdc.mint(_fullAskTaker, _quoteForFillingAsk);
-        vm.startPrank(_fullAskTaker);
-        usdc.approve(address(orderBook), _quoteForFillingAsk);
-        orderBook.placeAndExecuteMarketBuy(uint32((_quoteForFillingAsk * PRICE_PRECISION) / 10 ** 18), 0, false, true);
-        (,,, uint256 _vaultBestAskNew,,,,) = orderBook.getVaultParams();
-        console.log(_vaultBestAskNew * 1000 / _vaultBestAsk);
-    }
-
-    function testKuruVaultRevertWrongPriceAsserted(uint256 _targetVaultPrice, uint96 _targetVaultSize) public {
-        _targetVaultPrice = clampBetween(
-            _targetVaultPrice, vaultPricePrecision * 3 / 2, _maxPrice * vaultPricePrecision / PRICE_PRECISION
-        );
-        _targetVaultSize = uint96(clampBetween(_targetVaultSize, _minSize + 1, _maxSize * 2));
-        uint256 _amountBase = (_targetVaultSize * 10 ** eth.decimals()) / SIZE_PRECISION;
-        uint256 _amountQuote =
-            (_targetVaultSize * 10 ** usdc.decimals() * _targetVaultPrice) / (vaultPricePrecision * SIZE_PRECISION);
-        address _vaultMaker = genAddress();
-        eth.mint(_vaultMaker, _amountBase);
-        usdc.mint(_vaultMaker, _amountQuote);
-        vm.startPrank(_vaultMaker);
-        eth.approve(address(vault), _amountBase);
-        usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
-        vm.stopPrank();
-        _targetVaultPrice = 10 ** 18;
-        _amountBase = (_targetVaultSize * 10 ** eth.decimals()) / SIZE_PRECISION;
-        _amountQuote =
-            (_targetVaultSize * 10 ** usdc.decimals() * _targetVaultPrice) / (vaultPricePrecision * SIZE_PRECISION);
-        _vaultMaker = genAddress();
-        eth.mint(_vaultMaker, _amountBase);
-        usdc.mint(_vaultMaker, _amountQuote);
-        vm.startPrank(_vaultMaker);
-        eth.approve(address(vault), _amountBase);
-        usdc.approve(address(vault), _amountQuote);
-        vm.expectRevert(KuruAMMVaultErrors.InsufficientQuoteToken.selector);
-        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
+        vm.startPrank(vault.owner());
+        vm.expectRevert(KuruAMMVaultErrors.VaultDisabled.selector);
+        vault.mint(0, address(this));
         vm.stopPrank();
     }
 
-    function testKuruVaultRevertInitialDepositMinSize() public {
-        uint256 _amountBase = 10 * 10 ** 18;
-        uint256 _amountQuote = 10 * 10 ** 18;
-        address _vaultMaker = genAddress();
-        eth.mint(_vaultMaker, _amountBase);
-        usdc.mint(_vaultMaker, _amountQuote);
-        vm.startPrank(_vaultMaker);
-        eth.approve(address(vault), _amountBase);
-        usdc.approve(address(vault), _amountQuote);
-        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
-        vm.stopPrank();
-        _amountBase = 0;
-        _amountQuote = 0;
-        vm.startPrank(_vaultMaker);
-        vm.expectRevert(KuruAMMVaultErrors.InsufficientLiquidityMinted.selector);
-        vault.deposit(0, 0, 0, _vaultMaker);
-        vm.stopPrank();
-    }
+    function testKuruVaultWithdrawIsDisabled() public {
+        vm.expectRevert(KuruAMMVaultErrors.VaultDisabled.selector);
+        vault.withdraw(0, address(this), address(this));
 
-    function testKuruVaultNoRevertPartialFilledSizeExceedsNewSize(uint256 _targetVaultPrice, uint96 _targetVaultSize)
-        public
-    {
-        (_targetVaultPrice, _targetVaultSize) = _adjustPriceAndSizeForVault(_targetVaultPrice, _targetVaultSize);
-        uint256 _amountBase = (_targetVaultSize * 10 ** eth.decimals()) / SIZE_PRECISION;
-        uint256 _amountQuote =
-            (_targetVaultSize * 10 ** usdc.decimals() * _targetVaultPrice) / (vaultPricePrecision * SIZE_PRECISION);
-        address _vaultMaker = genAddress();
-        eth.mint(_vaultMaker, _amountBase);
-        usdc.mint(_vaultMaker, _amountQuote);
-        vm.startPrank(_vaultMaker);
-        eth.approve(address(vault), _amountBase);
-        usdc.approve(address(vault), _amountQuote);
-        uint256 _shares = vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
-        vm.stopPrank();
-        (,,,,, uint96 _vaultBidOrderSize,,) = orderBook.getVaultParams();
-        uint256 _bidTakerBaseAmount = (_vaultBidOrderSize * 10 ** eth.decimals()) / (2 * SIZE_PRECISION); //half of bid order size
-        address _partialBidTaker = genAddress();
-        eth.mint(_partialBidTaker, _bidTakerBaseAmount);
-        vm.startPrank(_partialBidTaker);
-        eth.approve(address(orderBook), _bidTakerBaseAmount);
-        orderBook.placeAndExecuteMarketSell(_vaultBidOrderSize / 2, 0, false, true);
-        vm.stopPrank();
-        (,, uint96 _partiallyFilledBid,, uint96 _partiallyFilledAsk,,,) = orderBook.getVaultParams();
-        assert(_partiallyFilledBid != 0);
-        vm.startPrank(_vaultMaker);
-        vault.withdraw(_shares, _vaultMaker, _vaultMaker);
-        vm.stopPrank();
-        (,, _partiallyFilledBid,, _partiallyFilledAsk,,,) = orderBook.getVaultParams();
-        assert(_partiallyFilledBid == 0 && _partiallyFilledAsk == 0);
-    }
-
-    function testKuruVaultDisallowInitialDepositCrossingBook() public {
-        _addBuyOrder(address(0), 4000 * PRICE_PRECISION, 100 * SIZE_PRECISION, 0, true);
-        uint256 _illegalAskPrice = 4000 * 10 ** 18;
-        uint96 _targetVaultSize = 100 * SIZE_PRECISION;
-        uint256 _amountBase = (_targetVaultSize * 10 ** eth.decimals()) / SIZE_PRECISION;
-        uint256 _amountQuote =
-            (_targetVaultSize * 10 ** usdc.decimals() * _illegalAskPrice) / (vaultPricePrecision * SIZE_PRECISION);
-        address _vaultMaker = genAddress();
-        eth.mint(_vaultMaker, _amountBase);
-        usdc.mint(_vaultMaker, _amountQuote);
-        vm.startPrank(_vaultMaker);
-        eth.approve(address(vault), _amountBase);
-        usdc.approve(address(vault), _amountQuote);
-        vm.expectRevert(OrderBookErrors.VaultInitializationPriceCrossesBook.selector);
-        vault.deposit(_amountBase, _amountQuote, _amountQuote, _vaultMaker);
+        vm.startPrank(vault.owner());
+        vm.expectRevert(KuruAMMVaultErrors.VaultDisabled.selector);
+        vault.withdraw(0, address(this), address(this));
         vm.stopPrank();
     }
 
