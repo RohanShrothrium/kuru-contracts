@@ -137,7 +137,11 @@ contract MarginAccount is IMarginAccount, ERC2771Context, Ownable, Initializable
      * @param _token address of token to be debited.
      * @param _amount amount to debit.
      */
-    function debitUser(address _user, address _token, uint256 _amount) external protocolActive {
+    function debitUser(address _user, address _token, uint256 _amount)
+        external
+        protocolActive
+        notBlacklisted(_user)
+    {
         require(verifiedMarket[msg.sender], MarginAccountErrors.OnlyVerifiedMarketsAllowed());
         require(balances[_accountKey(_user, _token)] >= _amount, MarginAccountErrors.InsufficientBalance());
 

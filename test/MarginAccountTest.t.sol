@@ -160,6 +160,22 @@ contract OrderBookTest is Test {
         assertEq(marginAccount.getBalance(user1, address(eth)), 2);
     }
 
+    function testBlacklistAddressBlocksMarketDebits() public {
+        marginAccount.updateMarkets(address(this));
+
+        vm.startPrank(user1);
+        eth.approve(address(marginAccount), initEth);
+        marginAccount.deposit(user1, address(eth), initEth);
+        vm.stopPrank();
+
+        marginAccount.blacklistAddress(user1, true);
+
+        vm.expectRevert(MarginAccountErrors.AddressBlacklisted.selector);
+        marginAccount.debitUser(user1, address(eth), 1);
+
+        assertEq(marginAccount.getBalance(user1, address(eth)), initEth);
+    }
+
     function testMaxWithdraw(uint256[] memory _amounts) public {
         vm.assume(_amounts.length > 0 && _amounts.length == 200);
         address[] memory _tokens = new address[](_amounts.length);
